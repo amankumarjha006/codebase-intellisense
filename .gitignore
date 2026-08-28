@@ -1,0 +1,38 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Python / Server
+server/.venv/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+*.sqlite3
+
+# Node / Client
+client/node_modules/
+client/.next/
+client/out/
+client/build/
+client/.vercel
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker / Logs
+*.log
+
+# IDE & OS specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
