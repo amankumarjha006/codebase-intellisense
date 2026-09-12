@@ -149,3 +149,48 @@ class GithubService:
                     return inst
                     
             return None
+
+    async def get_repository(
+        self, access_token: str, owner: str, repo: str
+    ) -> Dict[str, Any]:
+        """
+        Fetch repository information from GitHub using the authenticated user's token.
+
+        Uses GET /repos/{owner}/{repo} which respects the user's access permissions.
+        Raises GithubAuthError if the repository cannot be accessed.
+        """
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"https://api.github.com/repos/{owner}/{repo}",
+                headers=headers,
+                timeout=10.0,
+            )
+
+            if resp.status_code == 404:
+                raise GithubAuthError(
+                    f"Repository {owner}/{repo} not found or not accessible."
+                )
+
+            if resp.status_code == 403:
+                raise GithubAuthError(
+                    f"Access denied to repository {owner}/{repo}."
+                )
+
+            if resp.status_code != 200:
+                logger.error(
+                    "Failed to fetch GitHub repository %s/%s with status %s",
+                    owner,
+                    repo,
+                    resp.status_code,
+                )
+                raise GithubAuthError(
+                    f"Failed to retrieve repository {owner}/{repo} from GitHub."
+                )
+
+            return resp.json()
