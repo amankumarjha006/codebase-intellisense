@@ -19,12 +19,24 @@ app.add_middleware(
 )
 
 from app.api.v1.api import api_router
-from app.api.deps import AuthException
+from app.api.deps import AuthException, NotFoundException
 from fastapi.responses import JSONResponse
 from fastapi import Request
 
 @app.exception_handler(AuthException)
 async def auth_exception_handler(request: Request, exc: AuthException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": exc.code,
+                "message": exc.message
+            }
+        }
+    )
+
+@app.exception_handler(NotFoundException)
+async def not_found_exception_handler(request: Request, exc: NotFoundException):
     return JSONResponse(
         status_code=exc.status_code,
         content={
