@@ -18,10 +18,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.api.v1.api import api_router
+from app.api.deps import AuthException
+from fastapi.responses import JSONResponse
+from fastapi import Request
+
+@app.exception_handler(AuthException)
+async def auth_exception_handler(request: Request, exc: AuthException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": exc.code,
+                "message": exc.message
+            }
+        }
+    )
+
 @app.get("/health", tags=["health"])
 def health_check():
     """Simple foundation health check endpoint."""
     return {"status": "ok"}
+
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 if __name__ == "__main__":
     import uvicorn
