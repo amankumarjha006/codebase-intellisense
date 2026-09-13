@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, Request, Response, HTTPException, Query, status
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Request, Response, Query, status
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 import redis.asyncio as redis
 import secrets
@@ -9,6 +9,7 @@ from typing import Optional
 from app.core.config import settings
 from app.api.deps import get_db, get_redis, get_current_user, AuthException
 from app.services.github import GithubService, GithubAuthError
+from app.services.auth import AuthService
 from app.models.user import User, GithubAccount, GithubInstallation
 from app.schemas.auth import UserOut
 
@@ -80,61 +81,13 @@ async def github_callback(
                 # We do not provision this installation
         
         # 5. Provisioning Transaction (Database operations)
-        # We start by querying the database, no flush is needed until the end.
-        github_account = db.query(GithubAccount).filter(GithubAccount.github_user_id == github_user_id).first()
-        
-        from app.core.encryption import encrypt_token
-        encrypted_token = encrypt_token(access_token)
-        
-        if github_account:
-            # Update existing user and account
-            user = github_account.user
-            user.email = email
-            user.full_name = full_name
-            github_account.username = username
-            github_account.access_token_encrypted = encrypted_token
-        else:
-            # Check if user with email already exists
-            user = db.query(User).filter(User.email == email).first()
-            if not user:
-                user = User(email=email, full_name=full_name)
-                db.add(user)
-                # Flush is fine here because we are ALREADY past all network requests,
-                # meaning the transaction is brief and won't hang on an API call.
-                db.flush() 
-                
-            github_account = GithubAccount(
-                user_id=user.id,
-                github_user_id=github_user_id,
-                username=username,
-                access_token_encrypted=encrypted_token
-            )
-            db.add(github_account)
-            db.flush()
-            
-        # 6. Provision installation if verified
-        if verified_installation:
-            # Target type should be extracted from GitHub's verified response
-            # 'target_type' might be 'Organization' or 'User' typically.
-            # We fallback to 'Unknown' just in case.
-            target_type = verified_installation.get("target_type", "Unknown")
-            
-            installation = db.query(GithubInstallation).filter(
-                GithubInstallation.installation_id == installation_id
-            ).first()
-            
-            if installation:
-                installation.github_account_id = github_account.id
-                installation.target_type = target_type
-            else:
-                installation = GithubInstallation(
-                    github_account_id=github_account.id,
-                    installation_id=installation_id,
-                    target_type=target_type
-                )
-                db.add(installation)
-
-        db.commit()
+        auth_service = AuthService(db)
+        user = auth_service.provision_user_and_installation(
+            github_user_data=github_user_data,
+            access_token=access_token,
+            verified_installation=verified_installation,
+            installation_id=installation_id
+        )
         
         # 6. Create application authentication session
         session_id = secrets.token_urlsafe(32)
@@ -221,4 +174,3 @@ async def logout(
     )
     return None
 
-from fastapi.responses import JSONResponse

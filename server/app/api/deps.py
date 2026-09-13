@@ -70,7 +70,10 @@ async def get_current_user(
         )
 
     # Fetch user from database
-    user = db.query(User).filter(User.id == user_uuid).first()
+    from app.repositories.user import UserAccountRepository
+    user_repo = UserAccountRepository(db)
+    user = user_repo.get_user_by_id(user_uuid)
+    
     if not user:
         raise AuthException(
             code="UNAUTHENTICATED", 
