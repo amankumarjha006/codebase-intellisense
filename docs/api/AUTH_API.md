@@ -12,6 +12,7 @@
 **Auth Required:** No
 **Query Parameters:**
 - `code`: The authorization code from GitHub.
+- `state`: CSRF state token.
 - `installation_id`: (Optional) If the flow originated from an app installation.
 **Response:** `302 Found` (Redirects to the Next.js dashboard with a `Set-Cookie` header).
 *Note: GitHub App Client ID, Client Secret, and installation tokens remain server-side.*
