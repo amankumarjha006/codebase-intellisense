@@ -1,4 +1,7 @@
 import pytest
+
+pytestmark = pytest.mark.usefixtures("valid_encryption_key")
+
 from app.core.encryption import encrypt_token, decrypt_token, _get_fernet, TokenEncryptionError
 from app.core.config import settings
 

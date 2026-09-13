@@ -1,6 +1,9 @@
 import pytest
+import pytest_asyncio
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
+
+pytestmark = pytest.mark.usefixtures("valid_encryption_key")
 
 from app.core.encryption import decrypt_token, encrypt_token
 from app.models.user import GithubAccount, User

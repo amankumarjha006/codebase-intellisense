@@ -1,5 +1,7 @@
 import pytest
 import pytest_asyncio
+
+pytestmark = pytest.mark.usefixtures("valid_encryption_key")
 from httpx import AsyncClient, ASGITransport
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4

@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_ID: Optional[str] = None
     GITHUB_CLIENT_SECRET: Optional[str] = None
     GITHUB_CALLBACK_URL: str = "http://localhost:8000/api/v1/auth/github/callback"
-    GITHUB_TOKEN_ENCRYPTION_KEY: str
+    GITHUB_TOKEN_ENCRYPTION_KEY: Optional[str] = None
     
     # Session Configuration
     SESSION_COOKIE_NAME: str = "session_id"
