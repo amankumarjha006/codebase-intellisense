@@ -83,12 +83,16 @@ async def github_callback(
         # We start by querying the database, no flush is needed until the end.
         github_account = db.query(GithubAccount).filter(GithubAccount.github_user_id == github_user_id).first()
         
+        from app.core.encryption import encrypt_token
+        encrypted_token = encrypt_token(access_token)
+        
         if github_account:
             # Update existing user and account
             user = github_account.user
             user.email = email
             user.full_name = full_name
             github_account.username = username
+            github_account.access_token_encrypted = encrypted_token
         else:
             # Check if user with email already exists
             user = db.query(User).filter(User.email == email).first()
@@ -102,7 +106,8 @@ async def github_callback(
             github_account = GithubAccount(
                 user_id=user.id,
                 github_user_id=github_user_id,
-                username=username
+                username=username,
+                access_token_encrypted=encrypted_token
             )
             db.add(github_account)
             db.flush()
