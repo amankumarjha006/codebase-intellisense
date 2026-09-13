@@ -164,6 +164,19 @@ class TestRepositoryVersionSummary:
         )
         assert schema.status == "SUCCESS"
 
+    def test_from_orm_version_mapper(self):
+        from app.models.repository import RepositoryVersion
+        
+        orm_obj = RepositoryVersion()
+        orm_obj.id = uuid4()
+        orm_obj.commit_sha = "deadbeef"
+        orm_obj.index_status = "SUCCESS"
+        
+        schema = RepositoryVersionSummary.from_orm_version(orm_obj)
+        assert schema.id == orm_obj.id
+        assert schema.commit_sha == orm_obj.commit_sha
+        assert schema.status == orm_obj.index_status
+
 
 # ---------------------------------------------------------------------------
 # RepositoryDetailOut

@@ -1,5 +1,8 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.repository import RepositoryVersion
 from uuid import UUID
 from datetime import datetime
 
@@ -35,6 +38,14 @@ class RepositoryVersionSummary(BaseModel):
     status: str
     
     model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_orm_version(cls, version: "RepositoryVersion") -> "RepositoryVersionSummary":
+        return cls(
+            id=version.id,
+            commit_sha=version.commit_sha,
+            status=version.index_status,
+        )
 
 class RepositoryDetailOut(BaseModel):
     id: UUID
