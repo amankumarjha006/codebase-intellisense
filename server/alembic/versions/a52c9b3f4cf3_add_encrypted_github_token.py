@@ -1,8 +1,8 @@
-"""Add encrypted access token to github_accounts
+"""add encrypted github token
 
-Revision ID: 123456789abc
+Revision ID: a52c9b3f4cf3
 Revises: 318d0e4bd080
-Create Date: 2026-09-12 12:15:00.000000
+Create Date: 2026-09-13 15:15:10.382227+00:00
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '123456789abc'
+revision: str = 'a52c9b3f4cf3'
 down_revision: Union[str, None] = '318d0e4bd080'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
