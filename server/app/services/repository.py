@@ -41,7 +41,7 @@ def parse_github_url(url: str) -> tuple[str, str]:
     """
     parsed = urlparse(url.strip())
 
-    if parsed.scheme not in ("https", "http"):
+    if parsed.scheme != "https":
         raise InvalidRepositoryUrlError(f"Invalid URL scheme: {parsed.scheme!r}")
 
     if parsed.hostname != "github.com":

@@ -88,6 +88,10 @@ class TestParseGithubUrl:
         with pytest.raises(InvalidRepositoryUrlError):
             parse_github_url("ftp://github.com/owner/repo")
 
+    def test_invalid_http_github(self):
+        with pytest.raises(InvalidRepositoryUrlError):
+            parse_github_url("http://github.com/owner/repo")
+
     def test_invalid_http_non_github(self):
         with pytest.raises(InvalidRepositoryUrlError):
             parse_github_url("http://example.com/owner/repo")
