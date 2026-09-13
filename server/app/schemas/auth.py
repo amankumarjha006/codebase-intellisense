@@ -10,4 +10,4 @@ class UserOut(BaseModel):
     id: UUID
     email: str
     full_name: str
-    github: GithubIdentityOut
+    github: Optional[GithubIdentityOut] = None
