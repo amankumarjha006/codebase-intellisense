@@ -3,12 +3,36 @@ from typing import Dict, Any, Optional
 from urllib.parse import urlencode
 from app.core.config import settings
 import logging
+import tempfile
+import tarfile
+import shutil
+import os
+from pathlib import Path
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
 class GithubAuthError(Exception):
     """Exception raised for GitHub API errors during authentication."""
     pass
+
+class GithubArchiveError(Exception):
+    """Exception raised for repository archive download or extraction failures."""
+    pass
+
+@dataclass
+class RepositorySnapshot:
+    path: Path  # This is the root temporary directory containing the extraction
+
+    @property
+    def root(self) -> Path:
+        """The actual extracted repository root, ignoring the parent temporary directory."""
+        return self.path / "extracted"
+
+    def cleanup(self):
+        """Remove the temporary snapshot directory."""
+        if self.path.exists():
+            shutil.rmtree(self.path, ignore_errors=True)
 
 class GithubService:
     def __init__(self):
@@ -248,4 +272,119 @@ class GithubService:
 
             data = resp.json()
             return data["commit"]["sha"]
+
+    async def download_repository_snapshot(
+        self, access_token: str, owner: str, repo: str, commit_sha: str
+    ) -> RepositorySnapshot:
+        """
+        Download and securely extract a repository tarball for an exact commit SHA.
+        Returns a RepositorySnapshot that handles its own cleanup.
+        """
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+
+        temp_dir = Path(tempfile.mkdtemp(prefix="github_snapshot_"))
+        tar_path = temp_dir / "archive.tar.gz"
+        extracted_root = temp_dir / "extracted"
+        extracted_root.mkdir(parents=True, exist_ok=True)
+
+        try:
+            async with httpx.AsyncClient() as client:
+                url = f"https://api.github.com/repos/{owner}/{repo}/tarball/{commit_sha}"
+                async with client.stream(
+                    "GET", url, headers=headers, follow_redirects=True, timeout=30.0
+                ) as resp:
+                    if resp.status_code == 404:
+                        raise GithubAuthError(
+                            f"Commit {commit_sha} not found for {owner}/{repo}."
+                        )
+                    if resp.status_code != 200:
+                        raise GithubAuthError(
+                            f"Failed to download archive for {owner}/{repo} at {commit_sha} with status {resp.status_code}."
+                        )
+
+                    with open(tar_path, "wb") as f:
+                        async for chunk in resp.aiter_bytes():
+                            f.write(chunk)
+
+            try:
+                with tarfile.open(tar_path, "r:gz") as tar:
+                    members = tar.getmembers()
+                    if not members:
+                        raise GithubArchiveError("Archive is empty.")
+
+                    # Identify the common top-level directory wrapper
+                    top_level_dirs = set()
+                    for m in members:
+                        parts = Path(m.name).parts
+                        if parts:
+                            top_level_dirs.add(parts[0])
+
+                    if len(top_level_dirs) != 1:
+                        raise GithubArchiveError(
+                            "Archive does not have a single top-level directory wrapper."
+                        )
+                    wrapper_prefix = top_level_dirs.pop()
+
+                    for member in members:
+                        if member.name.startswith("/") or ".." in member.name:
+                            raise GithubArchiveError(
+                                f"Suspicious path in archive: {member.name}"
+                            )
+
+                        if member.issym() or member.islnk():
+                            raise GithubArchiveError(
+                                f"Symlinks are not allowed in MVP snapshot: {member.name}"
+                            )
+
+                        # Skip the wrapper directory itself
+                        if member.name == wrapper_prefix or member.name == wrapper_prefix + "/":
+                            continue
+
+                        try:
+                            rel_path = Path(member.name).relative_to(wrapper_prefix)
+                        except ValueError:
+                            raise GithubArchiveError(
+                                f"Member path does not start with top-level wrapper: {member.name}"
+                            )
+
+                        normalized_path = os.path.normpath(str(rel_path))
+                        if normalized_path.startswith("/") or normalized_path.startswith(".."):
+                            raise GithubArchiveError(
+                                f"Path traversal detected after normalization: {normalized_path}"
+                            )
+
+                        dest_path = (extracted_root / normalized_path).resolve()
+                        if not dest_path.is_relative_to(extracted_root.resolve()):
+                            raise GithubArchiveError(
+                                f"Extraction path escapes root: {member.name}"
+                            )
+
+                        member.name = normalized_path
+
+                        if not (member.isreg() or member.isdir()):
+                            raise GithubArchiveError(
+                                f"Unsupported file type in archive: {member.name}"
+                            )
+
+                        tar.extract(member, path=extracted_root)
+
+            except tarfile.TarError as e:
+                raise GithubArchiveError(
+                    f"Failed to parse or extract tarball: {str(e)}"
+                ) from e
+
+        except Exception:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            raise
+
+        finally:
+            if tar_path.exists():
+                tar_path.unlink()
+
+        return RepositorySnapshot(path=temp_dir)
+
 
