@@ -207,3 +207,45 @@ class GithubService:
                 )
 
             return resp.json()
+
+    async def get_branch_commit(
+        self, access_token: str, owner: str, repo: str, branch: str
+    ) -> str:
+        """
+        Fetch the current commit SHA for a specific branch from GitHub.
+
+        Raises GithubAuthError if the branch is not found or accessible.
+        """
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"https://api.github.com/repos/{owner}/{repo}/branches/{branch}",
+                headers=headers,
+                timeout=10.0,
+            )
+
+            if resp.status_code == 404:
+                raise GithubAuthError(
+                    f"Branch {branch} not found in repository {owner}/{repo}."
+                )
+
+            if resp.status_code != 200:
+                logger.error(
+                    "Failed to fetch GitHub branch %s for %s/%s with status %s",
+                    branch,
+                    owner,
+                    repo,
+                    resp.status_code,
+                )
+                raise GithubAuthError(
+                    f"Failed to retrieve branch {branch} for {owner}/{repo} from GitHub."
+                )
+
+            data = resp.json()
+            return data["commit"]["sha"]
+

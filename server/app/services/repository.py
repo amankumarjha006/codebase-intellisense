@@ -5,7 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models.repository import Repository
+from app.models.repository import Repository, RepositoryVersion, IndexJob
 from app.repositories.repository import RepositoryRepository
 from app.services.github import GithubService, GithubAuthError
 
@@ -24,6 +24,11 @@ class InvalidRepositoryUrlError(RepositoryServiceError):
 
 class RepositoryNotAccessibleError(RepositoryServiceError):
     """Raised when the repository cannot be accessed via the user's GitHub credentials."""
+    pass
+
+
+class RepositoryActiveJobError(RepositoryServiceError):
+    """Raised when attempting to queue analysis but an active job already exists."""
     pass
 
 
@@ -142,3 +147,47 @@ class RepositoryService:
             raise
 
         return repository
+
+    def queue_analysis(
+        self,
+        repository: Repository,
+        branch: str,
+        commit_sha: str,
+    ) -> tuple[RepositoryVersion, IndexJob]:
+        """
+        Queue a new analysis job for a repository.
+        Creates a RepositoryVersion (if it doesn't exist) and an IndexJob.
+        Raises RepositoryActiveJobError if an active job already exists.
+        """
+        try:
+            # 1. Check for active job
+            active_job = self.repository_repo.get_active_job(repository.id)
+            if active_job:
+                raise RepositoryActiveJobError("Repository analysis is already in progress.")
+
+            # 2. Find or create RepositoryVersion
+            version = self.repository_repo.get_version_by_commit(repository.id, commit_sha)
+            if not version:
+                version = self.repository_repo.create_version(
+                    repository_id=repository.id,
+                    commit_sha=commit_sha,
+                    branch=branch,
+                    index_status="PENDING",
+                )
+
+            # 3. Create IndexJob
+            job = self.repository_repo.create_index_job(
+                repository_id=repository.id,
+                repository_version_id=version.id,
+                status="QUEUED",
+            )
+
+            # 4. Commit transaction
+            self.db.commit()
+
+            return version, job
+
+        except Exception:
+            self.db.rollback()
+            raise
+

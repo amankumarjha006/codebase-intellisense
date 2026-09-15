@@ -136,6 +136,17 @@ class RepositoryRepository:
         )
         return self.db.execute(stmt).scalar_one_or_none()
 
+    def get_version_by_commit(
+        self,
+        repository_id: UUID,
+        commit_sha: str,
+    ) -> RepositoryVersion | None:
+        stmt = select(RepositoryVersion).where(
+            RepositoryVersion.repository_id == repository_id,
+            RepositoryVersion.commit_sha == commit_sha,
+        )
+        return self.db.execute(stmt).scalar_one_or_none()
+
     def create_index_job(
         self,
         *,

@@ -15,10 +15,18 @@ from app.schemas.repository import (
     RepositoryCreate, 
     RepositoryOut, 
     RepositoryDetailOut, 
-    RepositoryVersionSummary
+    RepositoryVersionSummary,
+    RepositoryAnalyzeRequest,
+    AnalyzeRepositoryOut
 )
 from app.core.encryption import TokenEncryptionError
-from app.services.repository import RepositoryServiceError, InvalidRepositoryUrlError, RepositoryNotAccessibleError
+from app.services.repository import (
+    RepositoryServiceError,
+    InvalidRepositoryUrlError,
+    RepositoryNotAccessibleError,
+    RepositoryActiveJobError
+)
+from app.services.github import GithubAuthError
 
 router = APIRouter()
 
@@ -142,3 +150,98 @@ def get_repository(
         is_private=repository.is_private,
         active_version=active_version
     )
+
+@router.post("/{repository_id}/analyze", response_model=AnalyzeRepositoryOut, status_code=status.HTTP_202_ACCEPTED, summary="Analyze Repository")
+async def analyze_repository(
+    repository_id: UUID,
+    request: RepositoryAnalyzeRequest,
+    current_user: User = Depends(get_current_user),
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+):
+    """Queues a background job to analyze the repository."""
+    github_account = current_user.github_accounts[0] if current_user.github_accounts else None
+    
+    if not github_account:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": {
+                    "code": "INVALID_REQUEST",
+                    "message": "No GitHub account is connected to this user."
+                }
+            }
+        )
+
+    try:
+        token = get_decrypted_token(github_account)
+    except TokenEncryptionError:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": {
+                    "code": "INVALID_REQUEST",
+                    "message": "Could not decrypt GitHub token."
+                }
+            }
+        )
+
+    github_service = GithubService()
+    repo_service = RepositoryService(db, github_service)
+
+    try:
+        branch = request.branch
+        if not branch:
+            # Fetch the default branch if not provided
+            repo_info = await github_service.get_repository(
+                access_token=token, owner=repository.owner, repo=repository.name
+            )
+            branch = repo_info.get("default_branch")
+            if not branch:
+                raise GithubAuthError("Could not determine default branch.")
+
+        commit_sha = await github_service.get_branch_commit(
+            access_token=token, owner=repository.owner, repo=repository.name, branch=branch
+        )
+
+        version, job = repo_service.queue_analysis(
+            repository=repository, branch=branch, commit_sha=commit_sha
+        )
+        
+        return AnalyzeRepositoryOut(
+            job_id=job.id,
+            repository_version_id=version.id,
+            status=job.status,
+            message="Repository analysis queued."
+        )
+    except RepositoryActiveJobError as e:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": {
+                    "code": "INDEXING_ALREADY_IN_PROGRESS",
+                    "message": str(e)
+                }
+            }
+        )
+    except GithubAuthError as e:
+        return JSONResponse(
+            status_code=502,
+            content={
+                "error": {
+                    "code": "GITHUB_API_ERROR",
+                    "message": str(e)
+                }
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": "INTERNAL_SERVER_ERROR",
+                    "message": "An unexpected error occurred."
+                }
+            }
+        )
+
