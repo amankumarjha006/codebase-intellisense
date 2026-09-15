@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     EMBEDDING_API_KEY: Optional[str] = None
 
+    # Indexing Configuration
+    MAX_INDEXABLE_FILE_SIZE_BYTES: int = 5242880  # 5 MB
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE_PATH),
         env_file_encoding="utf-8",

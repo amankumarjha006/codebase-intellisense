@@ -27,6 +27,7 @@ from app.services.repository import (
     RepositoryActiveJobError
 )
 from app.services.github import GithubAuthError
+from app.workers import enqueue_indexing_job
 
 router = APIRouter()
 
@@ -208,6 +209,8 @@ async def analyze_repository(
             repository=repository, branch=branch, commit_sha=commit_sha
         )
         
+        enqueue_indexing_job(job.id)
+        
         return AnalyzeRepositoryOut(
             job_id=job.id,
             repository_version_id=version.id,
@@ -244,4 +247,41 @@ async def analyze_repository(
                 }
             }
         )
+
+
+@router.get("/{repository_id}/jobs", response_model=list[IndexJobOut], summary="List Index Jobs")
+def get_index_jobs(
+    repository_id: UUID,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+):
+    """Retrieve all indexing jobs for a repository."""
+    repo_repo = RepositoryRepository(db)
+    jobs = repo_repo.get_jobs_for_repository(repository.id)
+    return jobs
+
+
+@router.get("/{repository_id}/jobs/{job_id}", response_model=IndexJobOut, summary="Get Index Job Status")
+def get_index_job(
+    repository_id: UUID,
+    job_id: UUID,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+):
+    """Retrieve the status of a specific indexing job."""
+    repo_repo = RepositoryRepository(db)
+    job = repo_repo.get_job_by_id(job_id)
+    
+    if not job or job.repository_id != repository.id:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Index job not found."
+                }
+            }
+        )
+    
+    return job
 

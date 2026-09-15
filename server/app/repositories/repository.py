@@ -175,3 +175,21 @@ class RepositoryRepository:
             )
         )
         return self.db.execute(stmt).scalar_one_or_none()
+
+    def get_job_by_id(
+        self,
+        job_id: UUID,
+    ) -> IndexJob | None:
+        stmt = select(IndexJob).where(IndexJob.id == job_id)
+        return self.db.execute(stmt).scalar_one_or_none()
+
+    def get_jobs_for_repository(
+        self,
+        repository_id: UUID,
+    ) -> list[IndexJob]:
+        stmt = (
+            select(IndexJob)
+            .where(IndexJob.repository_id == repository_id)
+            .order_by(IndexJob.created_at.desc())
+        )
+        return list(self.db.execute(stmt).scalars().all())
