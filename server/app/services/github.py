@@ -25,11 +25,13 @@ class GithubService:
             "client_id": self.client_id,
             "redirect_uri": self.callback_url,
             "state": state,
+            "scope": "user:email",
             # For GitHub Apps, we generally don't need to request scopes for user-to-server 
             # if we are just identifying the user, but we might want user:email to ensure 
             # we can read the email address if it's private.
         }
         query_string = urlencode(params)
+        logger.info("OAuth Authorization URL requested scope: '%s'", params["scope"])
         return f"https://github.com/login/oauth/authorize?{query_string}"
 
     async def exchange_code_for_token(self, code: str) -> str:
@@ -61,6 +63,12 @@ class GithubService:
                 )
                 raise GithubAuthError(data.get("error_description", data.get("error")))
                 
+            granted_scopes = data.get("scope", "")
+            token_type = data.get("token_type", "")
+            logger.info("OAuth Token Exchange HTTP status: %s", response.status_code)
+            logger.info("OAuth Token Exchange requested scope: 'user:email'")
+            logger.info("OAuth Token Exchange granted scope: '%s'", granted_scopes)
+            logger.info("OAuth Token Exchange token_type: '%s'", token_type)
             return data["access_token"]
 
     async def get_authenticated_user(self, access_token: str) -> Dict[str, Any]:
@@ -86,6 +94,11 @@ class GithubService:
             
             # 2. Get verified primary email
             emails_resp = await client.get("https://api.github.com/user/emails", headers=headers, timeout=10.0)
+            
+            logger.info("GET /user/emails HTTP status: %s", emails_resp.status_code)
+            logger.info("GET /user/emails X-OAuth-Scopes: '%s'", emails_resp.headers.get("X-OAuth-Scopes", ""))
+            logger.info("GET /user/emails X-Accepted-OAuth-Scopes: '%s'", emails_resp.headers.get("X-Accepted-OAuth-Scopes", ""))
+            
             if emails_resp.status_code != 200:
                 logger.error(
                     "Failed to fetch GitHub user emails with status %s", emails_resp.status_code

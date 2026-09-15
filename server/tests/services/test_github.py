@@ -10,6 +10,46 @@ def github_service():
     return GithubService()
 
 
+class TestGithubAuth:
+    def test_authorization_url_includes_email_scope(self, github_service):
+        github_service.client_id = "test_client_id"
+        github_service.callback_url = "http://localhost/callback"
+        url = github_service.get_authorization_url("test_state")
+        
+        assert "client_id=test_client_id" in url
+        assert "redirect_uri=http%3A%2F%2Flocalhost%2Fcallback" in url
+        assert "state=test_state" in url
+        assert "scope=user%3Aemail" in url
+
+    @pytest.mark.asyncio
+    async def test_get_authenticated_user_sanitizes_errors(self, github_service):
+        mock_profile_response = MagicMock()
+        mock_profile_response.status_code = 200
+        mock_profile_response.json.return_value = {
+            "id": 1,
+            "login": "testuser",
+            "name": "Test User",
+            "email": None
+        }
+
+        mock_emails_response = MagicMock()
+        mock_emails_response.status_code = 403 # Simulate an error retrieving emails
+        
+        with patch("httpx.AsyncClient") as MockClient:
+            mock_client = AsyncMock()
+            MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+            
+            # Setup side effect for two calls: /user and /user/emails
+            mock_client.get.side_effect = [mock_profile_response, mock_emails_response]
+            
+            with pytest.raises(GithubAuthError, match="Failed to retrieve user emails") as exc_info:
+                await github_service.get_authenticated_user("super_secret_token")
+                
+            # Verify token isn't in the exception string
+            assert "super_secret_token" not in str(exc_info.value)
+
+
 class TestGetRepository:
     @pytest.mark.asyncio
     async def test_successful_fetch(self, github_service):
