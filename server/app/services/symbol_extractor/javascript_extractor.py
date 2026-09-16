@@ -1,4 +1,5 @@
 import logging
+import re
 from app.models.knowledge import File, Symbol
 from .base import BaseExtractor
 
@@ -8,6 +9,10 @@ try:
     from tree_sitter import Language, Parser
     TREE_SITTER_AVAILABLE = True
 except ImportError:
+    # Provide module-level sentinels so patch() targets always exist,
+    # even when the native extensions are not installed.
+    Language = None  # type: ignore[assignment,misc]
+    Parser = None    # type: ignore[assignment,misc]
     TREE_SITTER_AVAILABLE = False
 
 
@@ -31,7 +36,7 @@ class JavaScriptExtractor(BaseExtractor):
         self.parser = Parser(self.ts_lang)
 
     def extract(self, file: File, source_code: bytes) -> list[Symbol]:
-        if not TREE_SITTER_AVAILABLE:
+        if self.parser is None:
             return []
             
         tree = self.parser.parse(source_code)
@@ -85,7 +90,7 @@ class JavaScriptExtractor(BaseExtractor):
                     sym_type = "function"
                     if has_jsx(node):
                         sym_type = "component"
-                    elif name.startswith("use") and name != "use":
+                    elif re.match(r'^use[A-Z]', name):
                         sym_type = "hook"
                     add_symbol(name, sym_type, node)
                     scope_stack.append(name)
@@ -106,7 +111,7 @@ class JavaScriptExtractor(BaseExtractor):
                         sym_type = "function"
                         if has_jsx(value_node):
                             sym_type = "component"
-                        elif name.startswith("use") and name != "use":
+                        elif re.match(r'^use[A-Z]', name):
                             sym_type = "hook"
                         add_symbol(name, sym_type, node)
                         scope_stack.append(name)
@@ -177,8 +182,11 @@ class JavaScriptExtractor(BaseExtractor):
                 scope_stack.pop()
 
         if tree.root_node.has_error:
-            # We can still try to extract what we can
-            pass
+            logger.warning(
+                f"Tree-sitter reported parse errors in {file.file_path!r}. "
+                "Skipping to avoid emitting bogus symbols."
+            )
+            return []
 
         walk(tree.root_node)
         return symbols

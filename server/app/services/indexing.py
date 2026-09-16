@@ -72,9 +72,9 @@ DEFAULT_EXCLUDE_EXTENSIONS = {
 LANGUAGE_EXTENSIONS = {
     ".py": "python",
     ".js": "javascript",
-    ".jsx": "javascript",
+    ".jsx": "jsx",
     ".ts": "typescript",
-    ".tsx": "typescript",
+    ".tsx": "tsx",
     ".java": "java",
     ".cpp": "cpp",
     ".cc": "cpp",
@@ -544,12 +544,31 @@ class IndexingService:
             self.db.commit()
 
     def _index_repository(self, repo_path: str, version: RepositoryVersion) -> None:
-        """Index all files in the repository."""
+        """Index all files in the repository, then run symbol extraction."""
+        from sqlalchemy import select as sa_select
+        from app.repositories.knowledge import KnowledgeRepository
+        from app.services.symbol_extractor import SymbolExtractorService
+
         files = discover_files(repo_path)
         logger.info(f"Discovered {len(files)} files to index for version {version.id}")
 
         for rel_path, abs_path in files:
             self._index_file(repo_path, rel_path, abs_path, version)
+
+        # --- Symbol extraction ---
+        # Query all files flushed during this index run before committing.
+        stmt = sa_select(File).where(File.repository_version_id == version.id)
+        indexed_files = list(self.db.execute(stmt).scalars().all())
+        if indexed_files:
+            knowledge_repo = KnowledgeRepository(self.db)
+            symbol_service = SymbolExtractorService(knowledge_repo, repo_path)
+            stats = symbol_service.extract_symbols(version, indexed_files)
+            logger.info(
+                f"Symbol extraction complete for version {version.id}: "
+                f"{stats['symbols_extracted']} symbols from "
+                f"{stats['files_processed']} files "
+                f"({stats['files_skipped']} skipped)"
+            )
 
         self.db.commit()
 
@@ -569,11 +588,8 @@ class IndexingService:
         self.db.add(file_record)
         self.db.flush()
 
-        if language != "text":
-            tree = self.parser.parse(content, language)
-            if tree:
-                self._extract_and_store_symbols(tree, content, language, file_record)
-                self._extract_and_store_relationships(tree, content, language, file_record, version)
+        # Symbol extraction is handled in bulk by SymbolExtractorService
+        # after all files for this version have been indexed.
 
         self._chunk_and_embed_file(content, file_record, language)
 

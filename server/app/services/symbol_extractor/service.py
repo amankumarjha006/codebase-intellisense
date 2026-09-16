@@ -46,6 +46,18 @@ class SymbolExtractorService:
                 continue
                 
             abs_path = os.path.join(self.snapshot_root, file.file_path)
+
+            # Containment check: resolved path must stay inside snapshot_root.
+            snapshot_real = os.path.realpath(self.snapshot_root)
+            abs_real = os.path.realpath(abs_path)
+            if not (abs_real == snapshot_real or abs_real.startswith(snapshot_real + os.sep)):
+                logger.error(
+                    f"Path traversal detected for file {file.file_path!r}; skipping."
+                )
+                stats["files_skipped"] += 1
+                stats["files_skipped_malformed"] += 1
+                continue
+
             try:
                 with open(abs_path, "rb") as f:
                     source_code = f.read()

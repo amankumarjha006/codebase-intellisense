@@ -28,9 +28,9 @@ KNOWN_BINARY_EXTENSIONS = {
 EXTENSION_LANGUAGE_MAP = {
     ".py": "Python",
     ".ts": "TypeScript",
-    ".tsx": "TypeScript",
-    ".js": "JavaScript",
-    ".jsx": "JavaScript",
+    ".tsx": "tsx",
+    ".js": "javascript",
+    ".jsx": "jsx",
     ".go": "Go",
     ".rs": "Rust",
     ".java": "Java",
