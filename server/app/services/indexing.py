@@ -394,40 +394,6 @@ class TreeSitterParser:
 
 
 
-
-class EmbeddingGenerator:
-    """Generate embeddings for code chunks using Google Generative AI."""
-
-    def __init__(self):
-        self._model = None
-        self._model_name = "text-embedding-004"
-
-    def _get_model(self):
-        if self._model is None:
-            try:
-                import google.generativeai as genai
-                genai.configure(api_key=settings.GEMINI_API_KEY)
-                self._model = genai.GenerativeModel(self._model_name)
-            except Exception as e:
-                logger.error(f"Failed to initialize embedding model: {e}")
-                raise EmbeddingError(f"Failed to initialize embedding model: {e}")
-        return self._model
-
-    def generate_embedding(self, text: str) -> List[float]:
-        """Generate embedding for a text."""
-        try:
-            import google.generativeai as genai
-            result = genai.embed_content(
-                model=f"models/{self._model_name}",
-                content=text,
-                task_type="retrieval_document",
-            )
-            return result["embedding"]
-        except Exception as e:
-            logger.error(f"Failed to generate embedding: {e}")
-            raise EmbeddingError(f"Failed to generate embedding: {e}")
-
-
 class IndexingService:
     """Main service for repository indexing pipeline."""
 
@@ -435,7 +401,6 @@ class IndexingService:
         self.db = db
         self.repository_repo = RepositoryRepository(db)
         self.parser = TreeSitterParser()
-        self.embedding_generator = EmbeddingGenerator()
 
     def run_indexing(self, job: IndexJob) -> None:
         """Run the full indexing pipeline for a job."""
