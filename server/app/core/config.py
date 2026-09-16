@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     MAX_INDEXABLE_FILE_SIZE_BYTES: int = 5242880  # 5 MB
     CHUNK_MAX_CHARS: int = 4096
 
+    # Embedding Configuration
+    EMBEDDING_PROVIDER: str = "google"
+    EMBEDDING_MODEL: str = "gemini-embedding-2"
+    EMBEDDING_DIMENSION: int = 768
+    EMBEDDING_BATCH_SIZE: int = 32
+    EMBEDDING_MAX_RETRIES: int = 3
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE_PATH),
         env_file_encoding="utf-8",

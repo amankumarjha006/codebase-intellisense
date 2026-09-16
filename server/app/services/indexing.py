@@ -545,6 +545,43 @@ class IndexingService:
                 f"{chunk_stats['files_processed']} files"
             )
 
+        # --- Embedding Generation ---
+        if indexed_files:
+            from app.services.embedding.factory import get_embedding_provider
+            from app.services.embedding.service import EmbeddingService
+            from app.core.config import settings
+            
+            try:
+                # Get the CodeChunks created for the indexed files
+                # Note: chunk_service.build_chunks handles idempotency by deleting chunks
+                # Because of ON DELETE CASCADE, old embeddings are already gone.
+                # We just need to load the new chunks to embed them.
+                from app.models.knowledge import CodeChunk
+                from sqlalchemy import select as sa_select
+                
+                stmt = sa_select(CodeChunk).where(
+                    CodeChunk.file_id.in_([f.id for f in indexed_files])
+                )
+                
+                # Eagerly load file and symbol because text builder needs them
+                from sqlalchemy.orm import joinedload
+                stmt = stmt.options(joinedload(CodeChunk.file), joinedload(CodeChunk.symbol))
+                
+                new_chunks = list(self.db.execute(stmt).scalars().all())
+                
+                if new_chunks:
+                    provider = get_embedding_provider(settings)
+                    embedding_service = EmbeddingService(knowledge_repo, provider)
+                    embedding_stats = embedding_service.generate_and_store_embeddings(new_chunks)
+                    
+                    logger.info(
+                        f"Embedding generation complete for version {version.id}: "
+                        f"{embedding_stats['embeddings_created']} embeddings created."
+                    )
+            except Exception as e:
+                logger.error(f"Embedding generation failed: {str(e)}")
+                raise EmbeddingError(f"Embedding generation failed: {str(e)}") from e
+
         self.db.commit()
 
     def _index_file(self, repo_root: str, rel_path: str, abs_path: str, version: RepositoryVersion) -> None:

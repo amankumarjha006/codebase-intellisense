@@ -53,3 +53,12 @@ class KnowledgeRepository:
             self.db.add_all(chunks)
             self.db.flush()
         return chunks
+
+    def bulk_create_embeddings(self, embeddings: list) -> list:
+        """
+        Efficiently persist multiple Embedding records.
+        """
+        if embeddings:
+            self.db.add_all(embeddings)
+            self.db.flush()
+        return embeddings

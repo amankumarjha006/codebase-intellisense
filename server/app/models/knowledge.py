@@ -133,8 +133,11 @@ class Embedding(Base):
     code_chunk_id: Mapped[UUID] = mapped_column(
         ForeignKey("code_chunks.id", ondelete="CASCADE"), nullable=False
     )
-    vector: Mapped[Any] = mapped_column(Vector(), nullable=False)
+    # The physical pgvector dimension is mapped here as well
+    vector: Mapped[Any] = mapped_column(Vector(768), nullable=False)
+    provider: Mapped[str] = mapped_column(String(255), nullable=False, default="google")
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    dimension: Mapped[int] = mapped_column(Integer, nullable=False, default=768)
 
     code_chunk: Mapped[CodeChunk] = relationship(back_populates="embeddings")
 
