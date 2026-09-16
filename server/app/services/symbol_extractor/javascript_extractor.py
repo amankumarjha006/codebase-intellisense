@@ -49,7 +49,7 @@ class JavaScriptExtractor(BaseExtractor):
             return source_code[node.start_byte:node.end_byte].decode("utf-8", "ignore")
 
         def has_jsx(node):
-            if node.type in ("jsx_element", "jsx_fragment"):
+            if node.type in ("jsx_element", "jsx_fragment", "jsx_self_closing_element"):
                 return True
             for child in node.children:
                 if has_jsx(child):
