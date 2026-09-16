@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import delete
 from uuid import UUID
-from app.models.knowledge import File, Symbol
+from app.models.knowledge import File, Symbol, CodeChunk
 
 class KnowledgeRepository:
     def __init__(self, db: Session):
@@ -34,3 +34,22 @@ class KnowledgeRepository:
             self.db.add_all(symbols)
             self.db.flush()
         return symbols
+
+    def delete_chunks_for_files(self, file_ids: list[UUID]) -> None:
+        """
+        Delete all code chunks associated with the given file IDs.
+        """
+        if not file_ids:
+            return
+        stmt = delete(CodeChunk).where(CodeChunk.file_id.in_(file_ids))
+        self.db.execute(stmt)
+        self.db.flush()
+
+    def bulk_create_code_chunks(self, chunks: list[CodeChunk]) -> list[CodeChunk]:
+        """
+        Efficiently persist multiple CodeChunk records.
+        """
+        if chunks:
+            self.db.add_all(chunks)
+            self.db.flush()
+        return chunks

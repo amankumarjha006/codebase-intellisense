@@ -393,42 +393,6 @@ class TreeSitterParser:
         return calls
 
 
-def chunk_code(content: str, start_line: int, end_line: int, max_lines: int = CHUNK_MAX_LINES, overlap: int = CHUNK_OVERLAP_LINES) -> List[Dict]:
-    """Split code into overlapping chunks."""
-    lines = content.splitlines()
-    chunks = []
-
-    if end_line - start_line + 1 <= max_lines:
-        chunks.append({
-            "content": content,
-            "start_line": start_line,
-            "end_line": end_line,
-            "chunk_index": 0,
-        })
-        return chunks
-
-    current_start = start_line
-    chunk_index = 0
-
-    while current_start <= end_line:
-        current_end = min(current_start + max_lines - 1, end_line)
-        chunk_lines = lines[current_start - 1:current_end]
-        chunk_content = "\n".join(chunk_lines)
-
-        chunks.append({
-            "content": chunk_content,
-            "start_line": current_start,
-            "end_line": current_end,
-            "chunk_index": chunk_index,
-        })
-
-        chunk_index += 1
-        current_start = current_end - overlap + 1
-
-        if current_start > end_line:
-            break
-
-    return chunks
 
 
 class EmbeddingGenerator:
@@ -569,6 +533,17 @@ class IndexingService:
                 f"{stats['files_processed']} files "
                 f"({stats['files_skipped']} skipped)"
             )
+            
+        # --- Chunk Building ---
+        if indexed_files:
+            from app.services.chunking import ChunkBuilderService
+            chunk_service = ChunkBuilderService(knowledge_repo, repo_path)
+            chunk_stats = chunk_service.build_chunks(version, indexed_files)
+            logger.info(
+                f"Chunk building complete for version {version.id}: "
+                f"{chunk_stats['chunks_created']} chunks created from "
+                f"{chunk_stats['files_processed']} files"
+            )
 
         self.db.commit()
 
@@ -590,8 +565,7 @@ class IndexingService:
 
         # Symbol extraction is handled in bulk by SymbolExtractorService
         # after all files for this version have been indexed.
-
-        self._chunk_and_embed_file(content, file_record, language)
+        # Chunking is similarly handled in bulk.
 
     def _extract_and_store_symbols(self, tree, content: str, language: str, file_record: File) -> None:
         """Extract and store symbols from the parsed tree."""
@@ -617,38 +591,6 @@ class IndexingService:
 
         for call in calls:
             pass
-
-    def _chunk_and_embed_file(self, content: str, file_record: File, language: str) -> None:
-        """Chunk the file content and generate embeddings."""
-        lines = content.splitlines()
-        total_lines = len(lines)
-
-        if total_lines == 0:
-            return
-
-        chunks_data = chunk_code(content, 1, total_lines)
-
-        for chunk_data in chunks_data:
-            chunk = CodeChunk(
-                file_id=file_record.id,
-                content=chunk_data["content"],
-                start_line=chunk_data["start_line"],
-                end_line=chunk_data["end_line"],
-                chunk_index=chunk_data["chunk_index"],
-            )
-            self.db.add(chunk)
-            self.db.flush()
-
-            try:
-                embedding_vector = self.embedding_generator.generate_embedding(chunk.content)
-                embedding = Embedding(
-                    code_chunk_id=chunk.id,
-                    vector=embedding_vector,
-                    model_name=self.embedding_generator._model_name,
-                )
-                self.db.add(embedding)
-            except EmbeddingError as e:
-                logger.warning(f"Failed to generate embedding for chunk {chunk.id}: {e}")
 
     def _analyze_repository(self, version: RepositoryVersion) -> None:
         """Run repository-level analysis (tech stack, architecture, statistics)."""

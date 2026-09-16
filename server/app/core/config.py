@@ -37,6 +37,7 @@ class Settings(BaseSettings):
 
     # Indexing Configuration
     MAX_INDEXABLE_FILE_SIZE_BYTES: int = 5242880  # 5 MB
+    CHUNK_MAX_CHARS: int = 4096
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE_PATH),
