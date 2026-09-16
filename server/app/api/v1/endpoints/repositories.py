@@ -17,7 +17,8 @@ from app.schemas.repository import (
     RepositoryDetailOut, 
     RepositoryVersionSummary,
     RepositoryAnalyzeRequest,
-    AnalyzeRepositoryOut
+    AnalyzeRepositoryOut,
+    IndexJobOut
 )
 from app.core.encryption import TokenEncryptionError
 from app.services.repository import (
