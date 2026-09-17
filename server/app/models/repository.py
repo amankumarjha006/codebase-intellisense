@@ -22,6 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.db import Base
 
 if TYPE_CHECKING:
+    from app.models.agent import AgentRun
     from app.models.conversation import Conversation
     from app.models.knowledge import (
         AnalysisResult,
@@ -128,6 +129,7 @@ class RepositoryVersion(Base):
         back_populates="repository_version", cascade="all, delete-orphan", passive_deletes=True
     )
     conversations: Mapped[list[Conversation]] = relationship(back_populates="repository_version")
+    agent_runs: Mapped[list[AgentRun]] = relationship(back_populates="repository_version", passive_deletes=True)
 
 
 class IndexJob(Base):

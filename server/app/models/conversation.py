@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.db import Base
 
 if TYPE_CHECKING:
+    from app.models.agent import AgentRun
     from app.models.knowledge import CodeChunk
     from app.models.repository import Repository, RepositoryVersion
     from app.models.user import User
@@ -44,6 +45,7 @@ class Conversation(Base):
     messages: Mapped[list[Message]] = relationship(
         back_populates="conversation", cascade="all, delete-orphan", passive_deletes=True
     )
+    agent_runs: Mapped[list[AgentRun]] = relationship(back_populates="conversation")
 
 
 class Message(Base):

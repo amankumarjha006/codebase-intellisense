@@ -1,3 +1,4 @@
+from app.models.agent import AgentCheckpoint, AgentRun
 from app.models.conversation import Citation, Conversation, Message
 from app.models.knowledge import (
     AnalysisResult,
@@ -12,6 +13,8 @@ from app.models.repository import IndexJob, Repository, RepositoryVersion, UserR
 from app.models.user import GithubAccount, GithubInstallation, User
 
 __all__ = [
+    "AgentCheckpoint",
+    "AgentRun",
     "AnalysisResult",
     "Citation",
     "CodeChunk",
