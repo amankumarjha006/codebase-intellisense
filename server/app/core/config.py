@@ -46,6 +46,16 @@ class Settings(BaseSettings):
     EMBEDDING_BATCH_SIZE: int = 32
     EMBEDDING_MAX_RETRIES: int = 3
 
+    # LLM Configuration
+    LLM_PRIMARY_PROVIDER: str = "gemini"
+    LLM_FALLBACK_ENABLED: bool = True
+    LLM_FALLBACK_PROVIDER: str = "openrouter"
+    GEMINI_LLM_MODEL_PRIMARY: str = "gemini-3.8-flash"
+    GEMINI_LLM_MODEL_FALLBACK_1: str = "gemini-3.7-flash"
+    GEMINI_LLM_MODEL_FALLBACK_2: str = "gemini-3.6-flash"
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_FALLBACK_MODEL: str = "openrouter/free"
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE_PATH),
         env_file_encoding="utf-8",
