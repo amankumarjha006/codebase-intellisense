@@ -230,3 +230,28 @@ def test_transaction_semantics(service, base_entities, db_session):
     # After rollback, the run should not exist if the service didn't commit
     with pytest.raises(AgentRunNotFoundError):
         service.get_run(run.id)
+
+
+def test_get_latest_checkpoint_missing_run(service):
+    with pytest.raises(AgentRunNotFoundError):
+        service.get_latest_checkpoint(uuid4())
+
+
+def test_list_checkpoints_missing_run(service):
+    with pytest.raises(AgentRunNotFoundError):
+        service.list_checkpoints(uuid4())
+
+
+def test_update_run_status_direct_to_completed(service, base_entities):
+    version = base_entities["version"]
+    run = service.create_run(repository_version_id=version.id, task="Task")
+    
+    assert run.started_at is None
+    assert run.completed_at is None
+    
+    # Transition directly to COMPLETED without RUNNING
+    run = service.update_run_status(run.id, "COMPLETED")
+    
+    assert run.status == "COMPLETED"
+    assert run.started_at is None
+    assert run.completed_at is not None

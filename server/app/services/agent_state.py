@@ -114,15 +114,17 @@ class AgentStateService:
         """
         Get the most recent checkpoint for an AgentRun.
         Returns None if no checkpoints exist.
+        Raises AgentRunNotFoundError if the run does not exist.
         """
-        # We don't necessarily raise if the run is missing here, but checking keeps behavior clean.
-        # Following normal conventions, it returns None.
+        self.get_run(agent_run_id)
         return self.agent_repo.get_latest_checkpoint(agent_run_id)
 
     def list_checkpoints(self, agent_run_id: UUID) -> list[AgentCheckpoint]:
         """
         List all checkpoints for an AgentRun in chronological order.
+        Raises AgentRunNotFoundError if the run does not exist.
         """
+        self.get_run(agent_run_id)
         return self.agent_repo.list_checkpoints(agent_run_id)
 
     def restore_state(self, agent_run_id: UUID) -> dict[str, Any] | None:
