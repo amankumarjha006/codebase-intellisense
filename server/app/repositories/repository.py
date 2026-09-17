@@ -11,6 +11,10 @@ class RepositoryRepository:
         stmt = select(Repository).where(Repository.github_repo_id == github_repo_id)
         return self.db.execute(stmt).scalar_one_or_none()
 
+    def get_by_id(self, repository_id: UUID) -> Repository | None:
+        stmt = select(Repository).where(Repository.id == repository_id)
+        return self.db.execute(stmt).scalar_one_or_none()
+
     def create(
         self,
         *,
@@ -144,6 +148,15 @@ class RepositoryRepository:
         stmt = select(RepositoryVersion).where(
             RepositoryVersion.repository_id == repository_id,
             RepositoryVersion.commit_sha == commit_sha,
+        )
+        return self.db.execute(stmt).scalar_one_or_none()
+
+    def get_version_by_id(
+        self,
+        version_id: UUID,
+    ) -> RepositoryVersion | None:
+        stmt = select(RepositoryVersion).where(
+            RepositoryVersion.id == version_id,
         )
         return self.db.execute(stmt).scalar_one_or_none()
 

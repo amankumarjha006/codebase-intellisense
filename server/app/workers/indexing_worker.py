@@ -89,7 +89,15 @@ class IndexingWorker:
                 logger.warning(f"Job {job_id} is not in QUEUED status (current: {job.status})")
                 return
 
-            indexing_service = IndexingService(db)
+            from app.repositories.knowledge import KnowledgeRepository
+            from app.services.embedding.factory import get_embedding_provider
+            from app.services.embedding.service import EmbeddingService
+            
+            knowledge_repo = KnowledgeRepository(db)
+            provider = get_embedding_provider(settings)
+            embedding_service = EmbeddingService(knowledge_repo, provider)
+
+            indexing_service = IndexingService(db, embedding_service=embedding_service)
             indexing_service.run_indexing(job)
 
             logger.info(f"Completed indexing job {job_id}")
