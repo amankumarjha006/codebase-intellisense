@@ -284,6 +284,73 @@ def read_file_content(file_path: str) -> Tuple[str, str]:
     return content, file_hash
 
 
+def _detect_technologies(repo_path: str) -> dict:
+    """Detect technologies from repository evidence."""
+    import json
+    
+    technologies = {
+        "frameworks": [],
+        "libraries": [],
+        "tools": []
+    }
+    
+    if not repo_path:
+        return technologies
+        
+    repo = Path(repo_path)
+    
+    # JS/TS
+    pkg_json = repo / "package.json"
+    if pkg_json.is_file():
+        try:
+            with open(pkg_json, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                deps = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
+                
+                if "react" in deps:
+                    technologies["frameworks"].append({"name": "React", "evidence": "package.json"})
+                if "next" in deps:
+                    technologies["frameworks"].append({"name": "Next.js", "evidence": "package.json"})
+                if "express" in deps:
+                    technologies["frameworks"].append({"name": "Express", "evidence": "package.json"})
+                if "vue" in deps:
+                    technologies["frameworks"].append({"name": "Vue", "evidence": "package.json"})
+                if "typescript" in deps:
+                    technologies["tools"].append({"name": "TypeScript", "evidence": "package.json"})
+        except Exception:
+            pass
+
+    # Python
+    req_txt = repo / "requirements.txt"
+    if req_txt.is_file():
+        try:
+            with open(req_txt, 'r', encoding='utf-8') as f:
+                content = f.read().lower()
+                if "fastapi" in content:
+                    technologies["frameworks"].append({"name": "FastAPI", "evidence": "requirements.txt"})
+                if "django" in content:
+                    technologies["frameworks"].append({"name": "Django", "evidence": "requirements.txt"})
+                if "flask" in content:
+                    technologies["frameworks"].append({"name": "Flask", "evidence": "requirements.txt"})
+                if "sqlalchemy" in content:
+                    technologies["libraries"].append({"name": "SQLAlchemy", "evidence": "requirements.txt"})
+        except Exception:
+            pass
+
+    # Docker
+    if (repo / "Dockerfile").is_file():
+        technologies["tools"].append({"name": "Docker", "evidence": "Dockerfile"})
+    if (repo / "docker-compose.yml").is_file() or (repo / "docker-compose.yaml").is_file():
+        technologies["tools"].append({"name": "Docker Compose", "evidence": "docker-compose.yml"})
+
+    # Sort deterministically
+    technologies["frameworks"].sort(key=lambda x: x["name"])
+    technologies["libraries"].sort(key=lambda x: x["name"])
+    technologies["tools"].sort(key=lambda x: x["name"])
+    
+    return technologies
+
+
 
 
 class IndexingService:
@@ -328,7 +395,7 @@ class IndexingService:
                 self._update_job_status(job.id, "ANALYZING")
                 self.db.commit()
 
-                self._analyze_repository(version)
+                self._analyze_repository(version, repo_path)
             except Exception as analysis_err:
                 logger.error(f"Analysis failed for job {job.id}: {analysis_err}")
                 self.db.rollback()
@@ -483,7 +550,7 @@ class IndexingService:
         # after all files for this version have been indexed.
         # Chunking is similarly handled in bulk.
 
-    def _analyze_repository(self, version: RepositoryVersion) -> None:
+    def _analyze_repository(self, version: RepositoryVersion, repo_path: str = None) -> None:
         """Run repository-level analysis (tech stack, architecture, statistics)."""
         from app.models.knowledge import AnalysisResult
         from app.repositories.knowledge import KnowledgeRepository
@@ -509,11 +576,45 @@ class IndexingService:
         )
         self.db.add(analysis)
 
+        detected = _detect_technologies(repo_path) if repo_path else {}
+        tech_payload = {
+            "languages": [lang for lang, _ in languages],
+            "frameworks": detected.get("frameworks", []),
+            "libraries": detected.get("libraries", []),
+            "tools": detected.get("tools", [])
+        }
+
         tech_analysis = AnalysisResult(
             repository_version_id=version.id,
             analysis_type="TECH_STACK",
-            payload={"languages": [lang for lang, _ in languages]},
+            payload=tech_payload,
         )
         self.db.add(tech_analysis)
+
+        overview = AnalysisResult(
+            repository_version_id=version.id,
+            analysis_type="OVERVIEW",
+            payload={
+                "total_files": file_count,
+                "total_symbols": symbol_count,
+                "total_chunks": chunk_count,
+                "languages": [{"language": lang, "file_count": count} for lang, count in languages],
+                "repository_id": str(version.repository_id),
+                "branch": version.branch,
+                "commit_sha": version.commit_sha,
+            },
+        )
+        self.db.add(overview)
+
+        # Generate relationships and architecture
+        knowledge_repo.generate_file_relationships(version.id)
+        arch_data = knowledge_repo.get_architecture_data(version.id)
+
+        architecture = AnalysisResult(
+            repository_version_id=version.id,
+            analysis_type="ARCHITECTURE",
+            payload=arch_data,
+        )
+        self.db.add(architecture)
 
         self.db.commit()

@@ -7,6 +7,7 @@ from app.api.deps import get_db, get_current_user, get_authorized_repository
 from app.models.user import User
 from app.models.repository import Repository
 from app.repositories.repository import RepositoryRepository
+from app.repositories.knowledge import KnowledgeRepository
 from app.services.repository import RepositoryService
 from app.services.github import GithubService
 from app.services.github_token import get_decrypted_token
@@ -18,7 +19,10 @@ from app.schemas.repository import (
     RepositoryVersionSummary,
     RepositoryAnalyzeRequest,
     AnalyzeRepositoryOut,
-    IndexJobOut
+    IndexJobOut,
+    AnalysisResultOut,
+    FileListOut,
+    FileDetailOut
 )
 from app.core.encryption import TokenEncryptionError
 from app.services.repository import (
@@ -152,6 +156,225 @@ def get_repository(
         is_private=repository.is_private,
         active_version=active_version
     )
+
+@router.get("/{repository_id}/versions", response_model=list[RepositoryVersionSummary], summary="List Repository Versions")
+def get_repository_versions(
+    repository_id: UUID,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+):
+    """Retrieve all versions of a specific repository the user has access to."""
+    repo_repo = RepositoryRepository(db)
+    versions = repo_repo.get_versions_for_repository(repository.id)
+    return [RepositoryVersionSummary.from_orm_version(v) for v in versions]
+
+@router.get("/{repository_id}/files", response_model=FileListOut, summary="List Files")
+def get_repository_files(
+    repository_id: UUID,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+):
+    """Retrieve the files belonging to the active version of a repository."""
+    repo_repo = RepositoryRepository(db)
+    active_version = repo_repo.get_active_version(repository.id)
+    
+    if not active_version:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No active version found for this repository."
+                }
+            }
+        )
+        
+    knowledge_repo = KnowledgeRepository(db)
+    files = knowledge_repo.get_files_for_version(active_version.id)
+    
+    return FileListOut(files=files)
+
+@router.get("/{repository_id}/files/{file_id}", response_model=FileDetailOut, summary="Get File Content")
+def get_repository_file_content(
+    repository_id: UUID,
+    file_id: UUID,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+):
+    """Retrieve a single file and its content belonging to the active version of a repository."""
+    repo_repo = RepositoryRepository(db)
+    active_version = repo_repo.get_active_version(repository.id)
+    
+    if not active_version:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No active version found for this repository."
+                }
+            }
+        )
+        
+    knowledge_repo = KnowledgeRepository(db)
+    file_data = knowledge_repo.get_file_content_for_version(file_id, active_version.id)
+    
+    if not file_data:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "FILE_NOT_FOUND",
+                    "message": "File not found in the active version of this repository."
+                }
+            }
+        )
+        
+    file, content = file_data
+    return {
+        "id": file.id,
+        "file_path": file.file_path,
+        "language": file.language,
+        "size_bytes": file.size_bytes,
+        "hash": file.hash,
+        "content": content
+    }
+
+@router.get("/{repository_id}/versions/active", response_model=RepositoryVersionSummary, summary="Get Active Repository Version")
+def get_active_repository_version(
+    repository_id: UUID,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+):
+    """Retrieve the currently active (successfully indexed) version of a repository."""
+    repo_repo = RepositoryRepository(db)
+    active_version = repo_repo.get_active_version(repository.id)
+    
+    if not active_version:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No active version found for this repository."
+                }
+            }
+        )
+        
+    return RepositoryVersionSummary.from_orm_version(active_version)
+
+@router.get("/{repository_id}/overview", response_model=AnalysisResultOut, summary="Get Repository Overview")
+def get_repository_overview(
+    repository_id: UUID,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+):
+    """Retrieve the overview analysis for the active version of a repository."""
+    repo_repo = RepositoryRepository(db)
+    active_version = repo_repo.get_active_version(repository.id)
+    
+    if not active_version:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No active version found for this repository."
+                }
+            }
+        )
+        
+    knowledge_repo = KnowledgeRepository(db)
+    overview = knowledge_repo.get_analysis_result(active_version.id, "OVERVIEW")
+    
+    if not overview:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "ANALYSIS_NOT_FOUND",
+                    "message": "Overview analysis not found for the active version."
+                }
+            }
+        )
+        
+    return AnalysisResultOut.model_validate(overview)
+
+@router.get("/{repository_id}/technology-stack", response_model=AnalysisResultOut, summary="Get Technology Stack")
+def get_repository_technology_stack(
+    repository_id: UUID,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+):
+    """Retrieve the technology stack analysis for the active version of a repository."""
+    repo_repo = RepositoryRepository(db)
+    active_version = repo_repo.get_active_version(repository.id)
+    
+    if not active_version:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No active version found for this repository."
+                }
+            }
+        )
+        
+    knowledge_repo = KnowledgeRepository(db)
+    tech_stack = knowledge_repo.get_analysis_result(active_version.id, "TECH_STACK")
+    
+    if not tech_stack:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "ANALYSIS_NOT_FOUND",
+                    "message": "Technology stack analysis not found for the active version."
+                }
+            }
+        )
+        
+    return AnalysisResultOut.model_validate(tech_stack)
+
+
+@router.get("/{repository_id}/architecture", response_model=AnalysisResultOut, summary="Get Architecture")
+def get_repository_architecture(
+    repository_id: UUID,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+):
+    """Retrieve the architecture analysis for the active version of a repository."""
+    repo_repo = RepositoryRepository(db)
+    active_version = repo_repo.get_active_version(repository.id)
+    
+    if not active_version:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No active version found for this repository."
+                }
+            }
+        )
+        
+    knowledge_repo = KnowledgeRepository(db)
+    arch = knowledge_repo.get_analysis_result(active_version.id, "ARCHITECTURE")
+    
+    if not arch:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "ANALYSIS_NOT_FOUND",
+                    "message": "Architecture analysis not found for the active version."
+                }
+            }
+        )
+        
+    return AnalysisResultOut.model_validate(arch)
+
 
 @router.post("/{repository_id}/analyze", response_model=AnalyzeRepositoryOut, status_code=status.HTTP_202_ACCEPTED, summary="Analyze Repository")
 async def analyze_repository(

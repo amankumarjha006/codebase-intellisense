@@ -135,12 +135,15 @@ class TestRepositoryVersionSummary:
             id=uuid4(),
             commit_sha="abc123",
             status="SUCCESS",
+            branch="main",
+            indexed_at=None,
         )
         assert schema.commit_sha == "abc123"
         assert schema.status == "SUCCESS"
+        assert schema.branch == "main"
 
     def test_id_is_uuid(self):
-        schema = RepositoryVersionSummary(id=uuid4(), commit_sha="abc", status="PENDING")
+        schema = RepositoryVersionSummary(id=uuid4(), commit_sha="abc", status="PENDING", branch="main", indexed_at=None)
         assert isinstance(schema.id, UUID)
 
     def test_from_attributes_enabled(self):
@@ -153,6 +156,8 @@ class TestRepositoryVersionSummary:
         orm_obj.id = uuid4()
         orm_obj.commit_sha = "deadbeef"
         orm_obj.index_status = "SUCCESS"
+        orm_obj.branch = "main"
+        orm_obj.indexed_at = None
         # Note: API contract uses `status`, model column is `index_status`.
         # The schema field is `status` — it must be set explicitly when
         # building from the ORM object in the endpoint (the endpoint maps it).
@@ -161,8 +166,11 @@ class TestRepositoryVersionSummary:
             id=orm_obj.id,
             commit_sha=orm_obj.commit_sha,
             status=orm_obj.index_status,
+            branch=orm_obj.branch,
+            indexed_at=orm_obj.indexed_at,
         )
         assert schema.status == "SUCCESS"
+        assert schema.branch == "main"
 
     def test_from_orm_version_mapper(self):
         from app.models.repository import RepositoryVersion
@@ -171,11 +179,14 @@ class TestRepositoryVersionSummary:
         orm_obj.id = uuid4()
         orm_obj.commit_sha = "deadbeef"
         orm_obj.index_status = "SUCCESS"
+        orm_obj.branch = "main"
+        orm_obj.indexed_at = None
         
         schema = RepositoryVersionSummary.from_orm_version(orm_obj)
         assert schema.id == orm_obj.id
         assert schema.commit_sha == orm_obj.commit_sha
         assert schema.status == orm_obj.index_status
+        assert schema.branch == orm_obj.branch
 
 
 # ---------------------------------------------------------------------------
@@ -194,7 +205,7 @@ class TestRepositoryDetailOut:
         assert schema.active_version is None
 
     def test_with_active_version(self):
-        version = RepositoryVersionSummary(id=uuid4(), commit_sha="abc", status="SUCCESS")
+        version = RepositoryVersionSummary(id=uuid4(), commit_sha="abc", status="SUCCESS", branch="main", indexed_at=None)
         schema = RepositoryDetailOut(
             id=uuid4(),
             owner="owner",

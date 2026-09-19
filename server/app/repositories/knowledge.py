@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import delete, select, func
 from uuid import UUID
-from app.models.knowledge import File, Symbol, CodeChunk, AnalysisResult
+from app.models.knowledge import File, Symbol, CodeChunk, AnalysisResult, FileRelationship, SymbolRelationship
 
 class KnowledgeRepository:
     def __init__(self, db: Session):
@@ -108,6 +108,40 @@ class KnowledgeRepository:
             .where(File.repository_version_id == repository_version_id)
         ).scalar_one()
 
+    def get_files_for_version(self, repository_version_id: UUID) -> list[File]:
+        """Get files for a given repository version, ordered deterministically by path."""
+        return list(
+            self.db.execute(
+                select(File)
+                .where(File.repository_version_id == repository_version_id)
+                .order_by(File.file_path.asc(), File.id.asc())
+            ).scalars().all()
+        )
+
+    def get_file_content_for_version(self, file_id: UUID, repository_version_id: UUID) -> tuple[File, str] | None:
+        """
+        Get a specific file and reconstruct its content from chunks, 
+        ensuring it belongs to the exact repository_version_id.
+        """
+        file = self.db.execute(
+            select(File).where(
+                File.id == file_id, 
+                File.repository_version_id == repository_version_id
+            )
+        ).scalar_one_or_none()
+        
+        if not file:
+            return None
+            
+        chunks = self.db.execute(
+            select(CodeChunk)
+            .where(CodeChunk.file_id == file_id)
+            .order_by(CodeChunk.chunk_index.asc())
+        ).scalars().all()
+        
+        content = "".join(chunk.content for chunk in chunks)
+        return file, content
+
     def get_language_stats_for_version(self, repository_version_id: UUID) -> list[tuple[str, int]]:
         """Get language distribution for a given repository version."""
         return list(self.db.execute(
@@ -115,4 +149,133 @@ class KnowledgeRepository:
             .where(File.repository_version_id == repository_version_id)
             .group_by(File.language)
         ).all())
+
+    def get_analysis_result(self, repository_version_id: UUID, analysis_type: str) -> AnalysisResult | None:
+        """Get a specific analysis result for a repository version."""
+        return self.db.execute(
+            select(AnalysisResult).where(
+                AnalysisResult.repository_version_id == repository_version_id,
+                AnalysisResult.analysis_type == analysis_type
+            )
+        ).scalar_one_or_none()
+
+    def delete_file_relationships_for_version(self, repository_version_id: UUID) -> int:
+        stmt = delete(FileRelationship).where(FileRelationship.repository_version_id == repository_version_id)
+        result = self.db.execute(stmt)
+        self.db.flush()
+        return result.rowcount
+
+    def generate_file_relationships(self, repository_version_id: UUID) -> None:
+        """
+        Minimum relationship generation based on import symbols matching local file names.
+        """
+        self.delete_file_relationships_for_version(repository_version_id)
+
+        # Fetch files
+        stmt_files = select(File).where(File.repository_version_id == repository_version_id)
+        files = self.db.execute(stmt_files).scalars().all()
+        
+        file_map = {}
+        for f in files:
+            base_name = f.file_name.rsplit('.', 1)[0]
+            file_map[base_name] = f.id
+
+        # Fetch import symbols
+        stmt_symbols = select(Symbol).join(File).where(
+            File.repository_version_id == repository_version_id,
+            Symbol.symbol_type == "import"
+        )
+        imports = self.db.execute(stmt_symbols).scalars().all()
+
+        rels = []
+        seen = set()
+        for imp in imports:
+            target_file_id = file_map.get(imp.name)
+            if target_file_id and target_file_id != imp.file_id:
+                key = (imp.file_id, target_file_id)
+                if key not in seen:
+                    rels.append(
+                        FileRelationship(
+                            repository_version_id=repository_version_id,
+                            source_file_id=imp.file_id,
+                            target_file_id=target_file_id,
+                            relationship_type="IMPORTS"
+                        )
+                    )
+                    seen.add(key)
+        
+        if rels:
+            self.db.add_all(rels)
+            self.db.flush()
+
+    def get_architecture_data(self, repository_version_id: UUID) -> dict[str, Any]:
+        """
+        Generate deterministic architecture payload.
+        """
+        stmt_files = select(File).where(File.repository_version_id == repository_version_id).order_by(File.file_path)
+        files = self.db.execute(stmt_files).scalars().all()
+
+        stmt_symbols = select(Symbol).join(File).where(
+            File.repository_version_id == repository_version_id
+        ).order_by(Symbol.file_id, Symbol.name)
+        symbols = self.db.execute(stmt_symbols).scalars().all()
+
+        stmt_frels = select(FileRelationship).where(
+            FileRelationship.repository_version_id == repository_version_id
+        ).order_by(FileRelationship.source_file_id, FileRelationship.target_file_id)
+        frels = self.db.execute(stmt_frels).scalars().all()
+
+        stmt_srels = select(SymbolRelationship).where(
+            SymbolRelationship.repository_version_id == repository_version_id
+        ).order_by(SymbolRelationship.source_symbol_id, SymbolRelationship.target_symbol_id)
+        srels = self.db.execute(stmt_srels).scalars().all()
+
+        nodes = []
+        relationships = []
+
+        # 1. Add files
+        for f in files:
+            nodes.append({
+                "id": f"file_{f.id}",
+                "type": "file",
+                "name": f.file_name,
+                "path": f.file_path,
+                "language": f.language
+            })
+
+        # 2. Add symbols
+        for s in symbols:
+            nodes.append({
+                "id": f"symbol_{s.id}",
+                "type": "symbol",
+                "symbol_type": s.symbol_type,
+                "name": s.name,
+                "file_id": f"file_{s.file_id}"
+            })
+            relationships.append({
+                "source": f"file_{s.file_id}",
+                "target": f"symbol_{s.id}",
+                "type": "CONTAINS"
+            })
+
+        # 3. Add file relationships
+        for fr in frels:
+            relationships.append({
+                "source": f"file_{fr.source_file_id}",
+                "target": f"file_{fr.target_file_id}",
+                "type": fr.relationship_type
+            })
+
+        # 4. Add symbol relationships
+        for sr in srels:
+            relationships.append({
+                "source": f"symbol_{sr.source_symbol_id}",
+                "target": f"symbol_{sr.target_symbol_id}",
+                "type": sr.relationship_type
+            })
+
+        return {
+            "nodes": nodes,
+            "relationships": relationships
+        }
 

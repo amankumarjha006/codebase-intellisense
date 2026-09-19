@@ -140,6 +140,38 @@ class RepositoryRepository:
         )
         return self.db.execute(stmt).scalar_one_or_none()
 
+    def get_active_version(
+        self,
+        repository_id: UUID,
+    ) -> RepositoryVersion | None:
+        stmt = (
+            select(RepositoryVersion)
+            .where(
+                RepositoryVersion.repository_id == repository_id,
+                RepositoryVersion.index_status == "SUCCESS"
+            )
+            .order_by(
+                RepositoryVersion.indexed_at.desc().nulls_last(),
+                RepositoryVersion.id.desc(),
+            )
+            .limit(1)
+        )
+        return self.db.execute(stmt).scalar_one_or_none()
+
+    def get_versions_for_repository(
+        self,
+        repository_id: UUID,
+    ) -> list[RepositoryVersion]:
+        stmt = (
+            select(RepositoryVersion)
+            .where(RepositoryVersion.repository_id == repository_id)
+            .order_by(
+                RepositoryVersion.indexed_at.desc().nulls_last(),
+                RepositoryVersion.id.desc(),
+            )
+        )
+        return list(self.db.execute(stmt).scalars().all())
+
     def get_version_by_commit(
         self,
         repository_id: UUID,

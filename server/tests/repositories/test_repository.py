@@ -326,6 +326,45 @@ class TestGetLatestVersion:
 
 
 # ---------------------------------------------------------------------------
+# get_active_version
+# ---------------------------------------------------------------------------
+
+class TestGetActiveVersion:
+    def test_returns_version_when_present(self, repo, mock_db):
+        expected = RepositoryVersion()
+        mock_db.execute.return_value.scalar_one_or_none.return_value = expected
+        result = repo.get_active_version(repository_id=uuid4())
+        assert result is expected
+
+    def test_returns_none_when_no_versions(self, repo, mock_db):
+        mock_db.execute.return_value.scalar_one_or_none.return_value = None
+        result = repo.get_active_version(repository_id=uuid4())
+        assert result is None
+
+    def test_filters_by_success_status(self, repo, mock_db):
+        mock_db.execute.return_value.scalar_one_or_none.return_value = None
+        repo.get_active_version(repository_id=uuid4())
+        stmt = mock_db.execute.call_args[0][0]
+        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert "index_status = 'SUCCESS'" in compiled
+
+    def test_ordering_nulls_last(self, repo, mock_db):
+        mock_db.execute.return_value.scalar_one_or_none.return_value = None
+        repo.get_active_version(repository_id=uuid4())
+        stmt = mock_db.execute.call_args[0][0]
+        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert "NULLS LAST" in compiled
+        assert "DESC" in compiled
+
+    def test_limits_to_one_result(self, repo, mock_db):
+        mock_db.execute.return_value.scalar_one_or_none.return_value = None
+        repo.get_active_version(repository_id=uuid4())
+        stmt = mock_db.execute.call_args[0][0]
+        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert "LIMIT" in compiled
+
+
+# ---------------------------------------------------------------------------
 # create_index_job
 # ---------------------------------------------------------------------------
 

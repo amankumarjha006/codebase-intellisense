@@ -42,7 +42,11 @@ def create_mock_repo(tmp_path) -> str:
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
     py_file = repo_root / "main.py"
-    py_file.write_text("def mock_func():\n    pass")
+    py_file.write_text("import utils\n\ndef mock_func():\n    pass")
+    utils_file = repo_root / "utils.py"
+    utils_file.write_text("def helper():\n    pass")
+    pkg_json = repo_root / "package.json"
+    pkg_json.write_text('{"dependencies": {"react": "18.0.0"}}')
     return str(repo_root)
 
 
@@ -105,6 +109,41 @@ def test_indexing_embedding_integration(db_session, tmp_path, monkeypatch):
     assert len(embeddings) > 0
     assert len(provider.calls[0]) == len(embeddings)
     assert len(embeddings[0].vector) == 768
+
+    # Test OVERVIEW analysis generation
+    from app.models.knowledge import AnalysisResult
+    overview = db_session.query(AnalysisResult).filter(
+        AnalysisResult.repository_version_id == version.id,
+        AnalysisResult.analysis_type == "OVERVIEW"
+    ).one_or_none()
+    assert overview is not None
+    assert overview.payload["total_files"] == 3
+    assert overview.payload["repository_id"] == str(repo.id)
+    assert overview.payload["branch"] == "main"
+    assert overview.payload["commit_sha"] == "abc1234"
+
+    # Test TECH_STACK analysis generation
+    tech_stack = db_session.query(AnalysisResult).filter(
+        AnalysisResult.repository_version_id == version.id,
+        AnalysisResult.analysis_type == "TECH_STACK"
+    ).one_or_none()
+    assert tech_stack is not None
+    assert tech_stack.payload["frameworks"][0]["name"] == "React"
+    
+    # Test ARCHITECTURE analysis generation and relationship creation
+    from app.models.knowledge import FileRelationship
+    frels = db_session.query(FileRelationship).filter(FileRelationship.repository_version_id == version.id).all()
+    assert len(frels) == 1
+    assert frels[0].relationship_type == "IMPORTS"
+    
+    arch = db_session.query(AnalysisResult).filter(
+        AnalysisResult.repository_version_id == version.id,
+        AnalysisResult.analysis_type == "ARCHITECTURE"
+    ).one_or_none()
+    assert arch is not None
+    assert len(arch.payload["nodes"]) > 0
+    assert len(arch.payload["relationships"]) > 0
+
 
     # Test 5 & 6: Idempotency and version isolation
     # Create a new version for the same repo

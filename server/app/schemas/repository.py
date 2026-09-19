@@ -36,6 +36,8 @@ class RepositoryVersionSummary(BaseModel):
     id: UUID
     commit_sha: str
     status: str
+    branch: str
+    indexed_at: datetime | None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -45,6 +47,8 @@ class RepositoryVersionSummary(BaseModel):
             id=version.id,
             commit_sha=version.commit_sha,
             status=version.index_status,
+            branch=version.branch,
+            indexed_at=version.indexed_at,
         )
 
 class RepositoryDetailOut(BaseModel):
@@ -89,3 +93,25 @@ class AnalysisResultOut(BaseModel):
     payload: dict[str, Any]
     
     model_config = ConfigDict(from_attributes=True)
+
+class FileOut(BaseModel):
+    id: UUID
+    path: str = Field(validation_alias="file_path")
+    language: str
+    size: int = Field(validation_alias="size_bytes")
+    sha256: str = Field(validation_alias="hash")
+    
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+class FileDetailOut(BaseModel):
+    id: UUID
+    path: str = Field(validation_alias="file_path")
+    language: str
+    size: int = Field(validation_alias="size_bytes")
+    sha256: str = Field(validation_alias="hash")
+    content: str
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+class FileListOut(BaseModel):
+    files: list[FileOut]
