@@ -8,11 +8,21 @@ All endpoints here are nested under a specific repository and require authorizat
 
 Current implementation:
 - Literal, case-insensitive substring matching over indexed CodeChunk content.
-- Version-scoped.
-- Deterministically ordered.
+- Version-scoped via `RetrievalRequest.repository_version_id`.
+- Deterministically ordered (file_path ASC, chunk_index ASC).
+- Routed through `RetrievalService → KeywordRetrievalStrategy → KnowledgeRepository`.
+- Empty/whitespace queries are rejected at the API schema layer (HTTP 422).
 - No semantic/vector retrieval is performed yet.
 - No LLM is called.
 - No RAG is performed.
+
+Internal architecture:
+- The API layer handles authorization and version resolution.
+- The retrieval layer receives a concrete `repository_version_id` via `RetrievalRequest`.
+- Results are returned as `RetrievalResult` domain objects (with full provenance),
+  then adapted into API `SearchResultItem` schemas at the endpoint boundary.
+- API schemas (`SearchRequest`, `SearchResultItem`, `SearchResponse`) are NOT used
+  as internal domain models.
 
 Future hybrid retrieval may combine:
 - keyword retrieval

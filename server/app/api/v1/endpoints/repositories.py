@@ -8,6 +8,7 @@ from app.models.user import User
 from app.models.repository import Repository
 from app.repositories.repository import RepositoryRepository
 from app.repositories.knowledge import KnowledgeRepository
+from app.services.retrieval import RetrievalService, RetrievalRequest, KeywordRetrievalStrategy
 from app.services.repository import RepositoryService
 from app.services.github import GithubService
 from app.services.github_token import get_decrypted_token
@@ -243,7 +244,7 @@ def get_repository_file_content(
         "content": content
     }
 
-@router.post("/{repository_id}/search", response_model=SearchResponse, summary="Code Search (Hybrid Retrieval)")
+@router.post("/{repository_id}/search", response_model=SearchResponse, summary="Code Search")
 def search_repository(
     repository_id: UUID,
     request: SearchRequest,
@@ -256,6 +257,7 @@ def search_repository(
     """
     repo_repo = RepositoryRepository(db)
     
+    # --- Version resolution (API-layer responsibility) ---
     if request.repository_version_id:
         version = repo_repo.get_version_by_id(request.repository_version_id)
         if not version or version.repository_id != repository.id:
@@ -293,25 +295,34 @@ def search_repository(
             )
         version_id = active_version.id
 
+    # --- Retrieval (delegated to RetrievalService) ---
     knowledge_repo = KnowledgeRepository(db)
-    results = knowledge_repo.search_code_chunks(version_id, request.query, limit=request.limit or 20)
-    
-    items = []
-    for chunk, file in results:
-        items.append(
-            SearchResultItem(
-                id=chunk.id,
-                file_path=file.file_path,
-                start_line=chunk.start_line,
-                end_line=chunk.end_line,
-                snippet=chunk.content, # deterministic: return full chunk
-                score=1.0 # deterministic: literal match
-            )
+    strategy = KeywordRetrievalStrategy(knowledge_repo)
+    retrieval_service = RetrievalService(strategy)
+
+    retrieval_request = RetrievalRequest(
+        repository_version_id=version_id,
+        query=request.query,
+        limit=request.limit or 20,
+    )
+    retrieval_results = retrieval_service.search(retrieval_request)
+
+    # --- Adapt RetrievalResult → API SearchResultItem ---
+    items = [
+        SearchResultItem(
+            id=r.code_chunk_id,
+            file_path=r.file_path,
+            start_line=r.start_line,
+            end_line=r.end_line,
+            snippet=r.content,
+            score=r.score,
         )
-        
+        for r in retrieval_results
+    ]
+
     return SearchResponse(
         results=items,
-        repository_version_id=version_id
+        repository_version_id=version_id,
     )
 
 @router.get("/{repository_id}/versions/active", response_model=RepositoryVersionSummary, summary="Get Active Repository Version")
