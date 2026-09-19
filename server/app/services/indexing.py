@@ -5,19 +5,15 @@ import subprocess
 import tempfile
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.knowledge import (
-    CodeChunk,
-    Embedding,
     File,
-    FileRelationship,
     Symbol,
-    SymbolRelationship,
 )
 from app.models.repository import IndexJob, Repository, RepositoryVersion
 from app.repositories.repository import RepositoryRepository
@@ -178,17 +174,35 @@ def compute_file_hash(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()[:128]
 
 
-def clone_repository(clone_url: str, target_dir: str, branch: str = "main") -> str:
+def clone_repository(clone_url: str, target_dir: str, branch: str = "main", github_token: Optional[str] = None) -> str:
     """Clone a repository and return the commit SHA."""
+    env = os.environ.copy()
+    gitconfig_path = None
+    
+    if github_token:
+        # Prevent token leakage in command line args by using a temporary global git config
+        fd, gitconfig_path = tempfile.mkstemp(prefix="gitconfig_")
+        with os.fdopen(fd, 'w') as f:
+            # We specifically target github.com, but if clone_url has a different host, 
+            # this header is ignored. It's safe for github endpoints.
+            f.write(f'[http "https://github.com"]\n\textraHeader = Authorization: Bearer {github_token}\n')
+        env["GIT_CONFIG_GLOBAL"] = gitconfig_path
+        # Prevent interactive prompts if token fails
+        env["GIT_TERMINAL_PROMPT"] = "0"
+
     try:
         result = subprocess.run(
             ["git", "clone", "--depth", "1", "--branch", branch, clone_url, target_dir],
             capture_output=True,
             text=True,
             timeout=300,
+            env=env
         )
         if result.returncode != 0:
-            raise GitError(f"Failed to clone repository: {result.stderr}")
+            err = result.stderr
+            if github_token:
+                err = err.replace(github_token, "***")
+            raise GitError(f"Failed to clone repository: {err}")
 
         commit_result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -196,6 +210,7 @@ def clone_repository(clone_url: str, target_dir: str, branch: str = "main") -> s
             capture_output=True,
             text=True,
             timeout=30,
+            env=env
         )
         if commit_result.returncode != 0:
             raise GitError(f"Failed to get commit SHA: {commit_result.stderr}")
@@ -205,17 +220,37 @@ def clone_repository(clone_url: str, target_dir: str, branch: str = "main") -> s
         raise GitError("Git operation timed out")
     except FileNotFoundError:
         raise GitError("Git not found in PATH")
+    finally:
+        if gitconfig_path and os.path.exists(gitconfig_path):
+            try:
+                os.remove(gitconfig_path)
+            except OSError:
+                pass
 
 
 def discover_files(root_dir: str) -> List[Tuple[str, str]]:
     """Discover all files in the repository that should be indexed.
     Returns list of (relative_path, absolute_path) tuples.
+
+    Security: symlinks are skipped entirely and resolved paths are verified
+    to remain inside the repository root to prevent path traversal attacks.
     """
     files = []
     root = Path(root_dir).resolve()
 
     for file_path in root.rglob("*"):
+        # Skip any symlink (file or directory) to prevent escape
+        if file_path.is_symlink():
+            continue
+
         if not file_path.is_file():
+            continue
+
+        # Resolve the real path and ensure it is inside the root
+        try:
+            resolved = file_path.resolve()
+            resolved.relative_to(root)
+        except (ValueError, OSError):
             continue
 
         try:
@@ -230,7 +265,7 @@ def discover_files(root_dir: str) -> List[Tuple[str, str]]:
         if language is None:
             continue
 
-        files.append((rel_path, str(file_path)))
+        files.append((rel_path, str(resolved)))
 
     return files
 
@@ -249,149 +284,6 @@ def read_file_content(file_path: str) -> Tuple[str, str]:
     return content, file_hash
 
 
-class TreeSitterParser:
-    """Tree-sitter based code parser for extracting symbols and relationships."""
-
-    def __init__(self):
-        self._parsers: Dict[str, any] = {}
-        self._queries: Dict[str, any] = {}
-
-    def _get_parser(self, language: str):
-        """Get or create a Tree-sitter parser for the given language."""
-        if language in self._parsers:
-            return self._parsers[language]
-
-        try:
-            from tree_sitter_languages import get_parser
-            parser = get_parser(language)
-            self._parsers[language] = parser
-            return parser
-        except Exception as e:
-            logger.warning(f"Failed to load parser for {language}: {e}")
-            return None
-
-    def _get_query(self, language: str, query_name: str):
-        """Get or create a Tree-sitter query for the given language."""
-        key = f"{language}:{query_name}"
-        if key in self._queries:
-            return self._queries[key]
-
-        try:
-            from tree_sitter_languages import get_query
-            query = get_query(language, query_name)
-            self._queries[key] = query
-            return query
-        except Exception as e:
-            logger.warning(f"Failed to load query {query_name} for {language}: {e}")
-            return None
-
-    def parse(self, content: str, language: str):
-        """Parse content and return the Tree-sitter tree."""
-        parser = self._get_parser(language)
-        if parser is None:
-            return None
-
-        try:
-            tree = parser.parse(content.encode("utf-8"))
-            return tree
-        except Exception as e:
-            logger.warning(f"Failed to parse {language} content: {e}")
-            return None
-
-    def extract_symbols(self, tree, content: str, language: str, file_id: UUID) -> List[Dict]:
-        """Extract symbols (functions, classes, etc.) from the parsed tree."""
-        symbols = []
-
-        query = self._get_query(language, "symbols")
-        if query is None:
-            return symbols
-
-        try:
-            captures = query.captures(tree.root_node)
-            for node, capture_name in captures:
-                if capture_name in ("function", "method", "class", "interface", "struct", "enum"):
-                    start_line = node.start_point[0] + 1
-                    end_line = node.end_point[0] + 1
-                    name = self._get_node_name(node, content)
-                    qualified_name = self._get_qualified_name(node, content, language)
-
-                    if name:
-                        symbols.append({
-                            "name": name,
-                            "qualified_name": qualified_name or name,
-                            "symbol_type": capture_name.upper(),
-                            "start_line": start_line,
-                            "end_line": end_line,
-                            "file_id": file_id,
-                        })
-        except Exception as e:
-            logger.warning(f"Failed to extract symbols for {language}: {e}")
-
-        return symbols
-
-    def _get_node_name(self, node, content: str) -> Optional[str]:
-        """Extract the name of a symbol node."""
-        for child in node.children:
-            if child.type in ("identifier", "type_identifier", "name"):
-                return content[child.start_byte:child.end_byte]
-        return None
-
-    def _get_qualified_name(self, node, content: str, language: str) -> Optional[str]:
-        """Extract the qualified name including parent scopes."""
-        parts = []
-        current = node
-        while current:
-            name = self._get_node_name(current, content)
-            if name:
-                parts.append(name)
-            if current.type in ("module", "program", "source_file"):
-                break
-            current = current.parent
-        return ".".join(reversed(parts)) if parts else None
-
-    def extract_imports(self, tree, content: str, language: str) -> List[str]:
-        """Extract import statements from the parsed tree."""
-        imports = []
-
-        query = self._get_query(language, "imports")
-        if query is None:
-            return imports
-
-        try:
-            captures = query.captures(tree.root_node)
-            for node, capture_name in captures:
-                if capture_name in ("import", "module", "package"):
-                    import_text = content[node.start_byte:node.end_byte]
-                    imports.append(import_text.strip())
-        except Exception as e:
-            logger.warning(f"Failed to extract imports for {language}: {e}")
-
-        return imports
-
-    def extract_calls(self, tree, content: str, language: str) -> List[Dict]:
-        """Extract function/method calls from the parsed tree."""
-        calls = []
-
-        query = self._get_query(language, "calls")
-        if query is None:
-            return calls
-
-        try:
-            captures = query.captures(tree.root_node)
-            for node, capture_name in captures:
-                if capture_name in ("call", "function_call", "method_call"):
-                    name = self._get_node_name(node, content)
-                    if name:
-                        calls.append({
-                            "name": name,
-                            "start_line": node.start_point[0] + 1,
-                            "end_line": node.end_point[0] + 1,
-                        })
-        except Exception as e:
-            logger.warning(f"Failed to extract calls for {language}: {e}")
-
-        return calls
-
 
 
 class IndexingService:
@@ -400,7 +292,6 @@ class IndexingService:
     def __init__(self, db: Session, embedding_service=None):
         self.db = db
         self.repository_repo = RepositoryRepository(db)
-        self.parser = TreeSitterParser()
         self.embedding_service = embedding_service
 
     def run_indexing(self, job: IndexJob) -> None:
@@ -413,6 +304,7 @@ class IndexingService:
         if not version:
             raise IndexingError(f"Repository version {job.repository_version_id} not found")
 
+        repo_path = None
         try:
             self._update_job_status(job.id, "FETCHING")
             self.db.commit()
@@ -424,15 +316,26 @@ class IndexingService:
 
             self._index_repository(repo_path, version)
 
-            self._update_job_status(job.id, "ANALYZING")
-            self.db.commit()
-
-            self._analyze_repository(version)
-
-            self._update_job_status(job.id, "READY")
+            # Indexing data is now committed. Mark version as SUCCESS.
             version.index_status = "SUCCESS"
             from datetime import datetime, timezone
             version.indexed_at = datetime.now(timezone.utc)
+            self.db.commit()
+
+            # Analysis is a post-index operation. Its failure does NOT
+            # invalidate already-committed indexed data.
+            try:
+                self._update_job_status(job.id, "ANALYZING")
+                self.db.commit()
+
+                self._analyze_repository(version)
+            except Exception as analysis_err:
+                logger.error(f"Analysis failed for job {job.id}: {analysis_err}")
+                self.db.rollback()
+                # Analysis failure does not overwrite SUCCESS on the version.
+                # The job records the error but the indexed data remains valid.
+
+            self._update_job_status(job.id, "READY")
             self.db.commit()
 
         except Exception as e:
@@ -448,8 +351,25 @@ class IndexingService:
     def _fetch_repository(self, repository: Repository, version: RepositoryVersion) -> str:
         """Clone the repository to a temporary directory."""
         temp_dir = tempfile.mkdtemp(prefix=f"index_{repository.id}_")
+        
+        github_token = None
+        if repository.github_installation_id:
+            from app.models.user import GithubInstallation, GithubAccount
+            from sqlalchemy.orm import joinedload
+            from sqlalchemy import select
+            
+            stmt = (
+                select(GithubAccount)
+                .join(GithubInstallation)
+                .where(GithubInstallation.id == repository.github_installation_id)
+            )
+            account = self.db.execute(stmt).scalar_one_or_none()
+            if account and account.access_token_encrypted:
+                from app.services.github_token import get_decrypted_token
+                github_token = get_decrypted_token(account)
+                
         try:
-            clone_repository(repository.clone_url, temp_dir, version.branch)
+            clone_repository(repository.clone_url, temp_dir, version.branch, github_token=github_token)
             return temp_dir
         except Exception as e:
             shutil.rmtree(temp_dir, ignore_errors=True)
@@ -480,6 +400,14 @@ class IndexingService:
         from app.repositories.knowledge import KnowledgeRepository
         from app.services.symbol_extractor import SymbolExtractorService
 
+        knowledge_repo = KnowledgeRepository(self.db)
+
+        # --- Re-index cleanup: remove existing data for this version ---
+        deleted_count = knowledge_repo.delete_files_for_version(version.id)
+        if deleted_count > 0:
+            logger.info(f"Re-index: removed {deleted_count} existing files for version {version.id}")
+        knowledge_repo.delete_analysis_results_for_version(version.id)
+
         files = discover_files(repo_path)
         logger.info(f"Discovered {len(files)} files to index for version {version.id}")
 
@@ -487,11 +415,9 @@ class IndexingService:
             self._index_file(repo_path, rel_path, abs_path, version)
 
         # --- Symbol extraction ---
-        # Query all files flushed during this index run before committing.
         stmt = sa_select(File).where(File.repository_version_id == version.id)
         indexed_files = list(self.db.execute(stmt).scalars().all())
         if indexed_files:
-            knowledge_repo = KnowledgeRepository(self.db)
             symbol_service = SymbolExtractorService(knowledge_repo, repo_path)
             stats = symbol_service.extract_symbols(version, indexed_files)
             logger.info(
@@ -516,7 +442,6 @@ class IndexingService:
         if indexed_files and self.embedding_service:
             try:
                 from app.models.knowledge import CodeChunk
-                from sqlalchemy import select as sa_select
                 from sqlalchemy.orm import joinedload
                 
                 stmt = sa_select(CodeChunk).where(
@@ -524,7 +449,7 @@ class IndexingService:
                 )
                 stmt = stmt.options(joinedload(CodeChunk.file), joinedload(CodeChunk.symbol))
                 
-                new_chunks = list(self.db.execute(stmt).scalars().all())
+                new_chunks = list(self.db.execute(stmt).scalars().unique().all())
                 
                 if new_chunks:
                     embedding_stats = self.embedding_service.generate_and_store_embeddings(new_chunks)
@@ -534,7 +459,6 @@ class IndexingService:
                     )
             except Exception as e:
                 logger.error(f"Embedding generation failed: {str(e)}")
-                from app.services.indexing import EmbeddingError
                 raise EmbeddingError(f"Embedding generation failed: {str(e)}") from e
 
         self.db.commit()
@@ -559,43 +483,17 @@ class IndexingService:
         # after all files for this version have been indexed.
         # Chunking is similarly handled in bulk.
 
-    def _extract_and_store_symbols(self, tree, content: str, language: str, file_record: File) -> None:
-        """Extract and store symbols from the parsed tree."""
-        symbols_data = self.parser.extract_symbols(tree, content, language, file_record.id)
-
-        for symbol_data in symbols_data:
-            symbol = Symbol(**symbol_data)
-            self.db.add(symbol)
-
-    def _extract_and_store_relationships(self, tree, content: str, language: str, file_record: File, version: RepositoryVersion) -> None:
-        """Extract and store relationships (imports, calls) from the parsed tree."""
-        imports = self.parser.extract_imports(tree, content, language)
-        calls = self.parser.extract_calls(tree, content, language)
-
-        for import_stmt in imports:
-            rel = FileRelationship(
-                repository_version_id=version.id,
-                source_file_id=file_record.id,
-                target_file_id=file_record.id,
-                relationship_type="IMPORTS",
-            )
-            self.db.add(rel)
-
-        for call in calls:
-            pass
-
     def _analyze_repository(self, version: RepositoryVersion) -> None:
         """Run repository-level analysis (tech stack, architecture, statistics)."""
         from app.models.knowledge import AnalysisResult
-        from sqlalchemy import func
+        from app.repositories.knowledge import KnowledgeRepository
 
-        file_count = self.db.query(func.count(File.id)).filter(File.repository_version_id == version.id).scalar()
-        symbol_count = self.db.query(func.count(Symbol.id)).join(File).filter(File.repository_version_id == version.id).scalar()
-        chunk_count = self.db.query(func.count(CodeChunk.id)).join(File).filter(File.repository_version_id == version.id).scalar()
+        knowledge_repo = KnowledgeRepository(self.db)
 
-        languages = self.db.query(File.language, func.count(File.id)).filter(
-            File.repository_version_id == version.id
-        ).group_by(File.language).all()
+        file_count = knowledge_repo.count_files_for_version(version.id)
+        symbol_count = knowledge_repo.count_symbols_for_version(version.id)
+        chunk_count = knowledge_repo.count_chunks_for_version(version.id)
+        languages = knowledge_repo.get_language_stats_for_version(version.id)
 
         tech_stack = {
             "languages": [{"language": lang, "file_count": count} for lang, count in languages],

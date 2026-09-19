@@ -29,7 +29,6 @@ class LineChunker:
                 chunks.append(ChunkData(
                     file_id=file_id,
                     symbol_id=None,
-                    parent_symbol_id=None,
                     file_path=file_path,
                     language=language,
                     content="".join(current_chunk_lines),
@@ -47,7 +46,6 @@ class LineChunker:
             chunks.append(ChunkData(
                 file_id=file_id,
                 symbol_id=None,
-                parent_symbol_id=None,
                 file_path=file_path,
                 language=language,
                 content="".join(current_chunk_lines),

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import delete
+from sqlalchemy import delete, select, func
 from uuid import UUID
-from app.models.knowledge import File, Symbol, CodeChunk
+from app.models.knowledge import File, Symbol, CodeChunk, AnalysisResult
 
 class KnowledgeRepository:
     def __init__(self, db: Session):
@@ -62,3 +62,57 @@ class KnowledgeRepository:
             self.db.add_all(embeddings)
             self.db.flush()
         return embeddings
+
+    def delete_files_for_version(self, repository_version_id: UUID) -> int:
+        """
+        Delete all files (and cascade to symbols, chunks, embeddings)
+        for a given repository version.
+        Returns the number of files deleted.
+        """
+        stmt = delete(File).where(File.repository_version_id == repository_version_id)
+        result = self.db.execute(stmt)
+        self.db.flush()
+        return result.rowcount
+
+    def delete_analysis_results_for_version(self, repository_version_id: UUID) -> int:
+        """
+        Delete all analysis results for a given repository version.
+        Returns the number of results deleted.
+        """
+        stmt = delete(AnalysisResult).where(
+            AnalysisResult.repository_version_id == repository_version_id
+        )
+        result = self.db.execute(stmt)
+        self.db.flush()
+        return result.rowcount
+
+    def count_files_for_version(self, repository_version_id: UUID) -> int:
+        """Count files for a given repository version."""
+        return self.db.execute(
+            select(func.count(File.id)).where(File.repository_version_id == repository_version_id)
+        ).scalar_one()
+
+    def count_symbols_for_version(self, repository_version_id: UUID) -> int:
+        """Count symbols for a given repository version."""
+        return self.db.execute(
+            select(func.count(Symbol.id))
+            .join(File)
+            .where(File.repository_version_id == repository_version_id)
+        ).scalar_one()
+
+    def count_chunks_for_version(self, repository_version_id: UUID) -> int:
+        """Count code chunks for a given repository version."""
+        return self.db.execute(
+            select(func.count(CodeChunk.id))
+            .join(File)
+            .where(File.repository_version_id == repository_version_id)
+        ).scalar_one()
+
+    def get_language_stats_for_version(self, repository_version_id: UUID) -> list[tuple[str, int]]:
+        """Get language distribution for a given repository version."""
+        return list(self.db.execute(
+            select(File.language, func.count(File.id))
+            .where(File.repository_version_id == repository_version_id)
+            .group_by(File.language)
+        ).all())
+

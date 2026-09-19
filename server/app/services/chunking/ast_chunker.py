@@ -1,5 +1,5 @@
 import ast
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from uuid import UUID
 
 from app.models.knowledge import File, Symbol
@@ -33,12 +33,11 @@ class ASTChunker:
         chunks = []
         for i, (start_byte, end_byte, start_line, end_line) in enumerate(packed_ranges):
             content = source_bytes[start_byte:end_byte].decode('utf-8', 'replace')
-            sym_id, parent_sym_id = self._find_best_symbol(start_line, end_line, symbols)
+            sym_id = self._find_best_symbol(start_line, end_line, symbols)
             
             chunks.append(ChunkData(
                 file_id=file_id,
                 symbol_id=sym_id,
-                parent_symbol_id=parent_sym_id,
                 file_path=file_path,
                 language=language,
                 content=content,
@@ -99,13 +98,12 @@ class ASTChunker:
                 
         return None
 
-    def _find_best_symbol(self, start_line: int, end_line: int, symbols: List[Symbol]) -> Tuple[Optional[UUID], Optional[UUID]]:
+    def _find_best_symbol(self, start_line: int, end_line: int, symbols: List[Symbol]) -> Optional[UUID]:
         """
         Find the tightest enclosing symbol, or the symbol with the largest overlap.
-        Returns (symbol_id, parent_symbol_id)
+        Returns symbol_id
         """
         best_symbol = None
-        best_parent = None
         
         # Filter symbols that enclose or overlap the chunk
         # A symbol encloses a chunk if symbol.start_line <= start_line and symbol.end_line >= end_line
@@ -115,8 +113,6 @@ class ASTChunker:
             # Pick the smallest enclosing symbol (tightest)
             enclosing.sort(key=lambda s: s.end_line - s.start_line)
             best_symbol = enclosing[0]
-            if len(enclosing) > 1:
-                best_parent = enclosing[1].id
         else:
             # If no symbol fully encloses, check for overlap
             # Chunk: [start_line, end_line], Symbol: [s.start_line, s.end_line]
@@ -133,6 +129,6 @@ class ASTChunker:
                 best_symbol = overlaps[0][0]
                 
         if best_symbol:
-            return best_symbol.id, best_parent
+            return best_symbol.id
             
-        return None, None
+        return None

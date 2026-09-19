@@ -85,7 +85,7 @@ def test_indexing_embedding_integration(db_session, tmp_path, monkeypatch):
     user, repo, version, job = setup_db_for_indexing(db_session)
     repo_root = create_mock_repo(tmp_path)
     
-    def fake_clone(clone_url, target_dir, branch):
+    def fake_clone(clone_url, target_dir, branch, github_token=None):
         import shutil
         shutil.copytree(repo_root, target_dir, dirs_exist_ok=True)
         return "abc1234"
@@ -141,7 +141,7 @@ def test_embedding_failure_rolls_back(db_session, tmp_path, monkeypatch):
     user, repo, version, job = setup_db_for_indexing(db_session)
     repo_root = create_mock_repo(tmp_path)
     
-    def fake_clone(clone_url, target_dir, branch):
+    def fake_clone(clone_url, target_dir, branch, github_token=None):
         import shutil
         shutil.copytree(repo_root, target_dir, dirs_exist_ok=True)
         return "abc1234"

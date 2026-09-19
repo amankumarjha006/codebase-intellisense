@@ -33,7 +33,6 @@ class Settings(BaseSettings):
     
     # AI & Embedding Credentials (Future integration)
     GEMINI_API_KEY: Optional[str] = None
-    EMBEDDING_API_KEY: Optional[str] = None
 
     # Indexing Configuration
     MAX_INDEXABLE_FILE_SIZE_BYTES: int = 5242880  # 5 MB

@@ -6,7 +6,6 @@ from uuid import UUID
 class ChunkData:
     file_id: UUID
     symbol_id: Optional[UUID]
-    parent_symbol_id: Optional[UUID]
     file_path: str
     language: str
     content: str
