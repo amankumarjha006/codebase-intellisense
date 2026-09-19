@@ -2,15 +2,30 @@
 
 All endpoints here are nested under a specific repository and require authorization verifying the user can access that repository via `User -> UserRepository -> Repository`.
 
-## 1. Code Search (Hybrid Retrieval)
+## 1. Code Search
 **Endpoint:** `POST /api/v1/repositories/{repository_id}/search`
-**Purpose:** Executes a hybrid search (keyword + semantic + symbol) against a specific RepositoryVersion.
+**Purpose:** Executes a deterministic keyword search against code chunks belonging to a specific successful RepositoryVersion.
+
+Current implementation:
+- Literal, case-insensitive substring matching over indexed CodeChunk content.
+- Version-scoped.
+- Deterministically ordered.
+- No semantic/vector retrieval is performed yet.
+- No LLM is called.
+- No RAG is performed.
+
+Future hybrid retrieval may combine:
+- keyword retrieval
+- semantic/vector retrieval
+- symbol-aware retrieval
+
 **Auth Required:** Yes
 **Request:**
 ```json
 {
   "query": "authentication flow",
-  "repository_version_id": "optional-version-uuid"
+  "repository_version_id": "optional-version-uuid",
+  "limit": 20
 }
 ```
 *Note on Versioning: If `repository_version_id` is omitted, the backend uses the active successful RepositoryVersion. If provided, the backend verifies that the version belongs to the requested repository and the user has access.*

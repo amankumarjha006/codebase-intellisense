@@ -120,6 +120,13 @@ class SearchRequest(BaseModel):
     query: str
     repository_version_id: UUID | None = None
     limit: int | None = Field(default=20, le=50, ge=1)
+    
+    @field_validator("query")
+    @classmethod
+    def validate_query(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Query cannot be empty or whitespace")
+        return v
 
 class SearchResultItem(BaseModel):
     id: UUID

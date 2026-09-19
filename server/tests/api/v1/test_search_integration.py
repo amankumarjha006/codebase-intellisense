@@ -282,12 +282,15 @@ async def test_search_empty_and_whitespace_query(async_client_integration, db_se
     async_client_integration.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
     create_version_file_chunk(db_session, repo_a.id, "SUCCESS", "some code", hours_ago=1)
 
-    # Empty query behavior might return everything up to limit, but should not crash
     res_empty = await async_client_integration.post(f"{settings.API_V1_STR}/repositories/{repo_a.id}/search", json={"query": ""})
-    assert res_empty.status_code == 200
+    assert res_empty.status_code == 422
     
     res_white = await async_client_integration.post(f"{settings.API_V1_STR}/repositories/{repo_a.id}/search", json={"query": "  "})
-    assert res_white.status_code == 200
+    assert res_white.status_code == 422
+    
+    # Normal query works
+    res_normal = await async_client_integration.post(f"{settings.API_V1_STR}/repositories/{repo_a.id}/search", json={"query": "some"})
+    assert res_normal.status_code == 200
 
 @pytest.mark.asyncio
 async def test_search_limit_enforcement(async_client_integration, db_session, mock_redis):
