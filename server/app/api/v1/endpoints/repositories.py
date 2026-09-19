@@ -22,7 +22,10 @@ from app.schemas.repository import (
     IndexJobOut,
     AnalysisResultOut,
     FileListOut,
-    FileDetailOut
+    FileDetailOut,
+    SearchRequest,
+    SearchResponse,
+    SearchResultItem
 )
 from app.core.encryption import TokenEncryptionError
 from app.services.repository import (
@@ -239,6 +242,77 @@ def get_repository_file_content(
         "hash": file.hash,
         "content": content
     }
+
+@router.post("/{repository_id}/search", response_model=SearchResponse, summary="Code Search (Hybrid Retrieval)")
+def search_repository(
+    repository_id: UUID,
+    request: SearchRequest,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+):
+    """
+    Executes a search against a specific RepositoryVersion.
+    Currently implements a deterministic literal keyword search.
+    """
+    repo_repo = RepositoryRepository(db)
+    
+    if request.repository_version_id:
+        version = repo_repo.get_version_by_id(request.repository_version_id)
+        if not version or version.repository_id != repository.id:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "error": {
+                        "code": "VERSION_NOT_FOUND",
+                        "message": "Repository version not found."
+                    }
+                }
+            )
+        if version.index_status != "SUCCESS":
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "code": "VERSION_NOT_READY",
+                        "message": "Only successful repository versions can be searched."
+                    }
+                }
+            )
+        version_id = version.id
+    else:
+        active_version = repo_repo.get_active_version(repository.id)
+        if not active_version:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "error": {
+                        "code": "NOT_FOUND",
+                        "message": "No active version found for this repository."
+                    }
+                }
+            )
+        version_id = active_version.id
+
+    knowledge_repo = KnowledgeRepository(db)
+    results = knowledge_repo.search_code_chunks(version_id, request.query, limit=request.limit or 20)
+    
+    items = []
+    for chunk, file in results:
+        items.append(
+            SearchResultItem(
+                id=chunk.id,
+                file_path=file.file_path,
+                start_line=chunk.start_line,
+                end_line=chunk.end_line,
+                snippet=chunk.content, # deterministic: return full chunk
+                score=1.0 # deterministic: literal match
+            )
+        )
+        
+    return SearchResponse(
+        results=items,
+        repository_version_id=version_id
+    )
 
 @router.get("/{repository_id}/versions/active", response_model=RepositoryVersionSummary, summary="Get Active Repository Version")
 def get_active_repository_version(

@@ -115,3 +115,22 @@ class FileDetailOut(BaseModel):
 
 class FileListOut(BaseModel):
     files: list[FileOut]
+
+class SearchRequest(BaseModel):
+    query: str
+    repository_version_id: UUID | None = None
+    limit: int | None = Field(default=20, le=50, ge=1)
+
+class SearchResultItem(BaseModel):
+    id: UUID
+    file_path: str
+    start_line: int | None
+    end_line: int | None
+    snippet: str
+    score: float
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class SearchResponse(BaseModel):
+    results: list[SearchResultItem]
+    repository_version_id: UUID

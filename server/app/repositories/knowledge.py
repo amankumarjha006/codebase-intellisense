@@ -279,3 +279,24 @@ class KnowledgeRepository:
             "relationships": relationships
         }
 
+    def search_code_chunks(self, repository_version_id: UUID, query: str, limit: int = 20) -> list[tuple[CodeChunk, File]]:
+        """
+        Perform a deterministic literal keyword search on CodeChunk contents 
+        isolated to a specific repository version.
+        """
+        # Escape wildcard characters to enforce a literal search
+        escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        
+        stmt = (
+            select(CodeChunk, File)
+            .join(File)
+            .where(
+                File.repository_version_id == repository_version_id,
+                CodeChunk.content.ilike(f"%{escaped_query}%", escape="\\")
+            )
+            .order_by(File.file_path.asc(), CodeChunk.chunk_index.asc())
+            .limit(limit)
+        )
+        
+        results = self.db.execute(stmt).all()
+        return list(results)
