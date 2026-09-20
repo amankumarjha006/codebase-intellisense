@@ -87,3 +87,14 @@ class EmbeddingService:
                 backoff_time = 2 ** attempt
                 logger.warning(f"Transient embedding error (attempt {attempt}/{self.max_retries}). Retrying in {backoff_time}s: {str(e)}")
                 time.sleep(backoff_time)
+
+    def embed_query(self, text: str) -> List[float]:
+        """
+        Embeds a single query string and returns its vector.
+        Does NOT persist the embedding to the database.
+        Reuses the exponential backoff retry mechanism.
+        """
+        vectors = self._embed_with_retry([text])
+        if not vectors:
+            raise EmbeddingError("Provider returned empty vector list for query")
+        return vectors[0]

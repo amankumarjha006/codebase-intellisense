@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import delete, select, func
 from uuid import UUID
 from typing import Any
-from app.models.knowledge import File, Symbol, CodeChunk, AnalysisResult, FileRelationship, SymbolRelationship
+from app.models.knowledge import File, Symbol, CodeChunk, AnalysisResult, FileRelationship, SymbolRelationship, Embedding
 
 class KnowledgeRepository:
     def __init__(self, db: Session):
@@ -296,6 +296,30 @@ class KnowledgeRepository:
                 CodeChunk.content.ilike(f"%{escaped_query}%", escape="\\")
             )
             .order_by(File.file_path.asc(), CodeChunk.chunk_index.asc())
+            .limit(limit)
+        )
+        
+        results = self.db.execute(stmt).all()
+        return list(results)
+
+    def search_semantic_chunks(self, repository_version_id: UUID, query_vector: list[float], limit: int = 20) -> list[tuple[CodeChunk, File, float]]:
+        """
+        Perform a semantic vector search isolated to a specific repository version.
+        Uses cosine distance via pgvector.
+        """
+        distance = Embedding.vector.cosine_distance(query_vector).label("distance")
+        
+        stmt = (
+            select(CodeChunk, File, distance)
+            .join(Embedding, Embedding.code_chunk_id == CodeChunk.id)
+            .join(File, CodeChunk.file_id == File.id)
+            .where(File.repository_version_id == repository_version_id)
+            .order_by(
+                distance.asc(),
+                File.file_path.asc(),
+                CodeChunk.chunk_index.asc(),
+                CodeChunk.id.asc()
+            )
             .limit(limit)
         )
         

@@ -449,3 +449,75 @@ class TestKeywordRetrievalStrategyIntegration:
         results = strategy.retrieve(RetrievalRequest(repository_version_id=v.id, query="my_func"))
         assert len(results) == 1
         assert results[0].symbol_id == sym.id
+
+
+# ===========================================================================
+# SemanticRetrievalStrategy integration tests
+# ===========================================================================
+
+class TestSemanticRetrievalStrategyIntegration:
+    def test_semantic_match_and_orchestration(self, db_session):
+        from app.services.retrieval.strategies import SemanticRetrievalStrategy
+        from app.services.embedding.service import EmbeddingService
+        from tests.services.test_embedding_service import FakeEmbeddingProvider
+        from app.models.knowledge import Embedding
+
+        user = _create_user(db_session)
+        repo = _create_repo(db_session, user)
+        v = _create_version(db_session, repo.id)
+        f = _create_file(db_session, v.id)
+        
+        c1 = _create_chunk(db_session, f.id, "def semantic_match(): pass", chunk_index=0)
+        c2 = _create_chunk(db_session, f.id, "def other_match(): pass", chunk_index=1)
+        
+        # Add embeddings
+        def make_vec(val):
+            v = [0.0] * settings.EMBEDDING_DIMENSION
+            v[0] = val
+            return v
+            
+        e1 = Embedding(code_chunk_id=c1.id, vector=make_vec(1.0), provider="test", model_name="test")
+        e2 = Embedding(code_chunk_id=c2.id, vector=make_vec(0.5), provider="test", model_name="test")
+        
+        db_session.add_all([e1, e2])
+        db_session.commit()
+
+        provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
+        knowledge_repo = KnowledgeRepository(db_session)
+        embedding_service = EmbeddingService(knowledge_repo, provider)
+        
+        strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
+        
+        req = RetrievalRequest(repository_version_id=v.id, query="semantic_match")
+        results = strategy.retrieve(req)
+        
+        assert len(results) == 2
+        assert results[0].code_chunk_id == c1.id
+        assert results[1].code_chunk_id == c2.id
+        
+        # Verify score is mapped (1.0 - distance)
+        assert results[0].score <= 1.0
+        assert results[0].source == "semantic"
+        
+        # Provider should have been called with the query
+        assert len(provider.calls) == 1
+        assert provider.calls[0] == ["semantic_match"]
+
+    def test_semantic_empty_results(self, db_session):
+        from app.services.retrieval.strategies import SemanticRetrievalStrategy
+        from app.services.embedding.service import EmbeddingService
+        from tests.services.test_embedding_service import FakeEmbeddingProvider
+
+        user = _create_user(db_session)
+        repo = _create_repo(db_session, user)
+        v = _create_version(db_session, repo.id)
+        # Empty repo version (no files/chunks/embeddings)
+
+        provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
+        knowledge_repo = KnowledgeRepository(db_session)
+        embedding_service = EmbeddingService(knowledge_repo, provider)
+        
+        strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
+        results = strategy.retrieve(RetrievalRequest(repository_version_id=v.id, query="nothing"))
+        
+        assert results == []

@@ -69,3 +69,48 @@ class KeywordRetrievalStrategy:
                 )
             )
         return results
+
+
+class SemanticRetrievalStrategy:
+    """
+    Semantic vector search over CodeChunk embeddings.
+
+    Delegates query embedding to EmbeddingService (with retry logic but no persistence).
+    Delegates the SQL cosine distance vector search to KnowledgeRepository.
+
+    Score semantics:
+        score = 1.0 - cosine_distance
+        Higher score means more semantically similar.
+    """
+    def __init__(self, knowledge_repo: KnowledgeRepository, embedding_service: 'app.services.embedding.service.EmbeddingService') -> None:
+        self._knowledge_repo = knowledge_repo
+        self._embedding_service = embedding_service
+
+    def retrieve(self, request: RetrievalRequest) -> list[RetrievalResult]:
+        # Embed the query
+        query_vector = self._embedding_service.embed_query(request.query)
+
+        # Search the database
+        rows = self._knowledge_repo.search_semantic_chunks(
+            repository_version_id=request.repository_version_id,
+            query_vector=query_vector,
+            limit=request.limit,
+        )
+
+        results: list[RetrievalResult] = []
+        for chunk, file, distance in rows:
+            results.append(
+                RetrievalResult(
+                    code_chunk_id=chunk.id,
+                    repository_version_id=file.repository_version_id,
+                    file_id=file.id,
+                    symbol_id=chunk.symbol_id,
+                    file_path=file.file_path,
+                    content=chunk.content,
+                    start_line=chunk.start_line,
+                    end_line=chunk.end_line,
+                    score=1.0 - distance,
+                    source="semantic",
+                )
+            )
+        return results

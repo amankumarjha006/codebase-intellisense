@@ -82,3 +82,33 @@ def test_embedding_service_retry():
         
     # initial call + max_retries
     assert len(provider.calls) == 1 + settings.EMBEDDING_MAX_RETRIES
+
+def test_embedding_service_embed_query():
+    provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
+    repo = FakeKnowledgeRepository()
+    service = EmbeddingService(repo, provider)
+    
+    query = "test search query"
+    vector = service.embed_query(query)
+    
+    # Provider returns [len(text)] * dimension
+    assert len(vector) == settings.EMBEDDING_DIMENSION
+    assert vector[0] == float(len(query))
+    assert len(provider.calls) == 1
+    assert provider.calls[0] == [query]
+    
+    # Verify no embeddings were persisted
+    assert len(repo.embeddings) == 0
+
+def test_embedding_service_embed_query_retry():
+    provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
+    provider.should_fail = True
+    repo = FakeKnowledgeRepository()
+    service = EmbeddingService(repo, provider)
+    
+    query = "test query"
+    
+    with pytest.raises(EmbeddingError):
+        service.embed_query(query)
+        
+    assert len(provider.calls) == 1 + settings.EMBEDDING_MAX_RETRIES

@@ -22,13 +22,15 @@ def create_test_repository(db: Session) -> Repository:
     
     existing = repo_repo.get_by_github_repo_id("local-codebase-intellisense")
     if existing:
+        existing.clone_url = Path(__file__).parent.parent.as_uri()
+        db.commit()
         return existing
     
     repo = Repository(
         github_repo_id="local-codebase-intellisense",
         owner="local",
         name="codebase-intellisense",
-        clone_url="file:///local/codebase-intellisense",
+        clone_url=Path(__file__).parent.parent.as_uri(),
         is_private=False,
     )
     db.add(repo)
@@ -38,8 +40,13 @@ def create_test_repository(db: Session) -> Repository:
 
 def create_test_version(db: Session, repository: Repository) -> RepositoryVersion:
     """Create a test repository version."""
-    repo_repo = RepositoryRepository(db)
-    
+    existing = db.query(RepositoryVersion).filter(
+        RepositoryVersion.repository_id == repository.id,
+        RepositoryVersion.commit_sha == "local-dev"
+    ).first()
+    if existing:
+        return existing
+        
     version = RepositoryVersion(
         repository_id=repository.id,
         commit_sha="local-dev",
@@ -89,7 +96,22 @@ def run_local_indexing():
         print("\nStarting indexing pipeline...")
         print("=" * 50)
         
-        indexing_service = IndexingService(db)
+        from app.core.config import settings
+        from app.repositories.knowledge import KnowledgeRepository
+        from app.services.embedding.factory import get_embedding_provider
+        from app.services.embedding.service import EmbeddingService
+        
+        if not settings.GEMINI_API_KEY:
+            print("Error: GEMINI_API_KEY is not set in the configuration.")
+            print("Local embedding-enabled indexing requires a valid GEMINI_API_KEY.")
+            db.rollback()
+            return 1
+            
+        knowledge_repo = KnowledgeRepository(db)
+        provider = get_embedding_provider(settings)
+        embedding_service = EmbeddingService(knowledge_repo, provider)
+        
+        indexing_service = IndexingService(db, embedding_service=embedding_service)
         indexing_service.run_indexing(job)
         
         print("=" * 50)
