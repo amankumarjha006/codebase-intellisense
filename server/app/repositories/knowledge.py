@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import delete, select, func
 from uuid import UUID
+from typing import Any
 from app.models.knowledge import File, Symbol, CodeChunk, AnalysisResult, FileRelationship, SymbolRelationship
 
 class KnowledgeRepository:

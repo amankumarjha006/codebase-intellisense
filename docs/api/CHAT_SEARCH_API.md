@@ -49,15 +49,17 @@ Future hybrid retrieval may combine:
       "start_line": 15,
       "end_line": 40,
       "snippet": "export function login() { ... }",
-      "score": 0.95
+      "score": 1.0
     }
   ],
   "repository_version_id": "version-uuid"
 }
 ```
+*Note: The score currently anticipates future semantic retrieval. The current keyword implementation always returns 1.0 for a match.*
 
 ## 2. AI Codebase Chat
 **Endpoint:** `POST /api/v1/repositories/{repository_id}/chat`
+**Status:** *Not yet implemented — documented here as the target contract for a future phase.*
 **Purpose:** Answers questions grounded in the repository context using RAG and Gemini.
 **Auth Required:** Yes
 **Request:**
@@ -91,6 +93,7 @@ Future hybrid retrieval may combine:
 
 ## 3. List Conversations
 **Endpoint:** `GET /api/v1/repositories/{repository_id}/conversations`
+**Status:** *Not yet implemented — documented here as the target contract for a future phase.*
 **Purpose:** Returns chat history sessions for the user and repository.
 **Auth Required:** Yes (Must own the conversation).
 **Query Parameters:** `page`, `limit`
@@ -98,6 +101,7 @@ Future hybrid retrieval may combine:
 
 ## 4. Get Conversation
 **Endpoint:** `GET /api/v1/conversations/{conversation_id}`
+**Status:** *Not yet implemented — documented here as the target contract for a future phase.*
 **Purpose:** Returns conversation metadata.
 **Auth Required:** Yes (Must own the conversation).
 **Response (200 OK):**
@@ -113,6 +117,7 @@ Future hybrid retrieval may combine:
 
 ## 5. Get Conversation Messages
 **Endpoint:** `GET /api/v1/conversations/{conversation_id}/messages`
+**Status:** *Not yet implemented — documented here as the target contract for a future phase.*
 **Purpose:** Returns the full message history (including citations) for a chat session.
 **Auth Required:** Yes (Must own the conversation).
 **Query Parameters:** `page`, `limit`

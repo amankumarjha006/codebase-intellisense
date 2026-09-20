@@ -326,6 +326,29 @@ class TestKeywordRetrievalStrategyIntegration:
         assert len(results) == 1
         assert results[0].content == "my_var = 42"
 
+    def test_literal_backslash(self, db_session):
+        user = _create_user(db_session)
+        repo = _create_repo(db_session, user)
+        v = _create_version(db_session, repo.id)
+        f = _create_file(db_session, v.id)
+        
+        # We want to match exactly "a\%b" and NOT "ax%b"
+        _create_chunk(db_session, f.id, "text with a\\%b here")
+        _create_chunk(db_session, f.id, "text with aX%b here", chunk_index=1)
+        _create_chunk(db_session, f.id, "text with a\\\\b here", chunk_index=2)
+
+        strategy = KeywordRetrievalStrategy(KnowledgeRepository(db_session))
+        
+        # Searching for literal backslash followed by percent
+        results = strategy.retrieve(RetrievalRequest(repository_version_id=v.id, query="a\\%b"))
+        assert len(results) == 1
+        assert results[0].content == "text with a\\%b here"
+        
+        # Searching for literal backslash only
+        results2 = strategy.retrieve(RetrievalRequest(repository_version_id=v.id, query="a\\\\b"))
+        assert len(results2) == 1
+        assert results2[0].content == "text with a\\\\b here"
+
     def test_deterministic_ordering(self, db_session):
         user = _create_user(db_session)
         repo = _create_repo(db_session, user)
