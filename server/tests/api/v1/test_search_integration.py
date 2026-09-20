@@ -33,8 +33,15 @@ def mock_redis(mocker):
     yield mock_redis_client
     app.dependency_overrides.pop(get_redis, None)
 
+@pytest.fixture
+def mock_gemini(mocker):
+    from tests.services.test_embedding_service import FakeEmbeddingProvider
+    fake_provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
+    mocker.patch("app.api.v1.endpoints.repositories.GeminiEmbeddingProvider", return_value=fake_provider)
+    return fake_provider
+
 @pytest_asyncio.fixture
-async def async_client_integration(db_session, mock_redis):
+async def async_client_integration(db_session, mock_redis, mock_gemini):
     def override_get_db():
         yield db_session
 

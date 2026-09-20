@@ -67,5 +67,6 @@ class RetrievalResult:
     content: str
     start_line: int
     end_line: int
+    chunk_index: int
     score: float
     source: str

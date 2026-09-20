@@ -11,20 +11,19 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         self.api_key = api_key
         self.model = model
         self.dimension = dimension
-        
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY must be provided")
-            
-        try:
-            self.client = genai.Client(api_key=api_key)
-        except Exception as e:
-            raise EmbeddingError(f"Failed to initialize Gemini client: {str(e)}") from e
+        self.client = None
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
             
         try:
+            if not self.api_key:
+                raise EmbeddingError("GEMINI_API_KEY must be provided")
+                
+            if self.client is None:
+                self.client = genai.Client(api_key=self.api_key)
+                
             # We use embed_content with multiple contents for batching.
             # Using output_dimensionality parameter.
             response = self.client.models.embed_content(

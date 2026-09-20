@@ -151,6 +151,7 @@ class TestRetrievalResult:
             content="def login(): pass",
             start_line=1,
             end_line=10,
+            chunk_index=0,
             score=0.95,
             source="keyword",
         )
@@ -175,6 +176,7 @@ class TestRetrievalResult:
             content="x",
             start_line=1,
             end_line=1,
+            chunk_index=0,
             score=1.0,
             source="keyword",
         )
@@ -190,6 +192,7 @@ class TestRetrievalResult:
             content="c",
             start_line=1,
             end_line=1,
+            chunk_index=0,
             score=1.0,
             source="keyword",
         )
@@ -214,6 +217,7 @@ class TestRetrievalService:
                 content="match",
                 start_line=1,
                 end_line=5,
+                chunk_index=0,
                 score=1.0,
                 source="keyword",
             )
@@ -233,7 +237,7 @@ class TestRetrievalService:
             RetrievalResult(
                 code_chunk_id=uuid4(), repository_version_id=uuid4(), file_id=uuid4(),
                 symbol_id=None, file_path=f"{i}.py", content=f"c{i}",
-                start_line=1, end_line=1, score=1.0, source="keyword",
+                start_line=1, end_line=1, chunk_index=0, score=1.0, source="keyword",
             )
             for i in range(5)
         ]

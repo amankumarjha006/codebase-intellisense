@@ -66,6 +66,7 @@ class KeywordRetrievalStrategy:
                     content=chunk.content,
                     start_line=chunk.start_line,
                     end_line=chunk.end_line,
+                    chunk_index=chunk.chunk_index,
                     score=1.0,
                     source="keyword",
                 )
@@ -111,6 +112,7 @@ class SemanticRetrievalStrategy:
                     content=chunk.content,
                     start_line=chunk.start_line,
                     end_line=chunk.end_line,
+                    chunk_index=chunk.chunk_index,
                     score=1.0 - distance,
                     source="semantic",
                 )
@@ -187,6 +189,7 @@ class HybridRetrievalStrategy:
                     content=base_res.content,
                     start_line=base_res.start_line,
                     end_line=base_res.end_line,
+                    chunk_index=base_res.chunk_index,
                     score=score,
                     source="hybrid"
                 )
@@ -197,7 +200,7 @@ class HybridRetrievalStrategy:
             key=lambda x: (
                 -x.score, 
                 x.file_path, 
-                x.start_line, # chunk_index is not in RetrievalResult, start_line acts as a proxy for chunk ordering within file
+                x.chunk_index,
                 str(x.code_chunk_id)
             )
         )

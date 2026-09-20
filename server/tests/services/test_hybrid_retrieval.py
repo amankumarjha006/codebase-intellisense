@@ -32,14 +32,14 @@ def test_rrf_exactness():
     
     # Keyword: chunk_1 (rank 1), chunk_2 (rank 2)
     k_res = [
-        RetrievalResult(symbol_id=None, code_chunk_id=chunk_1, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, score=1.0, source="k"),
-        RetrievalResult(symbol_id=None, code_chunk_id=chunk_2, repository_version_id=uuid4(), file_id=uuid4(), file_path="b.py", content="", start_line=1, end_line=2, score=1.0, source="k"),
+        RetrievalResult(symbol_id=None, code_chunk_id=chunk_1, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, chunk_index=0, score=1.0, source="k"),
+        RetrievalResult(symbol_id=None, code_chunk_id=chunk_2, repository_version_id=uuid4(), file_id=uuid4(), file_path="b.py", content="", start_line=1, end_line=2, chunk_index=0, score=1.0, source="k"),
     ]
     
     # Semantic: chunk_2 (rank 1), chunk_1 (rank 2)
     s_res = [
-        RetrievalResult(symbol_id=None, code_chunk_id=chunk_2, repository_version_id=uuid4(), file_id=uuid4(), file_path="b.py", content="", start_line=1, end_line=2, score=0.9, source="s"),
-        RetrievalResult(symbol_id=None, code_chunk_id=chunk_1, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, score=0.8, source="s"),
+        RetrievalResult(symbol_id=None, code_chunk_id=chunk_2, repository_version_id=uuid4(), file_id=uuid4(), file_path="b.py", content="", start_line=1, end_line=2, chunk_index=0, score=0.9, source="s"),
+        RetrievalResult(symbol_id=None, code_chunk_id=chunk_1, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, chunk_index=0, score=0.8, source="s"),
     ]
     
     h_strat, _, _ = setup_strategy(k_res, s_res)
@@ -57,8 +57,8 @@ def test_rrf_exactness():
 
 def test_deduplication():
     chunk = uuid4()
-    k_res = [RetrievalResult(symbol_id=None, code_chunk_id=chunk, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, score=1.0, source="k")]
-    s_res = [RetrievalResult(symbol_id=None, code_chunk_id=chunk, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, score=0.9, source="s")]
+    k_res = [RetrievalResult(symbol_id=None, code_chunk_id=chunk, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, chunk_index=0, score=1.0, source="k")]
+    s_res = [RetrievalResult(symbol_id=None, code_chunk_id=chunk, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, chunk_index=0, score=0.9, source="s")]
     
     h_strat, _, _ = setup_strategy(k_res, s_res)
     req = RetrievalRequest(repository_version_id=uuid4(), query="test", limit=10)
@@ -76,7 +76,7 @@ def test_candidate_depth():
     assert s_strat.last_request.limit == 50
 
 def test_final_limit():
-    k_res = [RetrievalResult(symbol_id=None, code_chunk_id=uuid4(), repository_version_id=uuid4(), file_id=uuid4(), file_path=f"{i}.py", content="", start_line=1, end_line=2, score=1.0, source="k") for i in range(15)]
+    k_res = [RetrievalResult(symbol_id=None, code_chunk_id=uuid4(), repository_version_id=uuid4(), file_id=uuid4(), file_path=f"{i}.py", content="", start_line=1, end_line=2, chunk_index=0, score=1.0, source="k") for i in range(15)]
     s_res = []
     
     h_strat, _, _ = setup_strategy(k_res, s_res)
@@ -91,12 +91,12 @@ def test_deterministic_ordering():
     
     # Tie scores, so ordering falls back to file_path
     k_res = [
-        RetrievalResult(symbol_id=None, code_chunk_id=chunk_1, repository_version_id=uuid4(), file_id=uuid4(), file_path="z.py", content="", start_line=1, end_line=2, score=1.0, source="k"),
-        RetrievalResult(symbol_id=None, code_chunk_id=chunk_2, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, score=1.0, source="k"),
+        RetrievalResult(symbol_id=None, code_chunk_id=chunk_1, repository_version_id=uuid4(), file_id=uuid4(), file_path="z.py", content="", start_line=1, end_line=2, chunk_index=0, score=1.0, source="k"),
+        RetrievalResult(symbol_id=None, code_chunk_id=chunk_2, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, chunk_index=0, score=1.0, source="k"),
     ]
     s_res = [
-        RetrievalResult(symbol_id=None, code_chunk_id=chunk_2, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, score=0.9, source="s"),
-        RetrievalResult(symbol_id=None, code_chunk_id=chunk_1, repository_version_id=uuid4(), file_id=uuid4(), file_path="z.py", content="", start_line=1, end_line=2, score=0.8, source="s"),
+        RetrievalResult(symbol_id=None, code_chunk_id=chunk_2, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, chunk_index=0, score=0.9, source="s"),
+        RetrievalResult(symbol_id=None, code_chunk_id=chunk_1, repository_version_id=uuid4(), file_id=uuid4(), file_path="z.py", content="", start_line=1, end_line=2, chunk_index=0, score=0.8, source="s"),
     ]
     
     h_strat, _, _ = setup_strategy(k_res, s_res)
@@ -109,7 +109,7 @@ def test_deterministic_ordering():
     assert results[1].code_chunk_id == chunk_1
 
 def test_semantic_failure_fallback():
-    k_res = [RetrievalResult(symbol_id=None, code_chunk_id=uuid4(), repository_version_id=uuid4(), file_id=uuid4(), file_path="k.py", content="", start_line=1, end_line=2, score=1.0, source="k")]
+    k_res = [RetrievalResult(symbol_id=None, code_chunk_id=uuid4(), repository_version_id=uuid4(), file_id=uuid4(), file_path="k.py", content="", start_line=1, end_line=2, chunk_index=0, score=1.0, source="k")]
     
     h_strat, _, _ = setup_strategy(k_res, [], semantic_error=EmbeddingError("API down"))
     req = RetrievalRequest(repository_version_id=uuid4(), query="test", limit=10)
@@ -129,7 +129,7 @@ def test_unexpected_exception_propagation():
         h_strat.retrieve(req)
 
 def test_keyword_only_candidates():
-    k_res = [RetrievalResult(symbol_id=None, code_chunk_id=uuid4(), repository_version_id=uuid4(), file_id=uuid4(), file_path="k.py", content="", start_line=1, end_line=2, score=1.0, source="k")]
+    k_res = [RetrievalResult(symbol_id=None, code_chunk_id=uuid4(), repository_version_id=uuid4(), file_id=uuid4(), file_path="k.py", content="", start_line=1, end_line=2, chunk_index=0, score=1.0, source="k")]
     h_strat, _, _ = setup_strategy(k_res, [])
     req = RetrievalRequest(repository_version_id=uuid4(), query="test", limit=10)
     results = h_strat.retrieve(req)
@@ -137,7 +137,7 @@ def test_keyword_only_candidates():
     assert results[0].score == 1/61
 
 def test_semantic_only_candidates():
-    s_res = [RetrievalResult(symbol_id=None, code_chunk_id=uuid4(), repository_version_id=uuid4(), file_id=uuid4(), file_path="s.py", content="", start_line=1, end_line=2, score=0.9, source="s")]
+    s_res = [RetrievalResult(symbol_id=None, code_chunk_id=uuid4(), repository_version_id=uuid4(), file_id=uuid4(), file_path="s.py", content="", start_line=1, end_line=2, chunk_index=0, score=0.9, source="s")]
     h_strat, _, _ = setup_strategy([], s_res)
     req = RetrievalRequest(repository_version_id=uuid4(), query="test", limit=10)
     results = h_strat.retrieve(req)
@@ -163,3 +163,27 @@ def test_version_propagation():
     
     assert s_strat.last_request.repository_version_id == repo_version
     assert s_strat.last_request.query == query
+
+def test_deterministic_ordering_by_chunk_index():
+    chunk_1 = uuid4()
+    chunk_2 = uuid4()
+    
+    # Same score, same file_path ("a.py"), different chunk_index
+    # To get the same score, they need to swap ranks in keyword vs semantic
+    k_res = [
+        RetrievalResult(symbol_id=None, code_chunk_id=chunk_2, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, chunk_index=1, score=1.0, source="k"),
+        RetrievalResult(symbol_id=None, code_chunk_id=chunk_1, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, chunk_index=0, score=1.0, source="k"),
+    ]
+    s_res = [
+        RetrievalResult(symbol_id=None, code_chunk_id=chunk_1, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, chunk_index=0, score=0.9, source="s"),
+        RetrievalResult(symbol_id=None, code_chunk_id=chunk_2, repository_version_id=uuid4(), file_id=uuid4(), file_path="a.py", content="", start_line=1, end_line=2, chunk_index=1, score=0.8, source="s"),
+    ]
+    
+    h_strat, _, _ = setup_strategy(k_res, s_res)
+    req = RetrievalRequest(repository_version_id=uuid4(), query="test", limit=10)
+    results = h_strat.retrieve(req)
+    
+    assert len(results) == 2
+    # chunk_1 (chunk_index=0) should be first
+    assert results[0].code_chunk_id == chunk_1
+    assert results[1].code_chunk_id == chunk_2

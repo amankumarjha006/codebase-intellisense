@@ -112,3 +112,15 @@ def test_embedding_service_embed_query_retry():
         service.embed_query(query)
         
     assert len(provider.calls) == 1 + settings.EMBEDDING_MAX_RETRIES
+
+def test_gemini_provider_lazy_init():
+    from app.services.embedding.gemini import GeminiEmbeddingProvider
+    
+    # Construction should succeed even with empty key
+    provider = GeminiEmbeddingProvider(api_key="", model="test-model", dimension=768)
+    
+    # embed should raise EmbeddingError, not ValueError
+    with pytest.raises(EmbeddingError) as exc_info:
+        provider.embed(["test text"])
+        
+    assert "GEMINI_API_KEY must be provided" in str(exc_info.value)
