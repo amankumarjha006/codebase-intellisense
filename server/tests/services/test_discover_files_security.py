@@ -26,29 +26,37 @@ def repo_with_symlinks(tmp_path):
 
     # Symlink to file outside root
     leaked_link = repo_dir / "leaked.py"
+    leaked_link_created = False
     try:
         leaked_link.symlink_to(secret_py)
+        leaked_link_created = True
     except OSError:
-        pytest.skip("Cannot create symlinks on this platform")
+        pass
 
     # Symlink to directory outside root
     outside_dir_link = repo_dir / "escape_dir"
+    escape_dir_created = False
     try:
         outside_dir_link.symlink_to(outside_dir)
+        escape_dir_created = True
     except OSError:
         pass
 
     # Broken symlink
     broken_link = repo_dir / "broken.py"
+    broken_link_created = False
     try:
         broken_link.symlink_to(tmp_path / "nonexistent.py")
+        broken_link_created = True
     except OSError:
         pass
 
     # Internal symlink (to a file inside the repo)
     internal_link = repo_dir / "internal.py"
+    internal_link_created = False
     try:
         internal_link.symlink_to(safe_py)
+        internal_link_created = True
     except OSError:
         pass
 
@@ -56,11 +64,17 @@ def repo_with_symlinks(tmp_path):
         "repo_dir": str(repo_dir),
         "outside_dir": str(outside_dir),
         "secret_content": "SECRET_KEY = 'leaked'\n",
+        "leaked_link_created": leaked_link_created,
+        "escape_dir_created": escape_dir_created,
+        "broken_link_created": broken_link_created,
+        "internal_link_created": internal_link_created,
     }
 
 
 def test_symlink_to_outside_file_is_excluded(repo_with_symlinks):
     """A symlink pointing outside the repo must NOT be indexed."""
+    if not repo_with_symlinks.get("leaked_link_created"):
+        pytest.skip("Cannot create symlinks on this platform")
     files = discover_files(repo_with_symlinks["repo_dir"])
     paths = [rel for rel, _ in files]
     assert "leaked.py" not in paths
@@ -68,6 +82,8 @@ def test_symlink_to_outside_file_is_excluded(repo_with_symlinks):
 
 def test_symlink_to_outside_directory_is_excluded(repo_with_symlinks):
     """Files inside a symlinked directory pointing outside repo must NOT be indexed."""
+    if not repo_with_symlinks.get("escape_dir_created"):
+        pytest.skip("Cannot create symlinks on this platform")
     files = discover_files(repo_with_symlinks["repo_dir"])
     paths = [rel for rel, _ in files]
     # The escape_dir/secret.py should not appear
@@ -77,6 +93,8 @@ def test_symlink_to_outside_directory_is_excluded(repo_with_symlinks):
 
 def test_broken_symlink_is_excluded(repo_with_symlinks):
     """A broken symlink must NOT cause an error and must be excluded."""
+    if not repo_with_symlinks.get("broken_link_created"):
+        pytest.skip("Cannot create symlinks on this platform")
     files = discover_files(repo_with_symlinks["repo_dir"])
     paths = [rel for rel, _ in files]
     assert "broken.py" not in paths
@@ -84,6 +102,8 @@ def test_broken_symlink_is_excluded(repo_with_symlinks):
 
 def test_internal_symlink_is_excluded(repo_with_symlinks):
     """Even internal symlinks are skipped (MVP simplicity)."""
+    if not repo_with_symlinks.get("internal_link_created"):
+        pytest.skip("Cannot create symlinks on this platform")
     files = discover_files(repo_with_symlinks["repo_dir"])
     paths = [rel for rel, _ in files]
     assert "internal.py" not in paths
