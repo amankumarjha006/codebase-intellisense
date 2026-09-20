@@ -132,7 +132,7 @@ async def test_search_active_success_version(async_client_integration, db_sessio
     assert len(data["results"]) == 1
     assert data["results"][0]["id"] == str(c2.id)
     assert data["results"][0]["snippet"] == "def awesome_new_func(): pass"
-    assert data["results"][0]["score"] == 1.0
+    assert data["results"][0]["score"] == 1.0 / 61.0
 
     # 2. No matches
     req2 = {"query": "missing"}

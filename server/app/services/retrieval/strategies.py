@@ -15,6 +15,8 @@ from sqlalchemy.orm import Session
 
 from app.repositories.knowledge import KnowledgeRepository
 from app.services.retrieval.models import RetrievalRequest, RetrievalResult
+from app.services.indexing import EmbeddingError
+
 
 
 @runtime_checkable
@@ -114,3 +116,90 @@ class SemanticRetrievalStrategy:
                 )
             )
         return results
+
+
+class HybridRetrievalStrategy:
+    """
+    Hybrid retrieval using Reciprocal Rank Fusion (RRF) over keyword and semantic strategies.
+    
+    Gracefully degrades to keyword-only retrieval if semantic retrieval fails.
+    """
+    def __init__(
+        self,
+        keyword_strategy: KeywordRetrievalStrategy,
+        semantic_strategy: SemanticRetrievalStrategy,
+        rrf_k: int = 60,
+        candidate_limit: int = 50,
+    ) -> None:
+        self._keyword_strategy = keyword_strategy
+        self._semantic_strategy = semantic_strategy
+        self._rrf_k = rrf_k
+        self._candidate_limit = candidate_limit
+
+    def retrieve(self, request: RetrievalRequest) -> list[RetrievalResult]:
+        import logging
+        logger = logging.getLogger(__name__)
+
+        candidate_request = RetrievalRequest(
+            repository_version_id=request.repository_version_id,
+            query=request.query,
+            limit=self._candidate_limit,
+        )
+
+        keyword_candidates = self._keyword_strategy.retrieve(candidate_request)
+        
+        try:
+            semantic_candidates = self._semantic_strategy.retrieve(candidate_request)
+        except EmbeddingError as e:
+            logger.warning(f"Semantic retrieval failed, falling back to keyword-only: {e}")
+            semantic_candidates = []
+
+        if not keyword_candidates and not semantic_candidates:
+            return []
+
+        # RRF Fusion
+        rrf_scores: dict[str, float] = {}
+        chunks_by_id: dict[str, RetrievalResult] = {}
+
+        # 1-based ranks
+        for rank, res in enumerate(keyword_candidates, start=1):
+            chunk_id = str(res.code_chunk_id)
+            chunks_by_id[chunk_id] = res
+            rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) + 1.0 / (self._rrf_k + rank)
+
+        for rank, res in enumerate(semantic_candidates, start=1):
+            chunk_id = str(res.code_chunk_id)
+            if chunk_id not in chunks_by_id:
+                chunks_by_id[chunk_id] = res
+            rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) + 1.0 / (self._rrf_k + rank)
+
+        # Reconstruct results
+        fused_results: list[RetrievalResult] = []
+        for chunk_id, score in rrf_scores.items():
+            base_res = chunks_by_id[chunk_id]
+            fused_results.append(
+                RetrievalResult(
+                    code_chunk_id=base_res.code_chunk_id,
+                    repository_version_id=base_res.repository_version_id,
+                    file_id=base_res.file_id,
+                    symbol_id=base_res.symbol_id,
+                    file_path=base_res.file_path,
+                    content=base_res.content,
+                    start_line=base_res.start_line,
+                    end_line=base_res.end_line,
+                    score=score,
+                    source="hybrid"
+                )
+            )
+
+        # Deterministic sorting
+        fused_results.sort(
+            key=lambda x: (
+                -x.score, 
+                x.file_path, 
+                x.start_line, # chunk_index is not in RetrievalResult, start_line acts as a proxy for chunk ordering within file
+                str(x.code_chunk_id)
+            )
+        )
+
+        return fused_results[:request.limit]

@@ -8,7 +8,10 @@ from app.models.user import User
 from app.models.repository import Repository
 from app.repositories.repository import RepositoryRepository
 from app.repositories.knowledge import KnowledgeRepository
-from app.services.retrieval import RetrievalService, RetrievalRequest, KeywordRetrievalStrategy
+from app.services.retrieval import RetrievalService, RetrievalRequest, KeywordRetrievalStrategy, SemanticRetrievalStrategy, HybridRetrievalStrategy
+from app.services.embedding.service import EmbeddingService
+from app.services.embedding.gemini import GeminiEmbeddingProvider
+from app.core.config import settings
 from app.services.repository import RepositoryService
 from app.services.github import GithubService
 from app.services.github_token import get_decrypted_token
@@ -297,8 +300,23 @@ def search_repository(
 
     # --- Retrieval (delegated to RetrievalService) ---
     knowledge_repo = KnowledgeRepository(db)
-    strategy = KeywordRetrievalStrategy(knowledge_repo)
-    retrieval_service = RetrievalService(strategy)
+    
+    # Construct embedding and semantic dependencies
+    provider = GeminiEmbeddingProvider(
+        api_key=settings.GEMINI_API_KEY,
+        model=settings.EMBEDDING_MODEL,
+        dimension=settings.EMBEDDING_DIMENSION,
+    )
+    embedding_service = EmbeddingService(knowledge_repo, provider)
+    semantic_strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
+    
+    # Construct keyword dependency
+    keyword_strategy = KeywordRetrievalStrategy(knowledge_repo)
+    
+    # Construct hybrid strategy
+    hybrid_strategy = HybridRetrievalStrategy(keyword_strategy, semantic_strategy)
+    
+    retrieval_service = RetrievalService(hybrid_strategy)
 
     retrieval_request = RetrievalRequest(
         repository_version_id=version_id,
