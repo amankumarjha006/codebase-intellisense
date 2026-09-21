@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import delete, select, func
+from sqlalchemy import delete, select, func, case, or_
 from uuid import UUID
 from typing import Any
 from app.models.knowledge import File, Symbol, CodeChunk, AnalysisResult, FileRelationship, SymbolRelationship, Embedding
@@ -280,22 +280,34 @@ class KnowledgeRepository:
             "relationships": relationships
         }
 
-    def search_code_chunks(self, repository_version_id: UUID, query: str, limit: int = 20) -> list[tuple[CodeChunk, File]]:
+    def search_code_chunks(self, repository_version_id: UUID, query: str, limit: int = 20) -> list[tuple[CodeChunk, File, float]]:
         """
-        Perform a deterministic literal keyword search on CodeChunk contents 
-        isolated to a specific repository version.
+        Perform a lexical search on CodeChunk contents isolated to a specific repository version.
+        Combines exact substring matching (ILIKE) with PostgreSQL Full-Text Search.
         """
-        # Escape wildcard characters to enforce a literal search
         escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         
+        tsquery = func.websearch_to_tsquery('english', query)
+        tsvector = func.to_tsvector('english', CodeChunk.content)
+        
+        exact_match = CodeChunk.content.ilike(f"%{escaped_query}%", escape="\\")
+        fts_rank = func.ts_rank_cd(tsvector, tsquery)
+        
+        score = (case((exact_match, 1.0), else_=0.0) + fts_rank).label("score")
+        
         stmt = (
-            select(CodeChunk, File)
+            select(CodeChunk, File, score)
             .join(File)
             .where(
                 File.repository_version_id == repository_version_id,
-                CodeChunk.content.ilike(f"%{escaped_query}%", escape="\\")
+                or_(exact_match, tsvector.op('@@')(tsquery))
             )
-            .order_by(File.file_path.asc(), CodeChunk.chunk_index.asc())
+            .order_by(
+                score.desc(),
+                File.file_path.asc(),
+                CodeChunk.chunk_index.asc(),
+                CodeChunk.id.asc()
+            )
             .limit(limit)
         )
         

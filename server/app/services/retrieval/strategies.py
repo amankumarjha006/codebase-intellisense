@@ -34,15 +34,15 @@ class RetrievalStrategy(Protocol):
 
 class KeywordRetrievalStrategy:
     """
-    Deterministic literal keyword search over CodeChunk content.
+    Lexical search over CodeChunk content.
 
     Delegates the actual SQL query to KnowledgeRepository.search_code_chunks(),
-    which performs case-insensitive ILIKE with proper wildcard escaping,
-    version-scoped filtering, deterministic ordering, and database-side LIMIT.
+    which combines exact substring matching (ILIKE) with PostgreSQL Full-Text Search.
 
     Score semantics:
-        score=1.0 for every match — this is a binary presence indicator,
-        not a semantic relevance score.
+        score = (1.0 if exact_match else 0.0) + ts_rank_cd
+        Higher score means more lexically relevant. Exact matches are boosted above
+        pure FTS matches.
     """
     def __init__(self, knowledge_repo: KnowledgeRepository) -> None:
         self._knowledge_repo = knowledge_repo
@@ -55,7 +55,7 @@ class KeywordRetrievalStrategy:
         )
 
         results: list[RetrievalResult] = []
-        for chunk, file in rows:
+        for chunk, file, score in rows:
             results.append(
                 RetrievalResult(
                     code_chunk_id=chunk.id,
@@ -67,7 +67,7 @@ class KeywordRetrievalStrategy:
                     start_line=chunk.start_line,
                     end_line=chunk.end_line,
                     chunk_index=chunk.chunk_index,
-                    score=1.0,
+                    score=score,
                     source="keyword",
                 )
             )

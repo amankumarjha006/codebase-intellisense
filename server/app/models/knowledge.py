@@ -15,6 +15,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -99,6 +100,12 @@ class CodeChunk(Base):
     __table_args__ = (
         Index("ix_code_chunks_file_id_chunk_index", "file_id", "chunk_index"),
         Index("ix_code_chunks_symbol_id", "symbol_id"),
+        Index("ix_code_chunks_content_trgm", "content", postgresql_using="gin", postgresql_ops={"content": "gin_trgm_ops"}),
+        Index(
+            "ix_code_chunk_content_fts",
+            text("to_tsvector('english', content)"),
+            postgresql_using="gin",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
