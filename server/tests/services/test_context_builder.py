@@ -114,8 +114,8 @@ class TestContextBuilder:
         req = ContextRequest(query="q", retrieval_results=[r1, r2, r3], max_context_chars=10000)
         baseline = builder.build(req)
         
-        r1_len = len(builder._format_item(baseline.items[0]))
-        r2_len = len(builder._format_item(baseline.items[1]))
+        r1_len = len(builder._format_item(baseline.items[0], 1))
+        r2_len = len(builder._format_item(baseline.items[1], 2))
         
         # Set budget to fit r1, but NOT r2.
         # r2 should be excluded, and the loop should break (so r3 is NOT evaluated)

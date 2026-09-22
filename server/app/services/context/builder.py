@@ -51,7 +51,7 @@ class ContextBuilder:
                 chunk_index=res.chunk_index,
             )
             
-            formatted_item = self._format_item(item)
+            formatted_item = self._format_item(item, len(items) + 1)
             item_length = len(formatted_item)
             
             # Complete inclusion or complete exclusion
@@ -71,17 +71,18 @@ class ContextBuilder:
             max_budget=request.max_context_chars,
         )
 
-    def _format_item(self, item: ContextItem) -> str:
+    def _format_item(self, item: ContextItem, index: int) -> str:
         """
-        Formats a ContextItem deterministically.
+        Formats a ContextItem deterministically, assigning a stable source ID.
         """
         return (
             f"================================================================================\n"
+            f"[SOURCE ID: C{index}]\n"
             f"[FILE: {item.file_path}]\n"
             f"[LINES: {item.start_line}-{item.end_line}]\n"
             f"[CHUNK: {item.code_chunk_id}]\n"
             f"[SCORE: {item.retrieval_score:.4f}]\n"
-            f"[SOURCE: {item.retrieval_source}]\n\n"
+            f"[RETRIEVAL: {item.retrieval_source}]\n\n"
             f"```\n"
             f"{item.content}\n"
             f"```\n\n"
