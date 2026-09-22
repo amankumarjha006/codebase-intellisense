@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # Indexing Configuration
     MAX_INDEXABLE_FILE_SIZE_BYTES: int = 5242880  # 5 MB
     CHUNK_MAX_CHARS: int = 4096
+    
+    # Retrieval Configuration
+    CONTEXT_MAX_CHARS: int = 16000
 
     # Embedding Configuration
     EMBEDDING_PROVIDER: str = "google"
