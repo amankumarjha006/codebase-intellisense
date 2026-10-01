@@ -1,0 +1,582 @@
+{
+  "info": {
+    "name": "Codebase Intellisense - API Verification",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication Verification",
+      "item": [
+        {
+          "name": "GET Current User (Valid)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_1}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has id', function () { pm.expect(pm.response.json()).to.have.property('id'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Current User (Invalid Cookie)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id=invalid_cookie"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Current User (No Cookie)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Repository API Verification",
+      "item": [
+        {
+          "name": "GET Repositories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_1}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/repositories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "repositories"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Response is a list', function () { pm.expect(data).to.have.property('items'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Repository Details (Valid)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_1}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/repositories/{{repository_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "repositories",
+                "{{repository_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Repository Details (Invalid ID)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_1}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/repositories/{{invalid_repository_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "repositories",
+                "{{invalid_repository_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RAG Query Validation API",
+      "item": [
+        {
+          "name": "POST RAG Query (Empty query)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_1}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/repositories/{{repository_id}}/query",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "repositories",
+                "{{repository_id}}",
+                "query"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"query\": \"\", \"repository_version_id\": \"{{repository_version_id}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400 or 422', function () { pm.expect(pm.response.code).to.be.oneOf([400, 422]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST RAG Query (Unauthorized Repo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_2}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/repositories/{{repository_id}}/query",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "repositories",
+                "{{repository_id}}",
+                "query"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"query\": \"test\", \"repository_version_id\": \"{{repository_version_id}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Conversation API",
+      "item": [
+        {
+          "name": "POST Create Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_1}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/repositories/{{repository_id}}/conversations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "repositories",
+                "{{repository_id}}",
+                "conversations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\": \"Test Conversation\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 or 200', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('Response has ID', function () { pm.expect(jsonData).to.have.property('id'); });",
+                  "pm.environment.set('conversation_id', jsonData.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Conversations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_1}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/repositories/{{repository_id}}/conversations",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "repositories",
+                "{{repository_id}}",
+                "conversations"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Single Conversation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_1}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/conversations/{{conversation_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "conversations",
+                "{{conversation_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Conversation Isolation Test (User 2)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_2}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/conversations/{{conversation_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "conversations",
+                "{{conversation_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Conversation Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_1}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/conversations/{{conversation_id}}/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "conversations",
+                "{{conversation_id}}",
+                "messages"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST Conversation Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_1}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/conversations/{{conversation_id}}/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "conversations",
+                "{{conversation_id}}",
+                "messages"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"content\": \"What is the main function in this repo?\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Response has user_message', function () { pm.expect(data).to.have.property('user_message'); });",
+                  "pm.test('Response has assistant_message', function () { pm.expect(data).to.have.property('assistant_message'); });",
+                  "pm.test('Assistant message has citations', function () { pm.expect(data.assistant_message).to.have.property('citations'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE Conversation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_1}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/conversations/{{conversation_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "conversations",
+                "{{conversation_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 204 or 200', function () { pm.expect(pm.response.code).to.be.oneOf([200, 204]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Deleted Conversation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_cookie_1}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/conversations/{{conversation_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "conversations",
+                "{{conversation_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
