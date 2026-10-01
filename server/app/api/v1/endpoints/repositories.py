@@ -29,7 +29,9 @@ from app.schemas.repository import (
     FileDetailOut,
     SearchRequest,
     SearchResponse,
-    SearchResultItem
+    SearchResultItem,
+    RAGQueryRequestSchema,
+    RAGQueryResponseSchema
 )
 from app.core.encryption import TokenEncryptionError
 from app.services.repository import (
@@ -40,6 +42,20 @@ from app.services.repository import (
 )
 from app.services.github import GithubAuthError
 from app.workers import enqueue_indexing_job
+
+from app.services.rag_query.service import RAGQueryService
+from app.services.rag_query.models import RAGQueryRequest
+from app.services.rag_query.exceptions import (
+    InvalidQueryError,
+    NoIndexedVersionError,
+    InvalidRepositoryVersionError
+)
+from app.services.llm.exceptions import TransientLLMError, PermanentLLMError
+from app.services.llm.factory import create_llm_provider
+from app.services.context.builder import ContextBuilder
+from app.services.rag.service import RAGService
+from app.services.citation.service import CitationService
+from app.services.answer.service import AnswerService
 
 router = APIRouter()
 
@@ -609,6 +625,94 @@ def get_index_job(
                 }
             }
         )
-    
     return job
+
+
+@router.post("/{repository_id}/query", response_model=RAGQueryResponseSchema, summary="RAG Query")
+async def query_repository(
+    repository_id: UUID,
+    request: RAGQueryRequestSchema,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+):
+    """
+    Executes a RAG query against a specific repository.
+    """
+    repo_repo = RepositoryRepository(db)
+    knowledge_repo = KnowledgeRepository(db)
+
+    # Construct embedding and semantic dependencies
+    provider = GeminiEmbeddingProvider(
+        api_key=settings.GEMINI_API_KEY,
+        model=settings.EMBEDDING_MODEL,
+        dimension=settings.EMBEDDING_DIMENSION,
+    )
+    embedding_service = EmbeddingService(knowledge_repo, provider)
+    semantic_strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
+    
+    # Construct keyword dependency
+    keyword_strategy = KeywordRetrievalStrategy(knowledge_repo)
+    
+    # Construct hybrid strategy
+    hybrid_strategy = HybridRetrievalStrategy(keyword_strategy, semantic_strategy)
+    
+    retrieval_service = RetrievalService(hybrid_strategy)
+
+    # RAG Components
+    context_builder = ContextBuilder()
+    llm_provider = create_llm_provider(settings)
+    rag_service = RAGService(llm_provider)
+    citation_service = CitationService()
+    answer_service = AnswerService()
+
+    rag_query_service = RAGQueryService(
+        repository_repo=repo_repo,
+        retrieval_service=retrieval_service,
+        context_builder=context_builder,
+        rag_service=rag_service,
+        citation_service=citation_service,
+        answer_service=answer_service,
+    )
+
+    query_req = RAGQueryRequest(
+        repository_id=repository_id,
+        query=request.query,
+        repository_version_id=request.repository_version_id,
+        retrieval_limit=request.retrieval_limit,
+        max_context_chars=request.max_context_chars,
+    )
+
+    try:
+        response = await rag_query_service.execute(query_req)
+        return response
+    except InvalidQueryError as e:
+        return JSONResponse(
+            status_code=400,
+            content={"error": {"code": "INVALID_REQUEST", "message": str(e)}}
+        )
+    except InvalidRepositoryVersionError as e:
+        return JSONResponse(
+            status_code=400,
+            content={"error": {"code": "INVALID_REQUEST", "message": str(e)}}
+        )
+    except NoIndexedVersionError as e:
+        return JSONResponse(
+            status_code=404,
+            content={"error": {"code": "NOT_FOUND", "message": str(e)}}
+        )
+    except TransientLLMError as e:
+        return JSONResponse(
+            status_code=502,
+            content={"error": {"code": "UPSTREAM_SERVICE_UNAVAILABLE", "message": str(e)}}
+        )
+    except PermanentLLMError as e:
+        return JSONResponse(
+            status_code=502,
+            content={"error": {"code": "UPSTREAM_SERVICE_ERROR", "message": str(e)}}
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": {"code": "INTERNAL_SERVER_ERROR", "message": "An unexpected error occurred."}}
+        )
 

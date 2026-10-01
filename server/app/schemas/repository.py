@@ -141,3 +141,24 @@ class SearchResultItem(BaseModel):
 class SearchResponse(BaseModel):
     results: list[SearchResultItem]
     repository_version_id: UUID
+
+class RAGQueryRequestSchema(BaseModel):
+    query: str
+    repository_version_id: UUID | None = None
+    retrieval_limit: int = Field(default=20, ge=1)
+    max_context_chars: int = Field(default=32000, ge=1)
+
+class CitationOut(BaseModel):
+    id: str = Field(validation_alias="citation_id")
+    file_path: str
+    start_line: int
+    end_line: int
+    
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+class RAGQueryResponseSchema(BaseModel):
+    answer: str
+    citations: list[CitationOut]
+    repository_version_id: UUID
+    
+    model_config = ConfigDict(from_attributes=True)
