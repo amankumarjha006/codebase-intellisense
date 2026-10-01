@@ -1,0 +1,51 @@
+{
+  "id": "3253d6d6-8766-4f2a-b525-f9bd474600b1",
+  "name": "Local_Pre_Phase_4",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api/v1",
+      "enabled": true
+    },
+    {
+      "key": "user_a_id",
+      "value": "a75ebee7-16f2-4621-ab8b-403367f21ec9",
+      "enabled": true
+    },
+    {
+      "key": "user_b_id",
+      "value": "25c7ca81-145d-486d-aea0-6d1eb318ba22",
+      "enabled": true
+    },
+    {
+      "key": "session_a",
+      "value": "WeVjHo3nnantnIEU6PVuohYTD3ucxPxHdg1W3ExFTlU",
+      "enabled": true
+    },
+    {
+      "key": "session_b",
+      "value": "pqk2dBkvyGstaUsvILP-c0hYOAqFjwYJSzuLSr9GEJg",
+      "enabled": true
+    },
+    {
+      "key": "repo_a_id",
+      "value": "adef0f04-6d8d-4f82-b5a6-cb6697e197fe",
+      "enabled": true
+    },
+    {
+      "key": "repo_b_id",
+      "value": "7ae6e080-b0ac-4182-822b-fbb17198363e",
+      "enabled": true
+    },
+    {
+      "key": "version_a_id",
+      "value": "cc319330-5186-4935-9314-db3d08c3a23d",
+      "enabled": true
+    },
+    {
+      "key": "job_a_id",
+      "value": "6ea85d37-3712-4b7f-bdb3-caf2fab81a2a",
+      "enabled": true
+    }
+  ]
+}
