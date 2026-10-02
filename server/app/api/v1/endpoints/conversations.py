@@ -40,7 +40,11 @@ from app.services.answer.service import AnswerService
 
 from app.services.conversation.message_service import ConversationMessageService
 from app.schemas.message import ConversationMessageRequest, ConversationMessageResponse
-
+from app.services.conversation.streaming_service import ConversationStreamingService
+from app.services.conversation.query_rewriter import QueryRewriter
+from app.api.deps import get_redis
+from fastapi.responses import StreamingResponse
+import redis.asyncio as redis
 router = APIRouter()
 
 def get_conversation_service(db: Session = Depends(get_db)) -> ConversationService:
@@ -87,6 +91,46 @@ def get_conversation_message_service(db: Session = Depends(get_db)) -> Conversat
         rag_query_service=rag_query_service
     )
 
+def get_conversation_streaming_service(
+    db: Session = Depends(get_db),
+    redis_client: redis.Redis = Depends(get_redis)
+) -> ConversationStreamingService:
+    conversation_repo = ConversationRepository(db)
+    message_repo = MessageRepository(db)
+    repo_repo = RepositoryRepository(db)
+    knowledge_repo = KnowledgeRepository(db)
+
+    provider = GeminiEmbeddingProvider(
+        api_key=settings.GEMINI_API_KEY,
+        model=settings.EMBEDDING_MODEL,
+        dimension=settings.EMBEDDING_DIMENSION,
+    )
+    embedding_service = EmbeddingService(knowledge_repo, provider)
+    semantic_strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
+    keyword_strategy = KeywordRetrievalStrategy(knowledge_repo)
+    hybrid_strategy = HybridRetrievalStrategy(keyword_strategy, semantic_strategy)
+    retrieval_service = RetrievalService(hybrid_strategy)
+
+    context_builder = ContextBuilder()
+    llm_provider = create_llm_provider(settings)
+    rag_service = RAGService(llm_provider)
+    citation_service = CitationService()
+    answer_service = AnswerService()
+    
+    query_rewriter = QueryRewriter(llm_provider=llm_provider)
+
+    return ConversationStreamingService(
+        conversation_repo=conversation_repo,
+        message_repo=message_repo,
+        repository_repo=repo_repo,
+        query_rewriter=query_rewriter,
+        retrieval_service=retrieval_service,
+        context_builder=context_builder,
+        rag_service=rag_service,
+        citation_service=citation_service,
+        answer_service=answer_service,
+        redis_client=redis_client
+    )
 
 @router.post("/repositories/{repository_id}/conversations", response_model=ConversationOut, status_code=status.HTTP_201_CREATED, summary="Create a Conversation")
 def create_conversation(
@@ -233,3 +277,18 @@ async def send_message(
             status_code=502,
             content={"error": {"code": "UPSTREAM_SERVICE_ERROR", "message": str(e)}}
         )
+
+@router.post("/conversations/{conversation_id}/messages/stream", summary="Stream a Message")
+async def stream_message(
+    conversation_id: UUID,
+    request: ConversationMessageRequest,
+    user: User = Depends(get_current_user),
+    streaming_service: ConversationStreamingService = Depends(get_conversation_streaming_service),
+):
+    """
+    Streams the assistant's response to the conversation.
+    """
+    return StreamingResponse(
+        streaming_service.stream_message(user_id=user.id, conversation_id=conversation_id, request=request),
+        media_type="text/event-stream"
+    )

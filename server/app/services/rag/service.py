@@ -1,6 +1,7 @@
 """
 Provider-independent RAG Generation Service.
 """
+from typing import AsyncGenerator
 from app.services.llm.provider import LLMProvider
 from app.services.rag.models import RAGRequest, RAGResponse
 from app.services.rag.prompt import PromptBuilder
@@ -34,3 +35,18 @@ class RAGService:
             answer=answer,
             context_items=tuple(request.context.items)
         )
+
+    async def stream_answer_query(self, request: RAGRequest) -> AsyncGenerator[str, None]:
+        """
+        Streams generated chunks from the context using the LLM provider.
+        
+        Raises LLMError (TransientLLMError, PermanentLLMError) if the provider chain fails.
+        """
+        prompt, system_instruction = self.prompt_builder.build(request)
+        
+        # Invoke the LLM provider exactly matching its Protocol
+        async for chunk in self.llm_provider.stream(
+            prompt=prompt,
+            system_instruction=system_instruction
+        ):
+            yield chunk

@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Protocol, AsyncGenerator
 
 class LLMProvider(Protocol):
     async def generate(
@@ -19,5 +19,13 @@ class LLMProvider(Protocol):
         Raises:
             TransientLLMError: For temporary/fallback-eligible errors.
             PermanentLLMError: For fatal/non-fallback errors.
+        """
+    async def stream(
+        self,
+        prompt: str,
+        system_instruction: str | None = None,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Stream generated text from the LLM provider.
         """
         ...

@@ -1,3 +1,4 @@
+from typing import AsyncGenerator
 from google import genai
 from google.genai.errors import APIError
 
@@ -73,3 +74,41 @@ class GeminiLLMProvider(LLMProvider):
             if "timeout" in error_str or "network" in error_str or "connection" in error_str:
                 raise TransientLLMError(f"Gemini network or timeout error: {str(e)}") from e
             raise PermanentLLMError(f"Gemini unknown generation error: {str(e)}") from e
+
+    async def stream(self, prompt: str, system_instruction: str | None = None) -> AsyncGenerator[str, None]:
+        try:
+            config = None
+            if system_instruction:
+                config = genai.types.GenerateContentConfig(
+                    system_instruction=system_instruction
+                )
+                
+            response_stream = await self.client.aio.models.generate_content_stream(
+                model=self.model,
+                contents=prompt,
+                config=config,
+            )
+            
+            async for chunk in response_stream:
+                if chunk.text:
+                    yield chunk.text
+                    
+        except APIError as e:
+            status_code = getattr(e, "code", getattr(e, "status_code", None))
+            if status_code in (429, 500, 502, 503, 504):
+                raise TransientLLMError(f"Gemini transient API error {status_code}") from e
+            error_message = str(e).lower()
+            if status_code == 404 and "not found" in error_message:
+                raise ProviderUnavailableError(f"Model {self.model} not found or unavailable") from e
+            if "unavailable" in error_message or "overloaded" in error_message or "capacity" in error_message:
+                raise TransientLLMError(f"Gemini temporarily unavailable: {str(e)}") from e
+            raise PermanentLLMError(f"Gemini permanent API error {status_code}: {str(e)}") from e
+        except TransientLLMError:
+            raise
+        except PermanentLLMError:
+            raise
+        except Exception as e:
+            error_str = str(e).lower()
+            if "timeout" in error_str or "network" in error_str or "connection" in error_str:
+                raise TransientLLMError(f"Gemini network or timeout error: {str(e)}") from e
+            raise PermanentLLMError(f"Gemini unknown stream error: {str(e)}") from e

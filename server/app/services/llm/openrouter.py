@@ -1,4 +1,6 @@
 import httpx
+import json
+from typing import AsyncGenerator
 
 from app.services.llm.exceptions import (
     LLMError,
@@ -73,3 +75,69 @@ class OpenRouterLLMProvider(LLMProvider):
             raise TransientLLMError(f"OpenRouter network error: {str(e)}") from e
         except Exception as e:
             raise PermanentLLMError(f"OpenRouter unknown error: {str(e)}") from e
+
+    async def stream(self, prompt: str, system_instruction: str | None = None) -> AsyncGenerator[str, None]:
+        messages = []
+        if system_instruction:
+            messages.append({"role": "system", "content": system_instruction})
+        messages.append({"role": "user", "content": prompt})
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "HTTP-Referer": "http://localhost:8000",
+            "X-Title": "Codebase Intelligence",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": True
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                async with client.stream(
+                    "POST",
+                    self.base_url,
+                    json=payload,
+                    headers=headers,
+                    timeout=httpx.Timeout(60.0)
+                ) as response:
+                    
+                    if response.status_code in (429, 500, 502, 503, 504):
+                        raise TransientLLMError(f"OpenRouter transient error {response.status_code}")
+                    if response.status_code == 404:
+                        raise ProviderUnavailableError(f"OpenRouter model {self.model} unavailable (404)")
+                    if not response.is_success:
+                        error_text = await response.aread()
+                        raise PermanentLLMError(f"OpenRouter permanent error {response.status_code}: {error_text.decode('utf-8')}")
+
+                    async for line in response.aiter_lines():
+                        if not line:
+                            continue
+                        if line.startswith("data: "):
+                            data_str = line[6:]
+                            if data_str == "[DONE]":
+                                break
+                            try:
+                                data = json.loads(data_str)
+                                choices = data.get("choices", [])
+                                if choices:
+                                    delta = choices[0].get("delta", {})
+                                    content = delta.get("content")
+                                    if content:
+                                        yield content
+                            except json.JSONDecodeError:
+                                pass
+
+        except TransientLLMError:
+            raise
+        except PermanentLLMError:
+            raise
+        except httpx.TimeoutException as e:
+            raise TransientLLMError(f"OpenRouter timeout: {str(e)}") from e
+        except httpx.NetworkError as e:
+            raise TransientLLMError(f"OpenRouter network error: {str(e)}") from e
+        except Exception as e:
+            raise PermanentLLMError(f"OpenRouter unknown stream error: {str(e)}") from e

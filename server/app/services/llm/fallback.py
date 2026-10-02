@@ -43,3 +43,31 @@ class FallbackLLMProvider(LLMProvider):
             raise last_exception
             
         raise LLMError("Unknown error occurred, all providers failed without capturing an exception")
+
+    async def stream(self, prompt: str, system_instruction: str | None = None):
+        last_exception = None
+        
+        for idx, provider in enumerate(self.providers):
+            try:
+                async for chunk in provider.stream(prompt, system_instruction):
+                    yield chunk
+                return
+                
+            except TransientLLMError as e:
+                provider_type = type(provider).__name__
+                model_name = getattr(provider, "model", "unknown")
+                logger.warning(
+                    f"LLM provider stream failed transiently; attempting next provider. "
+                    f"Provider: {provider_type}, Model: {model_name}, "
+                    f"Position: {idx}, Error: {e.__class__.__name__}"
+                )
+                last_exception = e
+                continue
+                
+            except PermanentLLMError:
+                raise
+
+        if last_exception:
+            raise last_exception
+            
+        raise LLMError("Unknown error occurred, all providers failed without capturing an exception")
