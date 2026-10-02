@@ -3,7 +3,12 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.api.deps import get_db, get_current_user, get_authorized_repository
+from app.api.deps import (
+    get_db,
+    get_current_user,
+    get_authorized_repository,
+)
+from app.core.rate_limit import general_rate_limiter, rag_rate_limiter, stream_rate_limiter
 from app.models.user import User
 from app.models.repository import Repository
 from app.repositories.conversation import ConversationRepository
@@ -138,6 +143,7 @@ def create_conversation(
     repository: Repository = Depends(get_authorized_repository),
     user: User = Depends(get_current_user),
     conversation_service: ConversationService = Depends(get_conversation_service),
+    _: None = Depends(general_rate_limiter),
 ):
     try:
         conversation = conversation_service.create_conversation(
@@ -160,6 +166,7 @@ def list_conversations(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     conversation_service: ConversationService = Depends(get_conversation_service),
+    _: None = Depends(general_rate_limiter),
 ):
     skip = (page - 1) * limit
     items, total = conversation_service.list_conversations(
@@ -180,6 +187,7 @@ def get_conversation(
     conversation_id: UUID,
     user: User = Depends(get_current_user),
     conversation_service: ConversationService = Depends(get_conversation_service),
+    _: None = Depends(general_rate_limiter),
 ):
     try:
         conversation = conversation_service.get_conversation(conversation_id, user.id)
@@ -196,6 +204,7 @@ def delete_conversation(
     conversation_id: UUID,
     user: User = Depends(get_current_user),
     conversation_service: ConversationService = Depends(get_conversation_service),
+    _: None = Depends(general_rate_limiter),
 ):
     try:
         conversation_service.delete_conversation(conversation_id, user.id)
@@ -213,6 +222,7 @@ def list_messages(
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=100),
     conversation_service: ConversationService = Depends(get_conversation_service),
+    _: None = Depends(general_rate_limiter),
 ):
     try:
         skip = (page - 1) * limit
@@ -239,6 +249,7 @@ async def send_message(
     request: ConversationMessageRequest,
     user: User = Depends(get_current_user),
     message_service: ConversationMessageService = Depends(get_conversation_message_service),
+    _: None = Depends(rag_rate_limiter),
 ):
     try:
         response = await message_service.send_message(
@@ -289,6 +300,7 @@ async def stream_message(
     request: ConversationMessageRequest,
     user: User = Depends(get_current_user),
     streaming_service: ConversationStreamingService = Depends(get_conversation_streaming_service),
+    _: None = Depends(stream_rate_limiter),
 ):
     """
     Streams the assistant's response to the conversation.

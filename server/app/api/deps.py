@@ -10,7 +10,6 @@ from app.core.redis import get_redis_client
 from app.models.user import User
 from app.models.repository import Repository
 from app.repositories.repository import RepositoryRepository
-
 # Exception handling for auth to match ERROR_CONTRACT.md
 class AuthException(Exception):
     def __init__(self, code: str, message: str, status_code: int = 401):

@@ -3,7 +3,12 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.api.deps import get_db, get_current_user, get_authorized_repository
+from app.api.deps import (
+    get_db,
+    get_current_user,
+    get_authorized_repository,
+)
+from app.core.rate_limit import general_rate_limiter, rag_rate_limiter
 from app.models.user import User
 from app.models.repository import Repository
 from app.repositories.repository import RepositoryRepository
@@ -66,7 +71,7 @@ def get_repositories(
     search: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Retrieves a paginated list of repositories the authenticated user has access to."""
     repo_repo = RepositoryRepository(db)
     items, total = repo_repo.list_for_user(
@@ -89,7 +94,7 @@ async def connect_repository(
     request: RepositoryCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Connects a GitHub repository for the authenticated user."""
     github_account = current_user.github_accounts[0] if current_user.github_accounts else None
     
@@ -163,7 +168,7 @@ def get_repository(
     repository_id: UUID,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Retrieves details of a specific repository the user has access to."""
     repo_repo = RepositoryRepository(db)
     version = repo_repo.get_latest_version(repository.id)
@@ -185,7 +190,7 @@ def get_repository_versions(
     repository_id: UUID,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Retrieve all versions of a specific repository the user has access to."""
     repo_repo = RepositoryRepository(db)
     versions = repo_repo.get_versions_for_repository(repository.id)
@@ -196,7 +201,7 @@ def get_repository_files(
     repository_id: UUID,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Retrieve the files belonging to the active version of a repository."""
     repo_repo = RepositoryRepository(db)
     active_version = repo_repo.get_active_version(repository.id)
@@ -223,7 +228,7 @@ def get_repository_file_content(
     file_id: UUID,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Retrieve a single file and its content belonging to the active version of a repository."""
     repo_repo = RepositoryRepository(db)
     active_version = repo_repo.get_active_version(repository.id)
@@ -269,7 +274,7 @@ def search_repository(
     request: SearchRequest,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """
     Executes a search against a specific RepositoryVersion.
     Currently implements a deterministic literal keyword search.
@@ -364,7 +369,7 @@ def get_active_repository_version(
     repository_id: UUID,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Retrieve the currently active (successfully indexed) version of a repository."""
     repo_repo = RepositoryRepository(db)
     active_version = repo_repo.get_active_version(repository.id)
@@ -387,7 +392,7 @@ def get_repository_overview(
     repository_id: UUID,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Retrieve the overview analysis for the active version of a repository."""
     repo_repo = RepositoryRepository(db)
     active_version = repo_repo.get_active_version(repository.id)
@@ -424,7 +429,7 @@ def get_repository_technology_stack(
     repository_id: UUID,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Retrieve the technology stack analysis for the active version of a repository."""
     repo_repo = RepositoryRepository(db)
     active_version = repo_repo.get_active_version(repository.id)
@@ -462,7 +467,7 @@ def get_repository_architecture(
     repository_id: UUID,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Retrieve the architecture analysis for the active version of a repository."""
     repo_repo = RepositoryRepository(db)
     active_version = repo_repo.get_active_version(repository.id)
@@ -502,7 +507,7 @@ async def analyze_repository(
     current_user: User = Depends(get_current_user),
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Queues a background job to analyze the repository."""
     github_account = current_user.github_accounts[0] if current_user.github_accounts else None
     
@@ -597,7 +602,7 @@ def get_index_jobs(
     repository_id: UUID,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Retrieve all indexing jobs for a repository."""
     repo_repo = RepositoryRepository(db)
     jobs = repo_repo.get_jobs_for_repository(repository.id)
@@ -610,7 +615,7 @@ def get_index_job(
     job_id: UUID,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(general_rate_limiter),):
     """Retrieve the status of a specific indexing job."""
     repo_repo = RepositoryRepository(db)
     job = repo_repo.get_job_by_id(job_id)
@@ -634,7 +639,7 @@ async def query_repository(
     request: RAGQueryRequestSchema,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-):
+    _: None = Depends(rag_rate_limiter),):
     """
     Executes a RAG query against a specific repository.
     """

@@ -23,6 +23,7 @@ from app.api.deps import AuthException, NotFoundException
 from fastapi.responses import JSONResponse
 from fastapi import Request
 import logging
+import time
 
 from app.core.logging import setup_logging
 from app.api.middleware.observability import ObservabilityMiddleware
@@ -75,6 +76,28 @@ async def not_found_exception_handler(request: Request, exc: NotFoundException):
                 "message": exc.message
             }
         }
+    )
+
+from app.core.rate_limit import RateLimitException, RateLimitInfrastructureException
+
+@app.exception_handler(RateLimitException)
+async def rate_limit_exception_handler(request: Request, exc: RateLimitException):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": exc.message, "code": "RATE_LIMIT_EXCEEDED"},
+        headers={
+            "Retry-After": str(exc.reset),
+            "X-RateLimit-Limit": str(exc.limit),
+            "X-RateLimit-Remaining": str(exc.remaining),
+            "X-RateLimit-Reset": str(int(time.time() + exc.reset))
+        }
+    )
+
+@app.exception_handler(RateLimitInfrastructureException)
+async def rate_limit_infra_exception_handler(request: Request, exc: RateLimitInfrastructureException):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": exc.message, "code": "SERVICE_UNAVAILABLE"}
     )
 
 @app.exception_handler(Exception)

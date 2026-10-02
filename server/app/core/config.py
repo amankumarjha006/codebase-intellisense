@@ -62,6 +62,18 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"
     REQUEST_ID_HEADER: str = "X-Request-ID"
+    
+    # Rate Limiting Configuration
+    RATE_LIMIT_ENABLED: bool = True
+    
+    RATE_LIMIT_GENERAL_REQUESTS: int = 120
+    RATE_LIMIT_GENERAL_WINDOW_SECONDS: int = 60
+    
+    RATE_LIMIT_RAG_REQUESTS: int = 20
+    RATE_LIMIT_RAG_WINDOW_SECONDS: int = 60
+    
+    RATE_LIMIT_STREAM_REQUESTS: int = 10
+    RATE_LIMIT_STREAM_WINDOW_SECONDS: int = 60
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE_PATH),
