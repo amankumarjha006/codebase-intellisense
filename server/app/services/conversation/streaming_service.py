@@ -5,6 +5,8 @@ from uuid import UUID
 from typing import AsyncGenerator
 import redis.asyncio as redis
 
+from app.core.retry import RetryExecutor
+
 from app.models.conversation import Message, Citation
 from app.repositories.conversation import ConversationRepository
 from app.repositories.message import MessageRepository
@@ -107,12 +109,16 @@ class ConversationStreamingService:
                 for m in all_msgs if m.id != user_msg.id
             ]
 
-            # 5. Rewrite query
+            retry_executor = RetryExecutor(max_retries=2, initial_backoff=1.0)
+            
+            # 5. Rewrite query (with retries)
             rewrite_req = ConversationContextRequest(
                 current_query=request.content,
                 history=history
             )
-            rewrite_res = await self.query_rewriter.rewrite(rewrite_req)
+            rewrite_res = await retry_executor.execute(
+                lambda: self.query_rewriter.rewrite(rewrite_req)
+            )
             retrieval_query = rewrite_res.query
 
             # 6. Retrieve
@@ -137,9 +143,23 @@ class ConversationStreamingService:
                 context=assembled_context
             )
             
-            stream_generator = self.rag_service.stream_answer_query(rag_req)
+            async def get_stream_and_first_chunk():
+                stream_generator = self.rag_service.stream_answer_query(rag_req)
+                try:
+                    first_chunk = await stream_generator.__anext__()
+                except StopAsyncIteration:
+                    first_chunk = ""
+                return stream_generator, first_chunk
+                
+            stream_generator, first_chunk = await retry_executor.execute(get_stream_and_first_chunk)
             
             full_answer = []
+            if first_chunk:
+                full_answer.append(first_chunk)
+                yield self._format_sse("token", {"text": first_chunk})
+
+            # For subsequent chunks, we are past the point of safe retries.
+            # If a TransientLLMError occurs here, it will bubble up and emit an SSE error.
             async for chunk in stream_generator:
                 full_answer.append(chunk)
                 yield self._format_sse("token", {"text": chunk})

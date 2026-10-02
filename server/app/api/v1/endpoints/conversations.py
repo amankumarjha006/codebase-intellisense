@@ -252,6 +252,11 @@ async def send_message(
             status_code=404,
             content={"error": {"code": "NOT_FOUND", "message": str(e)}}
         )
+    except TransientLLMError as e:
+        return JSONResponse(
+            status_code=503,
+            content={"error": {"code": "UPSTREAM_SERVICE_UNAVAILABLE", "message": str(e)}}
+        )
     except InvalidQueryError as e:
         return JSONResponse(
             status_code=400,

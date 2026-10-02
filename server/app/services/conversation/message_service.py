@@ -7,6 +7,7 @@ from app.services.rag_query.service import RAGQueryService
 from app.services.rag_query.models import RAGQueryRequest
 from app.services.conversation.exceptions import ConversationNotFoundError
 from app.schemas.message import ConversationMessageRequest, ConversationMessageResponse, MessageOutWithCitations, MessageCitationOut
+from app.core.retry import RetryExecutor
 
 class ConversationMessageService:
     def __init__(
@@ -45,7 +46,12 @@ class ConversationMessageService:
             query=request.content,
             repository_version_id=conversation.repository_version_id
         )
-        rag_response = await self.rag_query_service.execute(rag_request)
+        
+        # Use RetryExecutor to handle transient upstream failures
+        retry_executor = RetryExecutor(max_retries=2, initial_backoff=1.0)
+        rag_response = await retry_executor.execute(
+            lambda: self.rag_query_service.execute(rag_request)
+        )
 
         # 4. Persist the assistant message and citations (Transaction 2)
         assistant_msg = Message(
