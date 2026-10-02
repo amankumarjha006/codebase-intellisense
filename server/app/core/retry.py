@@ -40,7 +40,11 @@ class RetryExecutor:
             except TransientLLMError as e:
                 attempt += 1
                 if attempt > self.max_retries:
-                    logger.error(f"Max retries ({self.max_retries}) exceeded for TransientLLMError. Final error: {str(e)}")
+                    logger.error("llm_retry_exhausted", extra={
+                        "operation": "rag_generation",
+                        "error_type": "TransientLLMError",
+                        "final_error": str(e)
+                    })
                     raise
 
                 # Add jitter (0 to 1 * current_backoff)
@@ -48,7 +52,12 @@ class RetryExecutor:
                 # Cap the sleep time
                 sleep_time = min(sleep_time, self.max_backoff)
                 
-                logger.warning(f"Transient failure detected (attempt {attempt}/{self.max_retries}). Retrying in {sleep_time:.2f}s... Error: {str(e)}")
+                logger.warning("llm_retry", extra={
+                    "operation": "rag_generation",
+                    "attempt": attempt,
+                    "error_type": type(e).__name__,
+                    "delay_ms": round(sleep_time * 1000)
+                })
                 await asyncio.sleep(sleep_time)
                 
                 # Exponentially increase the base backoff for next time

@@ -318,8 +318,11 @@ def test_19_api_keys_not_in_logs(caplog, mock_genai_client):
     
     assert "SUPER_SECRET_KEY" not in caplog.text
     assert "OTHER_SECRET_KEY" not in caplog.text
-    assert "m1" in caplog.text
-    assert "GeminiLLMProvider" in caplog.text
+    
+    record = next((r for r in caplog.records if r.message == "llm_operation"), None)
+    assert record is not None
+    assert getattr(record, "model", None) == "m1"
+    assert getattr(record, "provider", None) == "GeminiLLMProvider"
 
 def test_20_api_keys_not_in_exceptions(mock_genai_client):
     provider1 = GeminiLLMProvider(api_key="SUPER_SECRET_KEY_123", model="m1")

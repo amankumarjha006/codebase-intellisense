@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     GEMINI_LLM_MODEL_FALLBACK_2: str = "gemini-3.6-flash"
     OPENROUTER_API_KEY: Optional[str] = None
     OPENROUTER_FALLBACK_MODEL: str = "openrouter/free"
+    
+    # Observability Configuration
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "json"
+    REQUEST_ID_HEADER: str = "X-Request-ID"
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE_PATH),

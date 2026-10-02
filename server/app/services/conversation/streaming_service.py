@@ -64,16 +64,35 @@ class ConversationStreamingService:
         request: ConversationMessageRequest
     ) -> AsyncGenerator[str, None]:
         
+        import time
+        stream_start_time = time.perf_counter()
+        
+        logger.info("stream_started", extra={
+            "conversation_id": str(conversation_id),
+            "user_id": str(user_id)
+        })
+
         lock_key = f"conv_lock:{conversation_id}"
         lock_token = str(uuid.uuid4())
         lock_acquired = False
+        
+        logger.debug("conversation_lock_attempt", extra={
+            "conversation_id": str(conversation_id)
+        })
 
         try:
             # 1. Acquire Lock securely
             lock_acquired = await self.redis_client.set(lock_key, lock_token, nx=True, ex=60)
             if not lock_acquired:
+                logger.warning("conversation_lock_contended", extra={
+                    "conversation_id": str(conversation_id)
+                })
                 yield self._format_sse("error", {"code": "CONVERSATION_GENERATION_IN_PROGRESS", "message": "A response is currently being generated for this conversation."})
                 return
+                
+            logger.debug("conversation_lock_acquired", extra={
+                "conversation_id": str(conversation_id)
+            })
 
             # 2. Validate Conversation
             conversation = self.conversation_repo.get_for_user(conversation_id, user_id)
@@ -116,18 +135,32 @@ class ConversationStreamingService:
                 current_query=request.content,
                 history=history
             )
+            
+            rewrite_start = time.perf_counter()
             rewrite_res = await retry_executor.execute(
                 lambda: self.query_rewriter.rewrite(rewrite_req)
             )
             retrieval_query = rewrite_res.query
+            
+            logger.info("rag_query_rewritten", extra={
+                "duration_ms": round((time.perf_counter() - rewrite_start) * 1000, 2),
+                "conversation_id": str(conversation_id)
+            })
 
             # 6. Retrieve
+            retrieval_start = time.perf_counter()
             retrieval_req = RetrievalRequest(
                 repository_version_id=version_id,
                 query=retrieval_query,
                 limit=10  # use default or config
             )
             retrieval_results = self.retrieval_service.search(retrieval_req)
+            
+            logger.info("rag_retrieval", extra={
+                "duration_ms": round((time.perf_counter() - retrieval_start) * 1000, 2),
+                "count": len(retrieval_results.chunks),
+                "conversation_id": str(conversation_id)
+            })
 
             # 7. Context Builder
             context_req = ContextRequest(
@@ -157,6 +190,12 @@ class ConversationStreamingService:
             if first_chunk:
                 full_answer.append(first_chunk)
                 yield self._format_sse("token", {"text": first_chunk})
+                
+                first_token_latency = round((time.perf_counter() - stream_start_time) * 1000, 2)
+                logger.info("stream_first_token", extra={
+                    "conversation_id": str(conversation_id),
+                    "first_token_latency_ms": first_token_latency
+                })
 
             # For subsequent chunks, we are past the point of safe retries.
             # If a TransientLLMError occurs here, it will bubble up and emit an SSE error.
@@ -214,13 +253,20 @@ class ConversationStreamingService:
                 "conversation_id": str(conversation.id),
                 "repository_version_id": str(version_id)
             })
+            
+            logger.info("stream_completed", extra={
+                "conversation_id": str(conversation_id),
+                "duration_ms": round((time.perf_counter() - stream_start_time) * 1000, 2)
+            })
 
         except TransientLLMError as e:
+            logger.warning("stream_failed", extra={"conversation_id": str(conversation_id), "error_type": type(e).__name__})
             yield self._format_sse("error", {"code": "UPSTREAM_SERVICE_UNAVAILABLE", "message": str(e)})
         except PermanentLLMError as e:
+            logger.error("stream_failed", extra={"conversation_id": str(conversation_id), "error_type": type(e).__name__})
             yield self._format_sse("error", {"code": "UPSTREAM_SERVICE_ERROR", "message": str(e)})
         except Exception as e:
-            logger.exception("Streaming generation failed")
+            logger.exception("Streaming generation failed", extra={"conversation_id": str(conversation_id), "error_type": type(e).__name__})
             yield self._format_sse("error", {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred during generation."})
         finally:
             if lock_acquired:
@@ -232,7 +278,16 @@ class ConversationStreamingService:
                     return 0
                 end
                 """
-                await self.redis_client.eval(lua_script, 1, lock_key, lock_token)
+                released = await self.redis_client.eval(lua_script, 1, lock_key, lock_token)
+                if not released:
+                    logger.warning("conversation_lock_expiration", extra={
+                        "conversation_id": str(conversation_id),
+                        "message": "Lock expired before generation completed"
+                    })
+                else:
+                    logger.debug("conversation_lock_released", extra={
+                        "conversation_id": str(conversation_id)
+                    })
 
     def _format_sse(self, event: str, data: dict) -> str:
         return f"event: {event}\ndata: {json.dumps(data)}\n\n"

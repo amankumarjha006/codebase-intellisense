@@ -62,6 +62,10 @@ async def test_stream_message_success(service, mocks):
 
     mocks["query_rewriter"].rewrite.return_value = RewrittenQueryResponse(query="test", was_rewritten=False)
     
+    mock_retrieval_res = Mock()
+    mock_retrieval_res.chunks = []
+    mocks["retrieval_service"].search.return_value = mock_retrieval_res
+    
     mock_context = Mock()
     mock_context.items = []
     mocks["context_builder"].build.return_value = mock_context

@@ -48,7 +48,7 @@ async def github_callback(
     state_value = await redis_client.getdel(state_key)
     
     if not state_value:
-        logger.warning("Invalid or expired OAuth state token.")
+        logger.warning("authentication_failure", extra={"reason": "invalid_oauth_state"})
         # According to ERROR_CONTRACT, 400 Bad Request
         return JSONResponse(
             status_code=400,
@@ -108,9 +108,12 @@ async def github_callback(
             secure=(settings.ENVIRONMENT == "production"),
             samesite="lax",  # Adjust based on exact frontend/backend domain structure
         )
+        
+        logger.info("authentication_success", extra={"user_id": str(user.id)})
         return redirect_response
 
     except GithubAuthError as e:
+        logger.warning("authentication_failure", extra={"reason": str(e)})
         db.rollback()
         return JSONResponse(
             status_code=502,
