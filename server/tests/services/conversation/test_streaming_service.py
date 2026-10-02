@@ -61,11 +61,7 @@ async def test_stream_message_success(service, mocks):
     mocks["message_repo"].list_for_conversation.return_value = ([], 0)
 
     mocks["query_rewriter"].rewrite.return_value = RewrittenQueryResponse(query="test", was_rewritten=False)
-    
-    mock_retrieval_res = Mock()
-    mock_retrieval_res.chunks = []
-    mocks["retrieval_service"].search.return_value = mock_retrieval_res
-    
+    mocks["retrieval_service"].search.return_value = []
     mock_context = Mock()
     mock_context.items = []
     mocks["context_builder"].build.return_value = mock_context
@@ -115,3 +111,53 @@ async def test_stream_message_concurrent(service, mocks):
     assert len(events) == 1
     assert "error" in events[0]
     assert "CONVERSATION_GENERATION_IN_PROGRESS" in events[0]
+
+@pytest.mark.asyncio
+async def test_stream_message_cancellation(service, mocks):
+    user_id = uuid4()
+    conv_id = uuid4()
+    req = ConversationMessageRequest(content="hello")
+    
+    mocks["redis_client"].set.return_value = True
+    
+    mock_conv = Mock(spec=Conversation)
+    mock_conv.id = conv_id
+    mock_conv.repository_version_id = uuid4()
+    mocks["conversation_repo"].get_for_user.return_value = mock_conv
+    
+    mock_version = Mock()
+    mock_version.index_status = "SUCCESS"
+    mocks["repository_repo"].get_version_by_id.return_value = mock_version
+    
+    mock_msg = Mock(spec=Message)
+    mock_msg.id = uuid4()
+    mocks["message_repo"].create.return_value = mock_msg
+    mocks["message_repo"].list_for_conversation.return_value = ([], 0)
+    
+    mocks["query_rewriter"].rewrite.return_value = RewrittenQueryResponse(query="hello", was_rewritten=True)
+    
+    mocks["retrieval_service"].search.return_value = []
+    
+    mock_context = Mock()
+    mock_context.items = []
+    mocks["context_builder"].build.return_value = mock_context
+    
+    # We want to raise asyncio.CancelledError inside the generator
+    import asyncio
+    async def mock_stream(*args, **kwargs):
+        yield "start"
+        raise asyncio.CancelledError()
+        
+    mocks["rag_service"].stream_answer_query = mock_stream
+    
+    generator = service.stream_message(user_id, conv_id, req)
+    
+    with pytest.raises(asyncio.CancelledError):
+        async for chunk in generator:
+            pass
+            
+    # Assert lock was acquired
+    mocks["redis_client"].set.assert_called_once()
+    
+    # Assert lock was released via eval (since it was shielded)
+    mocks["redis_client"].eval.assert_called_once()

@@ -1,6 +1,7 @@
 import json
 import logging
 import uuid
+import asyncio
 from uuid import UUID
 from typing import AsyncGenerator
 import redis.asyncio as redis
@@ -158,7 +159,7 @@ class ConversationStreamingService:
             
             logger.info("rag_retrieval", extra={
                 "duration_ms": round((time.perf_counter() - retrieval_start) * 1000, 2),
-                "count": len(retrieval_results.chunks),
+                "count": len(retrieval_results),
                 "conversation_id": str(conversation_id)
             })
 
@@ -265,29 +266,43 @@ class ConversationStreamingService:
         except PermanentLLMError as e:
             logger.error("stream_failed", extra={"conversation_id": str(conversation_id), "error_type": type(e).__name__})
             yield self._format_sse("error", {"code": "UPSTREAM_SERVICE_ERROR", "message": str(e)})
+        except asyncio.CancelledError:
+            logger.info("stream_cancelled", extra={
+                "conversation_id": str(conversation_id),
+                "duration_ms": round((time.perf_counter() - stream_start_time) * 1000, 2)
+            })
+            raise
         except Exception as e:
             logger.exception("Streaming generation failed", extra={"conversation_id": str(conversation_id), "error_type": type(e).__name__})
             yield self._format_sse("error", {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred during generation."})
         finally:
             if lock_acquired:
-                # Safe lock release using Lua script
-                lua_script = """
-                if redis.call("get", KEYS[1]) == ARGV[1] then
-                    return redis.call("del", KEYS[1])
-                else
-                    return 0
-                end
-                """
-                released = await self.redis_client.eval(lua_script, 1, lock_key, lock_token)
-                if not released:
-                    logger.warning("conversation_lock_expiration", extra={
-                        "conversation_id": str(conversation_id),
-                        "message": "Lock expired before generation completed"
-                    })
-                else:
-                    logger.debug("conversation_lock_released", extra={
-                        "conversation_id": str(conversation_id)
-                    })
+                import anyio
+                with anyio.CancelScope(shield=True):
+                    # Safe lock release using Lua script
+                    lua_script = """
+                    if redis.call("get", KEYS[1]) == ARGV[1] then
+                        return redis.call("del", KEYS[1])
+                    else
+                        return 0
+                    end
+                    """
+                    try:
+                        released = await self.redis_client.eval(lua_script, 1, lock_key, lock_token)
+                        if not released:
+                            logger.warning("conversation_lock_expiration", extra={
+                                "conversation_id": str(conversation_id),
+                                "message": "Lock expired before generation completed"
+                            })
+                        else:
+                            logger.debug("conversation_lock_released", extra={
+                                "conversation_id": str(conversation_id)
+                            })
+                    except Exception as e:
+                        logger.error("conversation_lock_release_failed", extra={
+                            "conversation_id": str(conversation_id),
+                            "error": str(e)
+                        })
 
     def _format_sse(self, event: str, data: dict) -> str:
         return f"event: {event}\ndata: {json.dumps(data)}\n\n"
