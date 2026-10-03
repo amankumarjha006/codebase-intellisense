@@ -1,6 +1,4 @@
-'use client';
-
-import Navigation from '@/components/Navigation';
+import { AppShell } from '@/components/layout/AppShell';
 
 export default function RepositoriesLayout({
   children,
@@ -8,11 +6,14 @@ export default function RepositoriesLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation />
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <AppShell>
+      {/* 
+        This layout wraps the repositories dashboard and individual repositories.
+        The AppShell internally handles the sidebar, header, and main scroll area.
+      */}
+      <div className="max-w-7xl mx-auto w-full h-full">
         {children}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

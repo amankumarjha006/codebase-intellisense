@@ -39,34 +39,42 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-500">Checking authentication...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-muted-foreground animate-pulse">Checking authentication...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-lg shadow-sm">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
+      
+      {/* Brand/Logo Placeholder could go here */}
+      <div className="mb-8 w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center border border-primary/30">
+        <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+        </svg>
+      </div>
+
+      <div className="max-w-md w-full space-y-6 bg-card p-10 rounded-xl border border-border shadow-sm">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-2 text-center text-3xl font-semibold tracking-tight text-foreground">
             Codebase Intellisense
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-3 text-center text-sm text-muted-foreground">
             Connect your GitHub account to continue.
           </p>
         </div>
         
         {error && (
-          <div className="bg-red-50 p-4 rounded-md">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="bg-destructive/10 p-4 rounded-md border border-destructive/20">
+            <p className="text-sm text-destructive font-medium text-center">{error}</p>
           </div>
         )}
 
-        <div>
+        <div className="pt-2">
           <button
             onClick={handleLogin}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
+            className="group relative w-full flex justify-center items-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-md text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring focus:ring-offset-background transition-colors"
           >
             Connect GitHub
           </button>
