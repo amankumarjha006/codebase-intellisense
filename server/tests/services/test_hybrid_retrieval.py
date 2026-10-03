@@ -11,10 +11,17 @@ class FakeRetrievalStrategy(RetrievalStrategy):
         self.results = results
         self.error = error
         self.last_request = None
+        self.pre_embed_called_with = None
 
-    def retrieve(self, request: RetrievalRequest) -> List[RetrievalResult]:
+    def pre_embed(self, query: str) -> list[float]:
+        self.pre_embed_called_with = query
+        if self.error and isinstance(self.error, EmbeddingError):
+            raise self.error
+        return [0.1, 0.2, 0.3]
+
+    def retrieve(self, request: RetrievalRequest, *, query_vector: list[float] | None = None) -> List[RetrievalResult]:
         self.last_request = request
-        if self.error:
+        if self.error and not isinstance(self.error, EmbeddingError):
             raise self.error
         return self.results
 

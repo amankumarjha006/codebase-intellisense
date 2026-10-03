@@ -129,6 +129,20 @@ class ConversationStreamingService:
                 for m in all_msgs if m.id != user_msg.id
             ]
 
+            # Capture plain values before releasing the DB connection.
+            # After session.close(), ORM objects are detached and cannot
+            # lazily load attributes.
+            conv_id = conversation.id
+            conv_version_id = version_id
+
+            # Release the DB connection so pool.checkedout() == 0
+            # during the upcoming network calls (rewriter, embedding,
+            # LLM stream).  The Session stays valid; the next DB
+            # operation lazily re-acquires a connection.
+            db = getattr(self.message_repo, "db", None)
+            if db:
+                db.close()
+
             retry_executor = RetryExecutor(max_retries=2, initial_backoff=1.0)
             
             # 5. Rewrite query (with retries)
@@ -162,6 +176,12 @@ class ConversationStreamingService:
                 "count": len(retrieval_results),
                 "conversation_id": str(conversation_id)
             })
+
+            # Release DB connection again after retrieval SQL.
+            # Retrieval results are plain Pydantic DTOs — safe to use
+            # after close.
+            if db:
+                db.close()
 
             # 7. Context Builder
             context_req = ContextRequest(
@@ -221,8 +241,9 @@ class ConversationStreamingService:
             answer_res = self.answer_service.assemble(answer_req)
 
             # 11. Persist Assistant Message (TX2)
+            # The session lazily re-acquires a connection here.
             assistant_msg = Message(
-                conversation_id=conversation.id,
+                conversation_id=conv_id,
                 role="assistant",
                 content=answer_res.answer
             )
@@ -251,8 +272,8 @@ class ConversationStreamingService:
 
             yield self._format_sse("message_complete", {
                 "message_id": str(assistant_msg.id),
-                "conversation_id": str(conversation.id),
-                "repository_version_id": str(version_id)
+                "conversation_id": str(conv_id),
+                "repository_version_id": str(conv_version_id)
             })
             
             logger.info("stream_completed", extra={
