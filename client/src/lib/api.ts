@@ -57,28 +57,36 @@ async function fetchWrapper<T>(endpoint: string, options: RequestInit = {}): Pro
     ...options.headers,
   };
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000);
+
   const config: RequestInit = {
     ...options,
     headers,
     credentials: 'include',
+    signal: controller.signal,
   };
 
-  const response = await fetch(url, config);
-  
-  if (response.status === 204) {
-    return {} as T;
+  try {
+    const response = await fetch(url, config);
+    
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const errorData = data as BackendError;
+      const message = errorData?.error?.message || 'Unknown API error occurred';
+      const code = errorData?.error?.code || 'UNKNOWN_ERROR';
+      throw new ApiError(message, code);
+    }
+
+    return data as T;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    const errorData = data as BackendError;
-    const message = errorData?.error?.message || 'Unknown API error occurred';
-    const code = errorData?.error?.code || 'UNKNOWN_ERROR';
-    throw new ApiError(message, code);
-  }
-
-  return data as T;
 }
 
 export const api = {

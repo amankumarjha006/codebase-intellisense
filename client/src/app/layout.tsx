@@ -1,16 +1,7 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import "@fontsource-variable/google-sans-flex";
+import "@fontsource-variable/google-sans-code";
 import "./globals.css";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Codebase Intellisense",
@@ -25,7 +16,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased dark`}
+      className="h-full antialiased dark"
     >
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>

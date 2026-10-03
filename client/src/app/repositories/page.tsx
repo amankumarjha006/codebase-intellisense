@@ -114,7 +114,7 @@ export default function RepositoriesPage() {
                         {repo.owner} / {repo.name}
                       </div>
                       <div className="ml-2 flex-shrink-0 flex">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${repo.is_private ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+                        <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full border ${repo.is_private ? 'bg-surface border-border text-muted' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
                           {repo.is_private ? 'Private' : 'Public'}
                         </span>
                       </div>
