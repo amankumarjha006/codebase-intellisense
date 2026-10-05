@@ -408,7 +408,37 @@ class IndexingService:
         except Exception as e:
             logger.error(f"Indexing failed for job {job.id}: {e}")
             self.db.rollback()
-            self._update_job_status(job.id, "FAILED", str(e))
+
+            failure_code = "INTERNAL_ERROR"
+            if isinstance(e, GitError):
+                failure_code = "CLONE_FAILED"
+            else:
+                from app.services.embedding.exceptions import (
+                    EmbeddingProviderAuthError,
+                    EmbeddingProviderConnectionError,
+                    EmbeddingProviderError,
+                    EmbeddingProviderRateLimitError,
+                    EmbeddingProviderServerError,
+                    EmbeddingProviderTimeoutError,
+                )
+
+                provider_error = e.__cause__ if isinstance(e, EmbeddingError) and e.__cause__ else e
+                if isinstance(provider_error, EmbeddingProviderRateLimitError):
+                    failure_code = "EMBEDDING_PROVIDER_RATE_LIMITED"
+                elif isinstance(provider_error, EmbeddingProviderAuthError):
+                    failure_code = "EMBEDDING_PROVIDER_AUTH"
+                elif isinstance(
+                    provider_error,
+                    (
+                        EmbeddingProviderConnectionError,
+                        EmbeddingProviderTimeoutError,
+                        EmbeddingProviderServerError,
+                    ),
+                ):
+                    failure_code = "EMBEDDING_PROVIDER_UNAVAILABLE"
+                elif isinstance(provider_error, EmbeddingProviderError):
+                    failure_code = "INTERNAL_ERROR"
+            self._update_job_status(job.id, "FAILED", str(e), failure_code)
             version.index_status = "FAILED"
             self.db.commit()
             raise
@@ -447,7 +477,7 @@ class IndexingService:
         if repo_path and os.path.exists(repo_path):
             shutil.rmtree(repo_path, ignore_errors=True)
 
-    def _update_job_status(self, job_id: UUID, status: str, error_message: Optional[str] = None) -> None:
+    def _update_job_status(self, job_id: UUID, status: str, error_message: Optional[str] = None, failure_code: Optional[str] = None) -> None:
         """Update the index job status."""
         from datetime import datetime, timezone
 
@@ -455,6 +485,8 @@ class IndexingService:
         if job:
             job.status = status
             job.error_message = error_message
+            if failure_code is not None:
+                job.failure_code = failure_code
             if status in ("FETCHING", "INDEXING", "ANALYZING") and not job.started_at:
                 job.started_at = datetime.now(timezone.utc)
             if status in ("READY", "FAILED"):

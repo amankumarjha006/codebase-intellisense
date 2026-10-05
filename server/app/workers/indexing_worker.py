@@ -108,7 +108,7 @@ class IndexingWorker:
         finally:
             self.current_job_id = None
 
-    def _mark_job_failed(self, job_id: UUID, error_message: str) -> None:
+    def _mark_job_failed(self, job_id: UUID, error_message: str, failure_code: str = "INTERNAL_ERROR") -> None:
         """Mark a job as failed."""
         db = self._get_db()
         try:
@@ -118,6 +118,7 @@ class IndexingWorker:
                 from datetime import datetime, timezone
                 job.status = "FAILED"
                 job.error_message = error_message
+                job.failure_code = failure_code
                 job.completed_at = datetime.now(timezone.utc)
                 db.commit()
         except Exception as e:

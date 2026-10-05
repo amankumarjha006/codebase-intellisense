@@ -22,6 +22,7 @@ from app.services.github import GithubService
 from app.services.github_token import get_decrypted_token
 from app.schemas.repository import (
     RepositoryListOut, 
+    RepositoryListItemOut,
     RepositoryCreate, 
     RepositoryOut, 
     RepositoryDetailOut, 
@@ -74,7 +75,7 @@ def get_repositories(
     _: None = Depends(general_rate_limiter),):
     """Retrieves a paginated list of repositories the authenticated user has access to."""
     repo_repo = RepositoryRepository(db)
-    items, total = repo_repo.list_for_user(
+    rows, total = repo_repo.list_for_user(
         user_id=current_user.id,
         page=page,
         limit=limit,
@@ -82,7 +83,20 @@ def get_repositories(
     )
     has_more = (page * limit) < total
     return RepositoryListOut(
-        items=items,
+        items=[
+            RepositoryListItemOut(
+                id=r.id,
+                owner=r.owner,
+                name=r.name,
+                is_private=r.is_private,
+                created_at=r.created_at,
+                latest_job_status=r.latest_job_status,
+                latest_job_failure_code=r.latest_job_failure_code,
+                active_version_short_sha=r.active_version_short_sha,
+                last_indexed_at=r.last_indexed_at,
+            )
+            for r in rows
+        ],
         total=total,
         page=page,
         limit=limit,

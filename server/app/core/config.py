@@ -45,8 +45,14 @@ class Settings(BaseSettings):
     EMBEDDING_PROVIDER: str = "google"
     EMBEDDING_MODEL: str = "gemini-embedding-2"
     EMBEDDING_DIMENSION: int = 768
-    EMBEDDING_BATCH_SIZE: int = 32
-    EMBEDDING_MAX_RETRIES: int = 3
+    EMBEDDING_MAX_RETRIES: int = 4
+
+    # Batch limits (Source: https://ai.google.dev/gemini-api/docs/embeddings)
+    # The maximum number of items in a batch request is typically 100-250.
+    # The maximum number of tokens in a batch is 20,000 for text-embedding-004.
+    EMBEDDING_MAX_BATCH_ITEMS: int = 100
+    EMBEDDING_MAX_BATCH_TOKENS: int = 20000
+    EMBEDDING_MIN_INTERVAL_SECONDS: float = 0.0
 
     # LLM Configuration
     LLM_PRIMARY_PROVIDER: str = "gemini"
