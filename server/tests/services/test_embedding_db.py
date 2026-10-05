@@ -120,7 +120,7 @@ def test_embedding_db_transaction_rollback(db_session):
         c.file = f
         
         provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
-        provider.should_fail = True
+        provider.should_fail_with = Exception("Transient error")
         
         repo_service = KnowledgeRepository(db_session)
         service = EmbeddingService(repo_service, provider)

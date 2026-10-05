@@ -5,6 +5,7 @@ from typing import List
 from app.services.retrieval.models import RetrievalRequest, RetrievalResult
 from app.services.retrieval.strategies import HybridRetrievalStrategy, RetrievalStrategy
 from app.services.indexing import EmbeddingError
+from app.services.embedding.exceptions import EmbeddingProviderError
 
 class FakeRetrievalStrategy(RetrievalStrategy):
     def __init__(self, results: List[RetrievalResult], error: Exception | None = None):
@@ -15,13 +16,13 @@ class FakeRetrievalStrategy(RetrievalStrategy):
 
     def pre_embed(self, query: str) -> list[float]:
         self.pre_embed_called_with = query
-        if self.error and isinstance(self.error, EmbeddingError):
+        if self.error and isinstance(self.error, (EmbeddingError, EmbeddingProviderError)):
             raise self.error
         return [0.1, 0.2, 0.3]
 
     def retrieve(self, request: RetrievalRequest, *, query_vector: list[float] | None = None) -> List[RetrievalResult]:
         self.last_request = request
-        if self.error and not isinstance(self.error, EmbeddingError):
+        if self.error and not isinstance(self.error, (EmbeddingError, EmbeddingProviderError)):
             raise self.error
         return self.results
 
@@ -125,6 +126,17 @@ def test_semantic_failure_fallback():
     assert len(results) == 1
     assert results[0].source == "hybrid"
     assert results[0].score == 1/61
+
+def test_typed_provider_failure_falls_back_to_keyword_results():
+    k_res = [RetrievalResult(symbol_id=None, code_chunk_id=uuid4(), repository_version_id=uuid4(), file_id=uuid4(), file_path="k.py", content="", start_line=1, end_line=2, chunk_index=0, score=1.0, source="k")]
+
+    h_strat, _, _ = setup_strategy(k_res, [], semantic_error=EmbeddingProviderError("provider unavailable"))
+    req = RetrievalRequest(repository_version_id=uuid4(), query="test", limit=10)
+
+    results = h_strat.retrieve(req)
+
+    assert len(results) == 1
+    assert results[0].source == "hybrid"
 
 def test_unexpected_exception_propagation():
     k_res = []

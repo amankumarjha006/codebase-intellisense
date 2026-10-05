@@ -233,9 +233,11 @@ class InstrumentedLLMProvider:
 
     async def stream(self, prompt: str, system_instruction: str | None = None):
         self.stream_call_count += 1
-        self._check("LLMProvider.stream")
+        self._check("LLMProvider.stream (entry)")
         for chunk in self.chunks:
+            self._check("LLMProvider.stream (before chunk)")
             yield chunk
+        self._check("LLMProvider.stream (after loop)")
 
 
 class InstrumentedEmbeddingProvider:
@@ -357,6 +359,16 @@ class TestTransactionLeak:
         svc, app_db = _build_streaming_service(app_engine, llm, embed, redis_client)
 
         try:
+            # Hook into message_repo.create to verify checkedout==0 before TX2
+            original_create = svc.message_repo.create
+            def patched_create(msg_in):
+                if msg_in.role == "assistant":
+                    checkedout = app_engine.pool.checkedout()
+                    if checkedout > 0:
+                        llm.violations.append(f"C1 violation before TX2 insert: checkedout={checkedout}")
+                return original_create(msg_in)
+            svc.message_repo.create = patched_create
+
             events = []
             async for event in svc.stream_message(
                 user_id=user_id,
@@ -364,6 +376,14 @@ class TestTransactionLeak:
                 request=ConversationMessageRequest(content="What does hello() return?"),
             ):
                 events.append(event)
+                # Parse event and check connection state after TX2-dependent events
+                if event.startswith("event:"):
+                    # primitive parse
+                    event_type = event.split("\n")[0].replace("event: ", "").strip()
+                    if event_type in ("citation", "message_complete"):
+                        checkedout = app_engine.pool.checkedout()
+                        if checkedout > 0:
+                            llm.violations.append(f"C1 violation after SSE '{event_type}': checkedout={checkedout}")
 
             all_violations = llm.violations + embed.violations
             assert len(all_violations) == 0, "\n".join(all_violations)
@@ -402,6 +422,16 @@ class TestTransactionLeak:
         svc, app_db = _build_streaming_service(app_engine, llm, embed, redis_client)
 
         try:
+            # Hook into message_repo.create to verify checkedout==0 before TX2
+            original_create = svc.message_repo.create
+            def patched_create(msg_in):
+                if msg_in.role == "assistant":
+                    checkedout = app_engine.pool.checkedout()
+                    if checkedout > 0:
+                        llm.violations.append(f"C1 violation before TX2 insert: checkedout={checkedout}")
+                return original_create(msg_in)
+            svc.message_repo.create = patched_create
+
             events = []
             async for event in svc.stream_message(
                 user_id=user_id,
@@ -409,6 +439,12 @@ class TestTransactionLeak:
                 request=ConversationMessageRequest(content="Tell me more about it"),
             ):
                 events.append(event)
+                if event.startswith("event:"):
+                    event_type = event.split("\n")[0].replace("event: ", "").strip()
+                    if event_type in ("citation", "message_complete"):
+                        checkedout = app_engine.pool.checkedout()
+                        if checkedout > 0:
+                            llm.violations.append(f"C1 violation after SSE '{event_type}': checkedout={checkedout}")
 
             # generate (rewriter) + stream (RAG) + embed should all fire
             assert llm.call_count >= 1, "Rewriter should have called generate()"
@@ -450,6 +486,15 @@ class TestTransactionLeak:
         svc, app_db = _build_message_service(app_engine, llm, embed)
 
         try:
+            original_create = svc.message_repo.create
+            def patched_create(msg_in):
+                if msg_in.role == "assistant":
+                    checkedout = app_engine.pool.checkedout()
+                    if checkedout > 0:
+                        llm.violations.append(f"C1 violation before TX2 insert: checkedout={checkedout}")
+                return original_create(msg_in)
+            svc.message_repo.create = patched_create
+
             response = await svc.send_message(
                 user_id=user_id,
                 conversation_id=conv_id,

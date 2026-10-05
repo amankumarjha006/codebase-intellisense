@@ -23,8 +23,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Set database URL dynamically from app settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Set database URL dynamically, allowing overrides for testing
+url_from_config = config.get_main_option("sqlalchemy.url")
+if not url_from_config:
+    url_from_config = os.environ.get("ALEMBIC_DATABASE_URL", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", url_from_config)
 
 target_metadata = Base.metadata
 

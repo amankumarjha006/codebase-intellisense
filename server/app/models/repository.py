@@ -139,6 +139,10 @@ class IndexJob(Base):
             "status IN ('QUEUED', 'FETCHING', 'INDEXING', 'ANALYZING', 'READY', 'FAILED')",
             name="ck_index_jobs_status",
         ),
+        CheckConstraint(
+            "failure_code IS NULL OR failure_code IN ('CLONE_FAILED', 'REPOSITORY_TOO_LARGE', 'EMBEDDING_PROVIDER_RATE_LIMITED', 'EMBEDDING_PROVIDER_UNAVAILABLE', 'EMBEDDING_PROVIDER_AUTH', 'INTERNAL_ERROR')",
+            name="ck_index_jobs_failure_code",
+        ),
         Index(
             "uq_index_jobs_one_active_per_repository",
             "repository_id",
@@ -161,6 +165,7 @@ class IndexJob(Base):
     status: Mapped[str] = mapped_column(
         String(16), server_default=text("'QUEUED'"), nullable=False
     )
+    failure_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
