@@ -45,7 +45,7 @@ export function RepositoryVisualization() {
         {edges.map((edge, idx) => {
           const sourceNode = nodes.find(n => n.id === edge.source)!;
           const targetNode = nodes.find(n => n.id === edge.target)!;
-          
+
           return (
             <motion.line
               key={`edge-${idx}`}
@@ -59,28 +59,28 @@ export function RepositoryVisualization() {
               strokeDasharray={edge.isDashed ? "1,1" : "none"}
               initial={{ pathLength: 0, opacity: 0 }}
               animate={{ pathLength: 1, opacity: 1 }}
-              transition={{ 
-                duration: 1.5, 
+              transition={{
+                duration: 1.5,
                 delay: Math.max(sourceNode.delay, targetNode.delay) + 0.2,
                 ease: "easeInOut"
               }}
             />
           );
         })}
-        
+
         {/* Draw nodes */}
         {nodes.map((node) => (
-          <motion.g 
+          <motion.g
             key={node.id}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: node.delay, ease: "easeOut" }}
           >
-            <circle 
-              cx={node.x} 
-              cy={node.y} 
-              r={node.isSpecial ? "3" : "1.5"} 
-              className={node.isSpecial ? "fill-primary/20 stroke-primary/50" : "fill-background stroke-border"} 
+            <circle
+              cx={node.x}
+              cy={node.y}
+              r={node.isSpecial ? "3" : "1.5"}
+              className={node.isSpecial ? "fill-primary/20 stroke-primary/50" : "fill-background stroke-border"}
               strokeWidth={node.isSpecial ? "0.5" : "1"}
             />
             {node.isSpecial && (
@@ -95,11 +95,11 @@ export function RepositoryVisualization() {
                 transition={{ duration: 2, repeat: Infinity, ease: "easeOut", delay: node.delay + 0.5 }}
               />
             )}
-            <text 
-              x={node.x} 
-              y={node.y + (node.isSpecial ? 7 : 5)} 
-              fontSize="2.5" 
-              textAnchor="middle" 
+            <text
+              x={node.x}
+              y={node.y + (node.isSpecial ? 7 : 5)}
+              fontSize="2.5"
+              textAnchor="middle"
               className={`font-mono ${node.isSpecial ? "fill-primary" : "fill-muted-foreground"}`}
             >
               {node.label}

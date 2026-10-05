@@ -12,10 +12,10 @@ export const durations = {
 export const variants = {
   fadeUp: {
     initial: { opacity: 0, y: 12 },
-    animate: { 
-      opacity: 1, 
-      y: 0, 
-      transition: { duration: durations.entrance, ease: easings.entrance } 
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: durations.entrance, ease: easings.entrance }
     }
   }
 };

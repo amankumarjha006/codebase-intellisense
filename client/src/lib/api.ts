@@ -15,8 +15,20 @@ export interface RepositoryOut {
   active_version: RepositoryVersionSummary | null;
 }
 
+export interface RepositoryListItemOut {
+  id: string;
+  owner: string;
+  name: string;
+  is_private: boolean;
+  created_at: string;
+  latest_job_status: string | null;
+  latest_job_failure_code: string | null;
+  active_version_short_sha: string | null;
+  last_indexed_at: string | null;
+}
+
 export interface RepositoryListOut {
-  items: RepositoryOut[];
+  items: RepositoryListItemOut[];
   total: number;
   page: number;
   limit: number;
@@ -31,6 +43,24 @@ export interface RepositoryVersionSummary {
   status: string;
 }
 
+export interface AnalyzeRepositoryOut {
+  job_id: string;
+  repository_version_id: string;
+  status: string;
+  message: string;
+}
+
+export interface IndexJobOut {
+  id: string;
+  repository_id: string;
+  repository_version_id: string;
+  status: string;
+  error_message: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
 export interface BackendError {
   error: {
     code: string;
@@ -40,10 +70,12 @@ export interface BackendError {
 
 export class ApiError extends Error {
   public code: string;
+  public status?: number;
 
-  constructor(message: string, code: string) {
+  constructor(message: string, code: string, status?: number) {
     super(message);
     this.code = code;
+    this.status = status;
   }
 }
 
@@ -69,7 +101,7 @@ async function fetchWrapper<T>(endpoint: string, options: RequestInit = {}): Pro
 
   try {
     const response = await fetch(url, config);
-    
+
     if (response.status === 204) {
       return {} as T;
     }
@@ -80,7 +112,7 @@ async function fetchWrapper<T>(endpoint: string, options: RequestInit = {}): Pro
       const errorData = data as BackendError;
       const message = errorData?.error?.message || 'Unknown API error occurred';
       const code = errorData?.error?.code || 'UNKNOWN_ERROR';
-      throw new ApiError(message, code);
+      throw new ApiError(message, code, response.status);
     }
 
     return data as T;
@@ -109,4 +141,11 @@ export const api = {
     }),
   getRepositoryDetail: (id: string) => 
     fetchWrapper<RepositoryDetailOut>(`/repositories/${id}`),
+  analyzeRepository: (id: string, branch?: string | null) =>
+    fetchWrapper<AnalyzeRepositoryOut>(`/repositories/${id}/analyze`, {
+      method: 'POST',
+      body: JSON.stringify(branch ? { branch } : {}),
+    }),
+  getIndexJob: (repoId: string, jobId: string) =>
+    fetchWrapper<IndexJobOut>(`/repositories/${repoId}/jobs/${jobId}`),
 };

@@ -21,7 +21,7 @@ export function LandingHeader({ onLogin }: LandingHeaderProps) {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [heroCtaInView, setHeroCtaInView] = useState(true);
-  
+
   // Note: the requirements mention "swap the label to Open dashboard if session check succeeds".
   // Since we only receive onLogin here, we'll assume "Continue with GitHub" for now.
   const ctaLabel = "Continue with GitHub";
@@ -39,7 +39,7 @@ export function LandingHeader({ onLogin }: LandingHeaderProps) {
   useEffect(() => {
     // Scroll spy for sections
     const observers = new Map<string, IntersectionObserver>();
-    
+
     navLinks.forEach(({ id }) => {
       const element = document.getElementById(id);
       if (element) {
@@ -118,14 +118,14 @@ export function LandingHeader({ onLogin }: LandingHeaderProps) {
   return (
     <>
       {/* Skip to content */}
-      <a 
-        href="#main-content" 
+      <a
+        href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] px-4 py-2 bg-surface border border-border text-text rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-text"
       >
         Skip to content
       </a>
 
-      <header 
+      <header
         className="sticky top-0 z-50 transition-colors duration-200"
         style={{
           backgroundColor: scrolled ? "rgba(15, 15, 14, 0.92)" : "transparent",
@@ -133,8 +133,8 @@ export function LandingHeader({ onLogin }: LandingHeaderProps) {
         }}
       >
         <div className="container max-w-[1200px] mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
-          <Link 
-            href="/" 
+          <Link
+            href="/"
             className="flex items-center gap-3 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-text rounded-md"
             aria-label="Codebase Intellisense Home"
           >
@@ -143,7 +143,7 @@ export function LandingHeader({ onLogin }: LandingHeaderProps) {
               Codebase Intellisense
             </span>
           </Link>
-          
+
           {/* Desktop Nav */}
           <nav aria-label="Primary" className="hidden md:flex items-center gap-6 h-full">
             <div className="flex items-center gap-6 h-full relative">
@@ -168,20 +168,20 @@ export function LandingHeader({ onLogin }: LandingHeaderProps) {
                 );
               })}
             </div>
-            
+
             <div className="flex items-center gap-3">
-              <Link 
-                href="https://github.com/amankumarjha006/codebase-intellisense" 
-                target="_blank" 
-                rel="noreferrer" 
+              <Link
+                href="https://github.com/amankumarjha006/codebase-intellisense"
+                target="_blank"
+                rel="noreferrer"
                 className="w-10 h-10 flex items-center justify-center text-muted hover:text-text transition-colors rounded-md outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-text"
                 aria-label="GitHub Repository"
                 title="GitHub Repository"
               >
                 <Github className="w-5 h-5" />
               </Link>
-              
-              <button 
+
+              <button
                 onClick={onLogin}
                 className="h-9 px-4 rounded-lg font-medium text-sm transition-all duration-150 flex items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-accent overflow-hidden"
                 style={{
@@ -243,7 +243,7 @@ export function LandingHeader({ onLogin }: LandingHeaderProps) {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            
+
             <nav className="flex-1 px-6 py-8 flex flex-col gap-6">
               {navLinks.map(({ id, label }) => (
                 <button
@@ -254,19 +254,19 @@ export function LandingHeader({ onLogin }: LandingHeaderProps) {
                   {label}
                 </button>
               ))}
-              <Link 
-                href="https://github.com/amankumarjha006/codebase-intellisense" 
-                target="_blank" 
-                rel="noreferrer" 
+              <Link
+                href="https://github.com/amankumarjha006/codebase-intellisense"
+                target="_blank"
+                rel="noreferrer"
                 className="text-left text-2xl font-medium text-text outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-text rounded-sm w-fit flex items-center gap-3"
               >
                 <Github className="w-6 h-6" />
                 GitHub
               </Link>
             </nav>
-            
+
             <div className="p-6 border-t border-border">
-              <button 
+              <button
                 onClick={() => {
                   setMobileMenuOpen(false);
                   onLogin();

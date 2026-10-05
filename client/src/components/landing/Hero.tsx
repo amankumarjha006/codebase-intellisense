@@ -13,7 +13,7 @@ interface HeroProps {
 function TextReveal({ text }: { text: string }) {
   const prefersReducedMotion = useReducedMotion();
   const words = text.split(" ");
-  
+
   if (prefersReducedMotion) {
     return <span>{text}</span>;
   }
@@ -49,9 +49,9 @@ export function Hero({ onLogin, error }: HeroProps) {
         <h1 className="text-[clamp(3rem,6vw,5.5rem)] font-medium leading-[1.1] tracking-[0.02em] md:tracking-[-0.02em] text-text max-w-[13ch]">
           <TextReveal text="Answers that point to the line." />
         </h1>
-        
+
         <p className="text-muted text-base sm:text-[17px] leading-[1.6] max-w-[65ch]">
-          Codebase Intellisense is an AI-powered repository understanding platform. 
+          Codebase Intellisense is an AI-powered repository understanding platform.
           Every answer shows the code it was drawn from, so you never have to guess where the context came from.
         </p>
 
@@ -62,7 +62,7 @@ export function Hero({ onLogin, error }: HeroProps) {
         )}
 
         <div className="flex flex-wrap items-center gap-4 mt-2">
-          <button 
+          <button
             id="hero-cta"
             onClick={onLogin}
             className="px-5 py-2.5 rounded-lg bg-accent text-[#0F0F0E] font-medium transition-colors duration-150 hover:bg-accent-text flex items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-accent shadow-none group"
@@ -70,8 +70,8 @@ export function Hero({ onLogin, error }: HeroProps) {
             <Github className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
             Continue with GitHub
           </button>
-          
-          <a 
+
+          <a
             href="#how-it-works"
             className="px-5 py-2.5 rounded-lg text-text hover:text-white transition-colors font-medium outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-text opacity-80 hover:opacity-100"
           >

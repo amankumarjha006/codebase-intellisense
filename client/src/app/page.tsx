@@ -43,7 +43,7 @@ export default function Home() {
     <MotionConfig reducedMotion="user">
       <div className="min-h-screen flex flex-col bg-background selection:bg-accent/30 selection:text-accent font-sans">
         <LandingHeader onLogin={handleLogin} />
-        
+
         <main id="main-content" className="flex-1">
           {/* Hero Section */}
           <section className="container max-w-[1200px] mx-auto px-4 sm:px-8 pt-16 pb-24 md:pt-24 md:pb-32">
@@ -65,10 +65,10 @@ export default function Home() {
                 {/* Scrolling Right Column */}
                 <div className="md:w-2/3 py-24 md:py-32 relative">
                   <div className="absolute left-[17px] top-[120px] bottom-[120px] w-px bg-border hidden sm:block" />
-                  
+
                   <div className="flex flex-col gap-32 relative z-10 w-full">
                     {/* Step 1 */}
-                    <motion.div 
+                    <motion.div
                       className="flex gap-6 sm:gap-8 w-full"
                       initial={{ opacity: 0.4 }}
                       whileInView={{ opacity: 1 }}
@@ -100,7 +100,7 @@ export default function Home() {
                     </motion.div>
 
                     {/* Step 2 */}
-                    <motion.div 
+                    <motion.div
                       className="flex gap-6 sm:gap-8 w-full"
                       initial={{ opacity: 0.4 }}
                       whileInView={{ opacity: 1 }}
@@ -128,7 +128,7 @@ export default function Home() {
                     </motion.div>
 
                     {/* Step 3 */}
-                    <motion.div 
+                    <motion.div
                       className="flex gap-6 sm:gap-8 w-full"
                       initial={{ opacity: 0.4 }}
                       whileInView={{ opacity: 1 }}
@@ -163,7 +163,7 @@ export default function Home() {
 
           {/* Grounded by design Section */}
           <section className="container max-w-[1200px] mx-auto px-4 sm:px-8 py-24 md:py-32">
-            <motion.div 
+            <motion.div
               className="max-w-2xl mb-16"
               initial="initial"
               whileInView="animate"
@@ -178,7 +178,7 @@ export default function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Block 1 */}
-              <motion.div 
+              <motion.div
                 className="lg:col-span-2 rounded-2xl border border-border bg-surface p-8 flex flex-col justify-between overflow-hidden relative min-h-[300px]"
                 initial="initial"
                 whileInView="animate"
@@ -203,7 +203,7 @@ export default function Home() {
               </motion.div>
 
               {/* Block 2 */}
-              <motion.div 
+              <motion.div
                 className="rounded-2xl border border-border bg-surface p-8 flex flex-col gap-4"
                 initial="initial"
                 whileInView="animate"
@@ -227,7 +227,7 @@ export default function Home() {
               </motion.div>
 
               {/* Block 3 */}
-              <motion.div 
+              <motion.div
                 className="lg:col-span-3 rounded-2xl border border-border bg-surface p-8 flex flex-col md:flex-row items-center gap-12"
                 initial="initial"
                 whileInView="animate"
@@ -258,7 +258,7 @@ export default function Home() {
 
           {/* CTA Section */}
           <section className="border-t border-border bg-surface py-24 md:py-32 relative overflow-hidden group">
-            <motion.div 
+            <motion.div
               className="absolute inset-0 bg-gradient-to-tr from-accent/0 via-accent/[0.03] to-accent/0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"
               initial={{ backgroundPosition: "0% 0%" }}
               animate={{ backgroundPosition: ["0% 0%", "100% 100%"] }}
@@ -272,7 +272,7 @@ export default function Home() {
               <p className="text-muted text-lg md:text-xl max-w-2xl mx-auto mb-10">
                 Stop grep-ing through legacy code. Get instant, accurate, and cited answers about your entire repository.
               </p>
-              <button 
+              <button
                 onClick={handleLogin}
                 className="px-8 py-4 rounded-xl bg-accent text-[#0F0F0E] font-medium text-lg transition-colors duration-150 hover:bg-accent-text inline-flex items-center gap-3 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:ring-accent shadow-none"
               >
@@ -288,10 +288,10 @@ export default function Home() {
             <div className="text-sm text-muted">
               © {new Date().getFullYear()} Codebase Intellisense
             </div>
-            <Link 
-              href="https://github.com/amankumarjha006/codebase-intellisense" 
-              target="_blank" 
-              rel="noreferrer" 
+            <Link
+              href="https://github.com/amankumarjha006/codebase-intellisense"
+              target="_blank"
+              rel="noreferrer"
               className="text-sm text-muted hover:text-text transition-colors flex items-center gap-2"
             >
               <Github className="w-4 h-4" />

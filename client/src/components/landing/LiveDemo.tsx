@@ -5,11 +5,11 @@ import { motion, useReducedMotion } from "motion/react";
 import { RotateCcw, Play, FileCode2, Send } from "lucide-react";
 
 const codeSnippet = `export const api = {
-  getCurrentUser: () => 
+  getCurrentUser: () =>
     fetchWrapper<CurrentUser>('/auth/me'),
-  logout: () => 
-    fetchWrapper<void>('/auth/logout', { 
-      method: 'POST' 
+  logout: () =>
+    fetchWrapper<void>('/auth/logout', {
+      method: 'POST'
     }),
   listRepositories: (page = 1, limit = 50, search = '') => {
     const params = new URLSearchParams({
@@ -58,17 +58,17 @@ export function LiveDemo() {
 
   const loopDuration = 14000; // 14 seconds
   const typedQuestionLength = Math.min(question.length, Math.floor(timeMs / 50));
-  
+
   const answerStartTime = 2000;
-  const currentAnswerParts = prefersReducedMotion 
-    ? answerParts 
+  const currentAnswerParts = prefersReducedMotion
+    ? answerParts
     : answerParts.filter(part => timeMs >= answerStartTime + part.delay * 50);
 
   // Find the active citation range
   const activeCitation = currentAnswerParts
     .filter(p => p.isCitation)
     .pop();
-  
+
   const activeRange = activeCitation?.range ?? [-1, -1];
   const isLineActive = (i: number) => i >= activeRange[0] && i <= activeRange[1];
 
@@ -105,7 +105,7 @@ export function LiveDemo() {
   };
 
   return (
-    <div 
+    <div
       className="relative rounded-xl border border-border bg-surface shadow-2xl overflow-hidden flex flex-col sm:flex-row h-[450px] outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:ring-text transition-colors duration-150 hover:border-border/80"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -122,7 +122,7 @@ export function LiveDemo() {
             <div className="w-2.5 h-2.5 rounded-full bg-border" />
           </div>
         </div>
-        
+
         <div className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto">
           {/* User Message */}
           <div className="bg-raised p-3 rounded-lg text-sm text-text border border-border self-end max-w-[85%]">
@@ -140,8 +140,8 @@ export function LiveDemo() {
                   return <span key={i}>{part.text}</span>;
                 }
                 return (
-                  <motion.span 
-                    key={i} 
+                  <motion.span
+                    key={i}
                     initial={{ scale: 0.96, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.18 }}
@@ -158,7 +158,7 @@ export function LiveDemo() {
             </div>
           )}
         </div>
-        
+
         {/* Disabled Composer */}
         <div className="p-3 border-t border-border bg-background/30">
           <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-surface text-muted/50 text-xs cursor-not-allowed">
@@ -175,8 +175,8 @@ export function LiveDemo() {
           api.ts
           <span className="px-1.5 py-0.5 rounded bg-white/5 text-[10px] ml-auto">Example</span>
         </div>
-        
-        <div 
+
+        <div
           className="flex-1 p-4 overflow-y-auto overflow-x-hidden relative"
           style={{ maskImage: "linear-gradient(to right, black 85%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, black 85%, transparent 100%)", colorScheme: "dark" }}
         >
@@ -184,20 +184,20 @@ export function LiveDemo() {
             {tokens.length > 0 ? tokens.map((line, i) => {
               const active = isLineActive(i);
               return (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className="relative px-2 py-[1px] -mx-2 transition-colors duration-300 flex items-center group/line"
                 >
                   {/* Highlight Background & Spring Bar */}
                   {active && (
                     <>
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.2 }}
                         className="absolute inset-0 bg-accent/10"
                       />
-                      <motion.div 
+                      <motion.div
                         initial={{ scaleY: 0 }}
                         animate={{ scaleY: 1 }}
                         transition={{ type: "spring", damping: 20, stiffness: 100 }}
@@ -235,16 +235,16 @@ export function LiveDemo() {
       {/* Controls */}
       <div className="absolute bottom-4 right-4 flex gap-2 z-20">
         {prefersReducedMotion && !isPlaying && (
-           <button 
-             onClick={() => setIsPlaying(true)} 
+           <button
+             onClick={() => setIsPlaying(true)}
              className="p-2 rounded-full bg-[#1A1A1A] border border-white/10 text-white hover:bg-[#2A2A2A] transition-colors shadow-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] focus-visible:ring-text"
              aria-label="Play animation"
            >
              <Play className="w-4 h-4" />
            </button>
         )}
-        <button 
-          onClick={handleReplay} 
+        <button
+          onClick={handleReplay}
           className="p-2 rounded-full bg-[#1A1A1A] border border-white/10 text-white hover:bg-[#2A2A2A] transition-colors shadow-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] focus-visible:ring-text"
           aria-label="Replay animation"
         >

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'motion/react';
@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { UserMenu } from './UserMenu';
 
 const navItems = [
-  { name: 'Overview', href: '/repositories', icon: LayoutDashboard }, // Placeholder link mapping
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Chat', href: '/repositories/chat', icon: MessageSquare },
   { name: 'Search', href: '/repositories/search', icon: Search },
   { name: 'Code', href: '/repositories/code', icon: Code2 },
@@ -18,7 +18,19 @@ const navItems = [
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [recentRepos, setRecentRepos] = useState<string[]>([]);
   const pathname = usePathname();
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('recent_repositories');
+      if (stored) {
+        setRecentRepos(JSON.parse(stored).slice(0, 5));
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
+  }, [pathname]);
 
   return (
     <motion.aside
@@ -37,7 +49,7 @@ export function Sidebar() {
             </span>
           </div>
         )}
-        <button 
+        <button
           onClick={() => setCollapsed(!collapsed)}
           className={cn("p-1.5 rounded-md hover:bg-secondary text-muted-foreground transition-colors flex-shrink-0", collapsed && "mx-auto")}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -50,7 +62,7 @@ export function Sidebar() {
         {navItems.map((item) => {
           // For now, treat exact match or startsWith depending on routing structure.
           // Since it's a placeholder shell, strict exact matching is fine.
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`));
           return (
             <Link
               key={item.name}
@@ -58,8 +70,8 @@ export function Sidebar() {
               title={collapsed ? item.name : undefined}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                isActive 
-                  ? "bg-primary/10 text-primary font-medium" 
+                isActive
+                  ? "bg-primary/10 text-primary font-medium"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground font-medium",
                 collapsed && "justify-center px-0"
               )}
@@ -69,6 +81,24 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {recentRepos.length > 0 && !collapsed && (
+          <div className="mt-8 mb-2 px-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Recent repositories</h3>
+            <div className="space-y-1">
+              {recentRepos.map((repoId) => (
+                <Link
+                  key={repoId}
+                  href={`/repositories/${repoId}`}
+                  className="block px-3 py-2 rounded-md text-xs text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors truncate"
+                  title={repoId}
+                >
+                  {repoId}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-3 border-t border-border space-y-1">

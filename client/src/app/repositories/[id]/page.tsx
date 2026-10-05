@@ -3,27 +3,43 @@
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api, RepositoryDetailOut } from '@/lib/api';
+import { api, RepositoryDetailOut, CurrentUser } from '@/lib/api';
 
 export default function RepositoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
   
   const [repository, setRepository] = useState<RepositoryDetailOut | null>(null);
+  const [user, setUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadRepository = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
-        const data = await api.getRepositoryDetail(id);
-        setRepository(data);
+        // Guard with current-user endpoint
+        const [userData, repoData] = await Promise.all([
+          api.getCurrentUser(),
+          api.getRepositoryDetail(id)
+        ]);
+        setUser(userData);
+        setRepository(repoData);
+
+        // Update recent repositories in localStorage
+        try {
+          const stored = localStorage.getItem('recent_repositories');
+          let recent = stored ? JSON.parse(stored) : [];
+          recent = [id, ...recent.filter((r: string) => r !== id)].slice(0, 5);
+          localStorage.setItem('recent_repositories', JSON.stringify(recent));
+        } catch (e) {
+          // ignore
+        }
       } catch (err: unknown) {
         const apiErr = err as import('@/lib/api').ApiError;
-        if (apiErr.code === 'UNAUTHENTICATED') {
-          router.push('/');
-        } else if (apiErr.code === 'REPOSITORY_NOT_FOUND') {
+        if (apiErr.code === 'UNAUTHENTICATED' || (err as any).status === 401) {
+          router.push('/?error=session_expired');
+        } else if (apiErr.code === 'REPOSITORY_NOT_FOUND' || (err as any).status === 404) {
           setError('Repository not found or you do not have access.');
         } else {
           setError(apiErr.message || 'Failed to load repository');
@@ -33,7 +49,7 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
       }
     };
 
-    loadRepository();
+    loadData();
   }, [id, router]);
 
   if (loading) {
@@ -48,8 +64,8 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
     return (
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-0">
         <div className="mb-6">
-          <Link href="/repositories" className="text-sm text-gray-500 hover:text-gray-900 flex items-center">
-            ← Back to repositories
+          <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-900 flex items-center">
+            ← Dashboard / Repository
           </Link>
         </div>
         <div className="bg-red-50 p-4 rounded-md">
@@ -62,9 +78,19 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 sm:px-0">
       <div className="mb-6">
-        <Link href="/repositories" className="text-sm text-gray-500 hover:text-gray-900 flex items-center">
-          ← Back to repositories
-        </Link>
+        <nav className="flex text-sm text-muted-foreground">
+          <ol className="flex items-center space-x-2">
+            <li>
+              <Link href="/dashboard" className="hover:text-foreground transition-colors">
+                Dashboard
+              </Link>
+            </li>
+            <li>/</li>
+            <li className="font-medium text-foreground">
+              {repository.owner}/{repository.name}
+            </li>
+          </ol>
+        </nav>
       </div>
 
       <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">

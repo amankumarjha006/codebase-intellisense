@@ -7,7 +7,7 @@ export default function RepositoriesLayout({
 }) {
   return (
     <AppShell>
-      {/* 
+      {/*
         This layout wraps the repositories dashboard and individual repositories.
         The AppShell internally handles the sidebar, header, and main scroll area.
       */}
