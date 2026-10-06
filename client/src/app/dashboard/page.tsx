@@ -3,9 +3,10 @@
 import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { api, RepositoryListItemOut, RepositoryOut, CurrentUser } from '@/lib/api';
-import { Search, Plus, MoreVertical, RefreshCw, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { api, RepositoryListItemOut, RepositoryOut, CurrentUser, ApiError } from '@/lib/api';
+import { deriveRowStatus, getFailureMessage, IN_PROGRESS_STATUSES } from '@/lib/status';
+import { Search, Plus, MoreVertical, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { ConnectDrawer } from '@/components/repositories/ConnectDrawer';
 
@@ -23,112 +24,128 @@ function getRelativeTime(dateStr: string) {
   return d.toLocaleDateString();
 }
 
-function RowStatusContent({ repo, onAction }: { repo: RepositoryListItemOut, onAction: (e: React.MouseEvent) => void }) {
-  const hasActiveVersion = !!repo.active_version_short_sha;
-  const status = repo.latest_job_status;
-  const isInProgress = ['QUEUED', 'FETCHING', 'INDEXING', 'ANALYZING'].includes(status || '');
-  const isFailed = status === 'FAILED';
+function RowStatusContent({ repo, onAction }: { repo: RepositoryListItemOut; onAction: (e: React.MouseEvent) => void }) {
+  const derivation = deriveRowStatus(repo.latest_job_status, repo.active_version_short_sha);
+  const failureMessage = getFailureMessage(repo.latest_job_failure_code);
+  const shouldReduceMotion = useReducedMotion();
+  const transition = { duration: shouldReduceMotion ? 0 : 0.3 };
 
-  if (!hasActiveVersion && !status) {
+  if (derivation.kind === 'not-indexed') {
     return (
       <motion.div
         key="not-indexed"
-        initial={{ opacity: 0 }}
+        initial={{ opacity: shouldReduceMotion ? 1 : 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
+        exit={{ opacity: shouldReduceMotion ? 1 : 0 }}
+        transition={transition}
         className="flex items-center gap-3"
       >
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border text-muted-foreground text-xs font-medium">
-          Not indexed
+          {derivation.label}
         </div>
-        <button
-          onClick={onAction}
-          className="text-xs font-medium text-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-1 relative z-20"
-        >
-          Index repository
-        </button>
+        {derivation.actions.includes('index') && (
+          <button
+            onClick={onAction}
+            className="text-xs font-medium text-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-1 relative z-20"
+          >
+            Index repository
+          </button>
+        )}
       </motion.div>
     );
   }
 
-  if (!hasActiveVersion && isInProgress) {
+  if (derivation.kind === 'in-progress') {
     return (
       <motion.div
         key="in-progress"
-        initial={{ opacity: 0 }}
+        initial={{ opacity: shouldReduceMotion ? 1 : 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border text-muted-foreground text-xs font-medium relative overflow-hidden"
+        exit={{ opacity: shouldReduceMotion ? 1 : 0 }}
+        transition={transition}
+        className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border text-foreground text-xs font-medium relative overflow-hidden"
       >
-        <RefreshCw size={12} className="animate-spin" />
-        {status}
-        <div className="absolute bottom-0 left-0 h-[2px] bg-foreground/20 w-full animate-progress-line origin-left" />
+        <RefreshCw size={12} className={shouldReduceMotion ? '' : 'animate-spin'} />
+        {derivation.label}
+        {derivation.showProgress && !shouldReduceMotion && (
+          <div className="absolute bottom-0 left-0 h-[2px] bg-foreground/20 w-full animate-progress-line origin-left" />
+        )}
       </motion.div>
     );
   }
 
-  if (!hasActiveVersion && isFailed) {
+  if (derivation.kind === 'failed') {
     return (
       <motion.div
         key="failed"
-        initial={{ opacity: 0 }}
+        initial={{ opacity: shouldReduceMotion ? 1 : 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
+        exit={{ opacity: shouldReduceMotion ? 1 : 0 }}
+        transition={transition}
         className="flex items-center gap-3"
       >
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md text-red-500/80 text-xs font-medium border border-red-500/20 bg-red-500/5">
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md text-red-400 text-xs font-medium border border-red-500/30 bg-red-500/10">
           <AlertCircle size={12} />
-          Failed
+          {derivation.label}
         </div>
-        <span className="text-xs text-muted-foreground">Indexing failed</span>
-        <button
-          onClick={onAction}
-          className="text-xs font-medium text-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-1 relative z-20"
-        >
-          Retry indexing
-        </button>
+        <span className="text-xs text-muted-foreground max-w-[200px] truncate" title={failureMessage}>
+          {failureMessage}
+        </span>
+        {derivation.actions.includes('retry') && (
+          <button
+            onClick={onAction}
+            className="text-xs font-medium text-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-1 relative z-20"
+          >
+            Retry indexing
+          </button>
+        )}
       </motion.div>
     );
   }
 
-  if (hasActiveVersion) {
+  if (derivation.kind === 'ready') {
     return (
       <motion.div
         key="ready"
-        initial={{ opacity: 0 }}
+        initial={{ opacity: shouldReduceMotion ? 1 : 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
+        exit={{ opacity: shouldReduceMotion ? 1 : 0 }}
+        transition={transition}
         className="flex flex-col items-end gap-1"
       >
         <div className="flex items-center gap-2">
-          {isInProgress && (
+          {derivation.subtitle === 'Updating…' && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               Updating…
             </span>
           )}
-          {isFailed && (
-             <span className="text-xs text-muted-foreground">
-               Last update failed
-             </span>
+          {derivation.subtitle === 'Last update failed' && (
+            <span className="text-xs text-muted-foreground max-w-[200px] truncate" title={failureMessage}>
+              {failureMessage}
+            </span>
+          )}
+          {derivation.actions.includes('retry') && (
+            <button
+              onClick={onAction}
+              className="text-xs font-medium text-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded px-1 relative z-20"
+            >
+              Retry indexing
+            </button>
           )}
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-accent-soft text-accent border border-accent-border text-xs font-medium relative overflow-hidden">
             <CheckCircle2 size={12} />
-            Ready
-            {isInProgress && (
+            {derivation.label}
+            {derivation.showProgress && !shouldReduceMotion && (
               <div className="absolute bottom-0 left-0 h-[2px] bg-accent/40 w-full animate-progress-line origin-left" />
             )}
           </div>
         </div>
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
-          <span>{repo.active_version_short_sha}</span>
+          {repo.active_version_short_sha && <span>{repo.active_version_short_sha}</span>}
           {repo.last_indexed_at && (
-             <span title={new Date(repo.last_indexed_at).toLocaleString()}>
-               Last indexed {getRelativeTime(repo.last_indexed_at)}
-             </span>
+            <span title={new Date(repo.last_indexed_at).toLocaleString()}>
+              Last indexed {getRelativeTime(repo.last_indexed_at)}
+            </span>
           )}
         </div>
       </motion.div>
@@ -138,9 +155,9 @@ function RowStatusContent({ repo, onAction }: { repo: RepositoryListItemOut, onA
   return null;
 }
 
-function RowStatus({ repo, onAction }: { repo: RepositoryListItemOut, onAction: (e: React.MouseEvent) => void }) {
+function RowStatus({ repo, onAction }: { repo: RepositoryListItemOut; onAction: (e: React.MouseEvent) => void }) {
   return (
-    <div aria-live="polite" className="relative flex items-center justify-end min-h-[32px] min-w-[200px]">
+    <div aria-live="polite" aria-atomic="true" className="relative flex items-center justify-end min-h-[32px] min-w-[200px]">
       <AnimatePresence mode="wait">
         <RowStatusContent key={repo.id + '-' + (repo.latest_job_status || 'none')} repo={repo} onAction={onAction} />
       </AnimatePresence>
@@ -160,12 +177,34 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState(queryQ);
   const [analyzeRepo, setAnalyzeRepo] = useState<RepositoryListItemOut | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const limit = 50;
+
+  // Refs for polling and in-flight guard
+  const repositoriesRef = useRef(repositories);
+  const pageRef = useRef(page);
+  const searchRef = useRef(search);
+
+  useEffect(() => {
+    repositoriesRef.current = repositories;
+  }, [repositories]);
+
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  useEffect(() => {
+    searchRef.current = search;
+  }, [search]);
+
+  const inFlightRef = useRef(false);
+  const pollStartTimeRef = useRef<number | null>(null);
+  const consecutiveErrorsRef = useRef<number>(0);
 
   // Feature flags
   const conversationsFlag = false;
@@ -175,7 +214,7 @@ function DashboardContent() {
       try {
         const u = await api.getCurrentUser();
         setUser(u);
-      } catch (e) {
+      } catch (e: unknown) {
         const err = e as { code?: string; status?: number; message?: string };
         if (err.code === 'UNAUTHENTICATED' || err.status === 401) {
           router.push('/?error=session_expired');
@@ -198,7 +237,7 @@ function DashboardContent() {
       setRepositories(data.items);
       setTotal(data.total);
       setHasMore(data.has_more);
-    } catch (e) {
+    } catch (e: unknown) {
       const err = e as { code?: string; status?: number; message?: string };
       if (err.code === 'UNAUTHENTICATED' || err.status === 401) {
         router.push('/?error=session_expired');
@@ -208,7 +247,7 @@ function DashboardContent() {
     } finally {
       setLoading(false);
     }
-  }, [authLoading, router]);
+  }, [authLoading, limit, router]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -229,72 +268,129 @@ function DashboardContent() {
     return () => clearTimeout(handler);
   }, [search, queryQ, router]);
 
-  // Polling logic
-  const pollStartTime = useRef<number | null>(null);
-
-  const inProgress = ['QUEUED', 'FETCHING', 'INDEXING', 'ANALYZING'];
-  const pollingActive = repositories.some(r => r.latest_job_status && inProgress.includes(r.latest_job_status));
+  // Polling logic with chained setTimeout loop
+  const hasInProgress = repositories.some(
+    (r) => r.latest_job_status && (IN_PROGRESS_STATUSES as readonly string[]).includes(r.latest_job_status)
+  );
 
   useEffect(() => {
-    if (!pollingActive) {
-      pollStartTime.current = null;
-    } else if (pollStartTime.current === null) {
-      pollStartTime.current = Date.now();
+    if (!hasInProgress) {
+      pollStartTimeRef.current = null;
+      consecutiveErrorsRef.current = 0;
+      return;
     }
-  }, [pollingActive]);
 
-  useEffect(() => {
-    if (!pollingActive) return;
+    if (pollStartTimeRef.current === null) {
+      pollStartTimeRef.current = Date.now();
+    }
 
-    let timeoutId: NodeJS.Timeout;
     let isMounted = true;
-    let isFetching = false;
+    let timer: NodeJS.Timeout | null = null;
+    const abortController = new AbortController();
 
     const poll = async () => {
-      if (!isMounted) return;
-      if (document.hidden) {
-        timeoutId = setTimeout(poll, 4000);
+      if (!isMounted || document.hidden || inFlightRef.current) {
         return;
       }
-      if (isFetching) return;
+
+      const visibleInProgress = repositoriesRef.current.some(
+        (r) => r.latest_job_status && (IN_PROGRESS_STATUSES as readonly string[]).includes(r.latest_job_status)
+      );
+      if (!visibleInProgress) {
+        pollStartTimeRef.current = null;
+        consecutiveErrorsRef.current = 0;
+        return;
+      }
+
+      inFlightRef.current = true;
+      let nextDelay = 4000;
 
       try {
-        isFetching = true;
-        const data = await api.listRepositories(page, limit, search);
+        const data = await api.listRepositories(
+          pageRef.current,
+          limit,
+          searchRef.current,
+          { signal: abortController.signal }
+        );
+
         if (isMounted) {
           setRepositories(data.items);
           setTotal(data.total);
           setHasMore(data.has_more);
-        }
-      } catch (e) {
-         // silently handle errors, 429 will just backoff naturally
 
+          consecutiveErrorsRef.current = 0;
+          setRefreshError(null);
+
+          const stillInProgress = data.items.some(
+            (r) => r.latest_job_status && (IN_PROGRESS_STATUSES as readonly string[]).includes(r.latest_job_status)
+          );
+
+          if (!stillInProgress) {
+            pollStartTimeRef.current = null;
+            return;
+          }
+
+          const elapsed = Date.now() - (pollStartTimeRef.current || Date.now());
+          nextDelay = elapsed >= 60000 ? 10000 : 4000;
+        }
+      } catch (err: unknown) {
+        if (!isMounted || abortController.signal.aborted) {
+          return;
+        }
+
+        const apiErr = err as ApiError;
+        if (apiErr?.status === 429) {
+          nextDelay = apiErr.retryAfter ? apiErr.retryAfter * 1000 : 8000;
+        } else {
+          consecutiveErrorsRef.current += 1;
+          const step = consecutiveErrorsRef.current;
+          nextDelay = Math.min(step * 10000, 30000);
+          setRefreshError("Can't refresh status");
+        }
       } finally {
-        isFetching = false;
-        if (isMounted) {
-           const elapsed = Date.now() - (pollStartTime.current || Date.now());
-           const interval = elapsed > 60000 ? 10000 : 4000;
-           timeoutId = setTimeout(poll, interval);
+        inFlightRef.current = false;
+        if (isMounted && !document.hidden) {
+          const stillActive = repositoriesRef.current.some(
+            (r) => r.latest_job_status && (IN_PROGRESS_STATUSES as readonly string[]).includes(r.latest_job_status)
+          );
+          if (stillActive) {
+            timer = setTimeout(poll, nextDelay);
+          }
         }
       }
     };
 
-    timeoutId = setTimeout(poll, 4000);
+    timer = setTimeout(poll, 4000);
 
     const handleVisibilityChange = () => {
-       if (!document.hidden && isMounted && !isFetching) {
-          clearTimeout(timeoutId);
+      if (document.hidden) {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      } else {
+        const stillActive = repositoriesRef.current.some(
+          (r) => r.latest_job_status && (IN_PROGRESS_STATUSES as readonly string[]).includes(r.latest_job_status)
+        );
+        if (stillActive && !inFlightRef.current) {
+          if (timer) {
+            clearTimeout(timer);
+            timer = null;
+          }
           poll();
-       }
+        }
+      }
     };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isMounted = false;
-      clearTimeout(timeoutId);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (timer) clearTimeout(timer);
+      abortController.abort();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [pollingActive, page, search, limit]);
+  }, [hasInProgress, limit]);
 
   const handleConnectOpenChange = useCallback((open: boolean) => {
     const params = new URLSearchParams(window.location.search);
@@ -307,13 +403,16 @@ function DashboardContent() {
   }, [router]);
 
   const handleConnectSuccess = useCallback((repo: RepositoryOut) => {
-    // Cast to list item, new fields will be null
-    const newRepo: RepositoryListItemOut = { ...repo, latest_job_status: null, latest_job_failure_code: null, active_version_short_sha: null, last_indexed_at: null };
-    setRepositories(prev => [newRepo, ...prev]);
-    // Immediately fetch to ensure consistency
+    const newRepo: RepositoryListItemOut = {
+      ...repo,
+      latest_job_status: null,
+      latest_job_failure_code: null,
+      active_version_short_sha: null,
+      last_indexed_at: null,
+    };
+    setRepositories((prev) => [newRepo, ...prev]);
     setPage(1);
     loadRepositories(1, search);
-    // Optionally trigger a full revalidate here
   }, [loadRepositories, search]);
 
   if (authLoading) {
@@ -372,6 +471,14 @@ function DashboardContent() {
       {error && (
         <div className="mb-6 bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-md text-sm">
           {error}
+        </div>
+      )}
+
+      {/* Small polling status note */}
+      {refreshError && (
+        <div className="mb-4 flex items-center gap-2 text-xs text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-md" role="status">
+          <AlertCircle size={14} />
+          <span>{refreshError}</span>
         </div>
       )}
 

@@ -55,8 +55,8 @@ export interface IndexJobOut {
   repository_id: string;
   repository_version_id: string;
   status: string;
-  error_message: string | null;
-  created_at: string;
+  failure_code: string | null;
+  failure_message: string | null;
   started_at: string | null;
   completed_at: string | null;
 }
@@ -71,11 +71,13 @@ export interface BackendError {
 export class ApiError extends Error {
   public code: string;
   public status?: number;
+  public retryAfter?: number;
 
-  constructor(message: string, code: string, status?: number) {
+  constructor(message: string, code: string, status?: number, retryAfter?: number) {
     super(message);
     this.code = code;
     this.status = status;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -90,7 +92,17 @@ async function fetchWrapper<T>(endpoint: string, options: RequestInit = {}): Pro
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 3000);
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  let abortListener: (() => void) | undefined;
+  if (options.signal) {
+    if (options.signal.aborted) {
+      controller.abort();
+    } else {
+      abortListener = () => controller.abort();
+      options.signal.addEventListener('abort', abortListener);
+    }
+  }
 
   const config: RequestInit = {
     ...options,
@@ -106,25 +118,48 @@ async function fetchWrapper<T>(endpoint: string, options: RequestInit = {}): Pro
       return {} as T;
     }
 
-    const data = await response.json();
+    let data: unknown = null;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+    }
 
     if (!response.ok) {
-      const errorData = data as BackendError;
-      const message = errorData?.error?.message || 'Unknown API error occurred';
+      const errorData = data as BackendError | null;
+      const message = errorData?.error?.message || `HTTP ${response.status} error occurred`;
       const code = errorData?.error?.code || 'UNKNOWN_ERROR';
-      throw new ApiError(message, code, response.status);
+
+      let retryAfter: number | undefined;
+      const retryAfterHeader = response.headers.get('Retry-After');
+      if (retryAfterHeader) {
+        const parsed = parseInt(retryAfterHeader, 10);
+        if (!isNaN(parsed) && parsed > 0) {
+          retryAfter = parsed;
+        }
+      }
+
+      throw new ApiError(message, code, response.status, retryAfter);
     }
 
     return data as T;
   } finally {
     clearTimeout(timeoutId);
+    if (options.signal && abortListener) {
+      options.signal.removeEventListener('abort', abortListener);
+    }
   }
 }
 
 export const api = {
-  getCurrentUser: () => fetchWrapper<CurrentUser>('/auth/me'),
-  logout: () => fetchWrapper<void>('/auth/logout', { method: 'POST' }),
-  listRepositories: (page = 1, limit = 50, search = '') => {
+  getCurrentUser: (options: RequestInit = {}) =>
+    fetchWrapper<CurrentUser>('/auth/me', options),
+  logout: (options: RequestInit = {}) =>
+    fetchWrapper<void>('/auth/logout', { method: 'POST', ...options }),
+  listRepositories: (page = 1, limit = 50, search = '', options: RequestInit = {}) => {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
@@ -132,20 +167,22 @@ export const api = {
     if (search) {
       params.append('search', search);
     }
-    return fetchWrapper<RepositoryListOut>(`/repositories?${params.toString()}`);
+    return fetchWrapper<RepositoryListOut>(`/repositories?${params.toString()}`, options);
   },
-  connectRepository: (url: string) => 
+  connectRepository: (url: string, options: RequestInit = {}) => 
     fetchWrapper<RepositoryOut>('/repositories', {
       method: 'POST',
       body: JSON.stringify({ url }),
+      ...options,
     }),
-  getRepositoryDetail: (id: string) => 
-    fetchWrapper<RepositoryDetailOut>(`/repositories/${id}`),
-  analyzeRepository: (id: string, branch?: string | null) =>
+  getRepositoryDetail: (id: string, options: RequestInit = {}) => 
+    fetchWrapper<RepositoryDetailOut>(`/repositories/${id}`, options),
+  analyzeRepository: (id: string, branch?: string | null, options: RequestInit = {}) =>
     fetchWrapper<AnalyzeRepositoryOut>(`/repositories/${id}/analyze`, {
       method: 'POST',
       body: JSON.stringify(branch ? { branch } : {}),
+      ...options,
     }),
-  getIndexJob: (repoId: string, jobId: string) =>
-    fetchWrapper<IndexJobOut>(`/repositories/${repoId}/jobs/${jobId}`),
+  getIndexJob: (repoId: string, jobId: string, options: RequestInit = {}) =>
+    fetchWrapper<IndexJobOut>(`/repositories/${repoId}/jobs/${jobId}`, options),
 };

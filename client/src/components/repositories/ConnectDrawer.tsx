@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, CheckCircle2, ChevronRight, Copy, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { api, RepositoryOut, ApiError } from '@/lib/api';
+import { getFailureMessage, DEFAULT_FAILURE_MESSAGE } from '@/lib/status';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -53,14 +54,14 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
       if (input.startsWith('http')) {
         const url = new URL(input);
         if (url.hostname === 'github.com') {
-          let pathname = url.pathname.replace(/^\//, '').replace(/\.git$/, '');
+          const pathname = url.pathname.replace(/^\//, '').replace(/\.git$/, '');
           const parts = pathname.split('/');
           if (parts.length >= 2) {
             input = `${parts[0]}/${parts[1]}`;
           }
         }
       }
-    } catch (e) {
+    } catch {
       // Ignore
     }
 
@@ -88,42 +89,37 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
     setFormError(null);
 
     try {
-      // Pass the fully normalized string, though backend handles `url` which we'll send as owner/name or https url.
-      // Backend expects `url`. We can just send the normalized owner/name format, backend GithubService expects exact owner/repo format.
-      // Wait, backend RepositoryCreate expects `url`. Let's send the full url.
       const connectUrl = `https://github.com/${normalizedRepo}`;
       const repo = await api.connectRepository(connectUrl);
 
       setConnectedRepo(repo);
       onSuccess(repo);
-    } catch (err: any) {
+    } catch (err: unknown) {
       const apiErr = err as ApiError;
 
-      if (apiErr.code === 'UNAUTHENTICATED' || err.status === 401) {
+      if (apiErr.code === 'UNAUTHENTICATED' || apiErr.status === 401) {
         router.push('/?error=session_expired');
         return;
       }
 
-      let msg = 'An unexpected error occurred.';
+      let msg = 'Failed to connect repository. Please try again.';
       if (apiErr.code === 'INVALID_REQUEST') {
         msg = 'Enter a repository as owner/name.';
-      } else if (apiErr.code === 'GITHUB_API_ERROR' || err.status === 404) {
+      } else if (apiErr.code === 'GITHUB_API_ERROR' || apiErr.status === 404) {
         msg = "We couldn't find this repository, or you don't have access to it.";
-      } else if (err.status === 403) {
+      } else if (apiErr.status === 403) {
         msg = "You don't have access to this repository.";
-      } else if (err.status === 409 || apiErr.code === 'ALREADY_EXISTS') {
+      } else if (apiErr.status === 409 || apiErr.code === 'ALREADY_EXISTS') {
         msg = "This repository is already connected.";
-      } else if (err.status === 429) {
+      } else if (apiErr.status === 429) {
         msg = "Too many requests. Please wait a moment.";
-      } else if (err.status === 503 || err.status === 502) {
+      } else if (apiErr.status === 503 || apiErr.status === 502) {
         msg = "GitHub or our service is temporarily unavailable. Try again.";
-      } else if (!err.status) {
+      } else if (!apiErr.status) {
         msg = "Can't reach the server.";
-      } else {
-        msg = apiErr.message || msg;
       }
 
-      setFormError({ message: msg, reqId: err.reqId }); // Assuming reqId is exposed if tracked
+      setFormError({ message: msg });
     } finally {
       setIsSubmitting(false);
     }
@@ -140,9 +136,8 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
       setJobId(data.job_id);
       setJobStatus('QUEUED');
       if (onAnalyzeStart) onAnalyzeStart();
-    } catch (err: any) {
-      const msg = err?.message || "Failed to start indexing.";
-      setFormError({ message: msg, reqId: err?.reqId });
+    } catch {
+      setFormError({ message: "Failed to start indexing. Please try again." });
     } finally {
       setIsStartingIndex(false);
     }
@@ -155,8 +150,10 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
     let timeoutId: NodeJS.Timeout;
     let isMounted = true;
     let currentInterval = 2000;
+    const abortController = new AbortController();
 
     const poll = async () => {
+      if (!isMounted) return;
       if (document.hidden) {
         // Pause if tab is hidden
         timeoutId = setTimeout(poll, currentInterval);
@@ -164,12 +161,12 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
       }
 
       try {
-        const data = await api.getIndexJob(connectedRepo.id, jobId);
+        const data = await api.getIndexJob(connectedRepo.id, jobId, { signal: abortController.signal });
 
         if (isMounted) {
           setJobStatus(data.status);
           if (data.status === 'FAILED') {
-            setJobError(data.error_message || 'Indexing failed.');
+            setJobError(getFailureMessage(data.failure_code));
           }
 
           if (data.status !== 'READY' && data.status !== 'FAILED') {
@@ -178,23 +175,23 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
             timeoutId = setTimeout(poll, currentInterval);
           }
         }
-      } catch (err: any) {
-        if (err?.status === 429) {
-          // fetchWrapper does not expose headers natively on ApiError, but we fallback gracefully
-          currentInterval = 8000;
-          if (isMounted) timeoutId = setTimeout(poll, currentInterval);
+      } catch (err: unknown) {
+        if (!isMounted || abortController.signal.aborted) return;
+        const apiErr = err as ApiError;
+        if (apiErr?.status === 429) {
+          currentInterval = apiErr.retryAfter ? apiErr.retryAfter * 1000 : 8000;
+          timeoutId = setTimeout(poll, currentInterval);
           return;
         }
-        if (isMounted) {
-          currentInterval = Math.min(currentInterval + 2000, 8000);
-          timeoutId = setTimeout(poll, currentInterval);
-        }
+        currentInterval = Math.min(currentInterval + 2000, 8000);
+        timeoutId = setTimeout(poll, currentInterval);
       }
     };
 
     poll();
     return () => {
       isMounted = false;
+      abortController.abort();
       clearTimeout(timeoutId);
     };
   }, [jobId, connectedRepo]);
@@ -215,7 +212,10 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
       }, 300);
       return () => clearTimeout(t);
     } else if (initialRepository) {
-      setConnectedRepo(initialRepository);
+      const t = setTimeout(() => {
+        setConnectedRepo(initialRepository);
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [open, initialRepository]);
 
@@ -370,7 +370,7 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
                             >
                               <div className="p-4 border-t border-border bg-background">
                                 <p className="text-xs text-muted-foreground mb-2">
-                                  Leave empty to use the repository's default branch.
+                                  Leave empty to use the repository&apos;s default branch.
                                 </p>
                                 <input
                                   type="text"
@@ -441,9 +441,11 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
                            />
                         </div>
 
-                        {STAGES.map((stage, idx) => {
+                        {STAGES.map((stage) => {
                            const stageIndex = STAGES.indexOf(stage);
-                           const currentIndex = STAGES.indexOf(jobStatus as any) !== -1 ? STAGES.indexOf(jobStatus as any) : STAGES.indexOf('QUEUED');
+                           const currentIndex = jobStatus && (STAGES as readonly string[]).includes(jobStatus)
+                             ? STAGES.indexOf(jobStatus as typeof STAGES[number])
+                             : STAGES.indexOf('QUEUED');
 
                            const isCompleted = stageIndex < currentIndex || jobStatus === 'READY';
                            const isCurrent = stageIndex === currentIndex && jobStatus !== 'FAILED' && jobStatus !== 'READY';
@@ -475,7 +477,7 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
                       {jobStatus === 'FAILED' && (
                         <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-md text-sm mt-6">
                           <p className="font-semibold flex items-center gap-2"><AlertCircle size={16}/> Indexing Failed</p>
-                          <p className="mt-1 opacity-90">{jobError}</p>
+                          <p className="mt-1 opacity-90">{jobError || DEFAULT_FAILURE_MESSAGE}</p>
                           <Button
                             variant="outline"
                             size="sm"
@@ -507,7 +509,7 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
                   ) : (
                     <div className="flex flex-col gap-3 text-center">
                       {jobId && jobStatus !== 'FAILED' && (
-                         <p className="text-xs text-muted-foreground">You can close this. Progress shows on the repository's row.</p>
+                         <p className="text-xs text-muted-foreground">You can close this. Progress shows on the repository&apos;s row.</p>
                       )}
                       <Button
                         variant="outline"
