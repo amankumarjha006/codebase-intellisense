@@ -17,6 +17,7 @@ class TestIndexingWorkerReliability:
     @pytest.fixture
     def mock_redis(self):
         client = MagicMock()
+        client.exists.return_value = 0
         return client
 
     @pytest.fixture
@@ -192,3 +193,56 @@ class TestIndexingWorkerReliability:
         assert stuck_job.failure_code == "INTERNAL_ERROR"
         assert "Worker terminated unexpectedly" in stuck_job.error_message
         mock_db.commit.assert_called()
+
+    @patch("app.workers.indexing_worker.redis.from_url")
+    def test_recover_orphaned_jobs_skips_actively_leased_in_flight_jobs(self, mock_from_url, mock_redis, mock_db):
+        mock_from_url.return_value = mock_redis
+        job_id = uuid4()
+        
+        mock_redis.lrange.return_value = [str(job_id)]
+        # Sibling worker holds the active lease
+        mock_redis.exists.return_value = True
+
+        worker = IndexingWorker()
+        worker.db = mock_db
+
+        mock_job = MagicMock()
+        mock_job.id = job_id
+        mock_job.status = "FETCHING"
+
+        with patch("app.workers.indexing_worker.RepositoryRepository") as mock_repo_cls:
+            mock_repo = MagicMock()
+            mock_repo.get_job_by_id.return_value = mock_job
+            mock_repo_cls.return_value = mock_repo
+            mock_db.execute.return_value.scalars.return_value.all.return_value = []
+
+            worker.recover_orphaned_jobs()
+
+            # Status should not change to FAILED, job not removed from queue
+            assert mock_job.status == "FETCHING"
+            mock_redis.lrem.assert_not_called()
+            mock_db.commit.assert_not_called()
+
+    @patch("app.workers.indexing_worker.redis.from_url")
+    def test_recover_orphaned_jobs_skips_stuck_db_jobs_if_in_flight_or_leased(self, mock_from_url, mock_redis, mock_db):
+        mock_from_url.return_value = mock_redis
+        job_id = uuid4()
+        
+        # Job is currently in processing queue on another worker
+        mock_redis.lrange.return_value = [str(job_id)]
+        mock_redis.exists.return_value = True
+
+        worker = IndexingWorker()
+        worker.db = mock_db
+
+        stuck_job = MagicMock()
+        stuck_job.id = job_id
+        stuck_job.status = "INDEXING"
+
+        mock_db.execute.return_value.scalars.return_value.all.return_value = [stuck_job]
+
+        worker.recover_orphaned_jobs()
+
+        # Sibling active job must NOT be marked failed
+        assert stuck_job.status == "INDEXING"
+        mock_db.commit.assert_not_called()

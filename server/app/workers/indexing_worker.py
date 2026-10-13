@@ -1,6 +1,7 @@
 import logging
 import signal
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Optional
@@ -23,7 +24,51 @@ logger = logging.getLogger(__name__)
 
 QUEUE_NAME = "indexing_jobs"
 PROCESSING_QUEUE_NAME = "indexing_jobs:processing"
+LEASE_PREFIX = "indexing_job_lease:"
+DEFAULT_LEASE_TTL = 30
+DEFAULT_HEARTBEAT_INTERVAL = 10
 POLL_INTERVAL = 5
+
+
+class JobLease:
+    """Maintains a Redis lease with background heartbeats while an indexing job runs."""
+
+    def __init__(
+        self,
+        redis_client: redis.Redis,
+        job_id: UUID,
+        ttl: int = DEFAULT_LEASE_TTL,
+        interval: int = DEFAULT_HEARTBEAT_INTERVAL,
+    ):
+        self.redis_client = redis_client
+        self.key = f"{LEASE_PREFIX}{job_id}"
+        self.ttl = ttl
+        self.interval = interval
+        self._stop_event = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+
+    def __enter__(self):
+        try:
+            self.redis_client.set(self.key, "1", ex=self.ttl)
+        except Exception as e:
+            logger.warning(f"Failed to acquire initial lease for {self.key}: {e}")
+        self._thread = threading.Thread(target=self._heartbeat, daemon=True)
+        self._thread.start()
+        return self
+
+    def _heartbeat(self):
+        while not self._stop_event.wait(self.interval):
+            try:
+                self.redis_client.set(self.key, "1", ex=self.ttl)
+            except Exception as e:
+                logger.warning(f"Failed to renew lease for {self.key}: {e}")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._stop_event.set()
+        try:
+            self.redis_client.delete(self.key)
+        except Exception as e:
+            logger.warning(f"Failed to release lease for {self.key}: {e}")
 
 
 class IndexingWorker:
@@ -97,6 +142,14 @@ class IndexingWorker:
         except Exception as e:
             logger.error(f"Failed to remove job {job_id_str} from processing queue: {e}")
 
+    def _is_job_active(self, job_id_str: str) -> bool:
+        """Check if a job currently has an active worker lease in Redis."""
+        try:
+            return bool(self.redis_client.exists(f"{LEASE_PREFIX}{job_id_str}"))
+        except Exception as e:
+            logger.error(f"Failed to check lease for job {job_id_str}: {e}")
+            return False
+
     def recover_orphaned_jobs(self) -> None:
         """Recover any orphaned jobs in PROCESSING_QUEUE_NAME or stuck in DB after a worker crash."""
         logger.info("Checking for orphaned in-flight indexing jobs...")
@@ -104,9 +157,15 @@ class IndexingWorker:
         repo_repo = RepositoryRepository(db)
 
         # 1. Check in-flight jobs in Redis processing queue
+        in_flight_ids: set[str] = set()
         try:
-            in_flight_ids = self.redis_client.lrange(PROCESSING_QUEUE_NAME, 0, -1)
+            raw_in_flight = self.redis_client.lrange(PROCESSING_QUEUE_NAME, 0, -1) or []
+            in_flight_ids = {str(jid) for jid in raw_in_flight}
             for job_id_str in in_flight_ids:
+                if self._is_job_active(job_id_str):
+                    logger.info(f"Job {job_id_str} has an active lease on a sibling worker; skipping recovery")
+                    continue
+
                 try:
                     job_id = UUID(job_id_str)
                     job = repo_repo.get_job_by_id(job_id)
@@ -143,15 +202,21 @@ class IndexingWorker:
                 .scalars()
                 .all()
             )
+            reconciled_count = 0
             for stuck_job in stuck_jobs:
+                if str(stuck_job.id) in in_flight_ids or self._is_job_active(str(stuck_job.id)):
+                    logger.info(f"Database job {stuck_job.id} is in-flight or actively leased; skipping recovery")
+                    continue
+
                 logger.warning(f"Marking stuck database job {stuck_job.id} as FAILED (was in status {stuck_job.status})")
                 stuck_job.status = "FAILED"
                 stuck_job.failure_code = "INTERNAL_ERROR"
                 stuck_job.error_message = "Worker terminated unexpectedly during processing"
                 stuck_job.completed_at = datetime.now(timezone.utc)
-            if stuck_jobs:
+                reconciled_count += 1
+            if reconciled_count > 0:
                 db.commit()
-                logger.info(f"Reconciled {len(stuck_jobs)} stuck indexing jobs in database")
+                logger.info(f"Reconciled {reconciled_count} stuck indexing jobs in database")
         except Exception as e:
             logger.error(f"Error reconciling stuck database jobs: {e}")
             db.rollback()
@@ -192,7 +257,8 @@ class IndexingWorker:
             embedding_service = EmbeddingService(knowledge_repo, provider)
 
             indexing_service = IndexingService(db, embedding_service=embedding_service)
-            indexing_service.run_indexing(job)
+            with JobLease(self.redis_client, job_id):
+                indexing_service.run_indexing(job)
 
             logger.info(f"Completed indexing job {job_id}")
             self._remove_from_processing(job_id_str)
