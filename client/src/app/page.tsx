@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { LANDING_ERROR_COPY } from '@/lib/errors';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { Hero } from '@/components/landing/Hero';
-import { Loader2, GitCommit, FileCode2, MessagesSquare, Database } from 'lucide-react';
+import { GitCommit, FileCode2, MessagesSquare, Database } from 'lucide-react';
 import { Github } from '@/components/icons';
 import { MotionConfig, motion } from 'motion/react';
 import { variants } from '@/lib/animations';
@@ -13,14 +14,13 @@ import Link from 'next/link';
 
 export default function Home() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         await api.getCurrentUser();
-        router.push('/repositories');
+        router.push('/dashboard');
       } catch (err: unknown) {
         if (process.env.NODE_ENV === 'development') {
           console.warn('Session check failed (likely backend unreachable):', err);
@@ -30,12 +30,17 @@ export default function Home() {
 
     const searchParams = new URLSearchParams(window.location.search);
     const errorParam = searchParams.get('error');
-    if (errorParam) setError(errorParam);
+    // Only accept allowlisted error codes; ignore everything else
+    if (errorParam && errorParam in LANDING_ERROR_COPY) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setError(LANDING_ERROR_COPY[errorParam]);
+    }
 
     checkAuth();
   }, [router]);
 
   const handleLogin = () => {
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- external backend OAuth redirect
     window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github`;
   };
 
@@ -216,7 +221,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-medium text-text">Pinned to history</h3>
                 <p className="text-muted">
-                  Every conversation is pinned to a specific commit SHA. Your answers won't mysteriously change because someone pushed to main.
+                  Every conversation is pinned to a specific commit SHA. Your answers won&apos;t mysteriously change because someone pushed to main.
                 </p>
                 <div className="mt-auto pt-6">
                   <div className="inline-flex items-center gap-2 text-xs font-mono text-muted bg-background px-2.5 py-1.5 rounded-md border border-border">
@@ -238,7 +243,7 @@ export default function Home() {
                 <div className="flex-1">
                   <h3 className="text-xl font-medium text-text mb-2">Streamed, fast responses</h3>
                   <p className="text-muted max-w-lg">
-                    Codebase Intellisense streams the answer directly to you as it's generated, maintaining a fast and responsive feeling even on massive repositories.
+                    Codebase Intellisense streams the answer directly to you as it&apos;s generated, maintaining a fast and responsive feeling even on massive repositories.
                   </p>
                 </div>
                 <div className="flex-1 w-full">

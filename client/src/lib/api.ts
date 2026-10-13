@@ -69,6 +69,7 @@ export interface BackendError {
   error: {
     code: string;
     message: string;
+    request_id?: string;
   };
 }
 
@@ -76,16 +77,45 @@ export class ApiError extends Error {
   public code: string;
   public status?: number;
   public retryAfter?: number;
+  public requestId?: string;
 
-  constructor(message: string, code: string, status?: number, retryAfter?: number) {
+  constructor(message: string, code: string, status?: number, retryAfter?: number, requestId?: string) {
     super(message);
     this.code = code;
     this.status = status;
     this.retryAfter = retryAfter;
+    this.requestId = requestId;
   }
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+/** Maximum Retry-After value we honour (seconds). */
+const MAX_RETRY_AFTER_SECONDS = 120;
+
+/**
+ * Parse a Retry-After header value.
+ * Accepts either an integer (seconds) or an HTTP-date string.
+ * Returns seconds, capped at MAX_RETRY_AFTER_SECONDS, or undefined.
+ */
+function parseRetryAfter(header: string | null): number | undefined {
+  if (!header) return undefined;
+
+  // Try integer seconds first
+  const parsed = parseInt(header, 10);
+  if (!isNaN(parsed) && String(parsed) === header.trim() && parsed > 0) {
+    return Math.min(parsed, MAX_RETRY_AFTER_SECONDS);
+  }
+
+  // Try HTTP-date
+  const date = new Date(header);
+  if (!isNaN(date.getTime())) {
+    const seconds = Math.max(0, Math.ceil((date.getTime() - Date.now()) / 1000));
+    return seconds > 0 ? Math.min(seconds, MAX_RETRY_AFTER_SECONDS) : undefined;
+  }
+
+  return undefined;
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 async function fetchWrapper<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_URL}${endpoint}`;
@@ -137,16 +167,15 @@ async function fetchWrapper<T>(endpoint: string, options: RequestInit = {}): Pro
       const message = errorData?.error?.message || `HTTP ${response.status} error occurred`;
       const code = errorData?.error?.code || 'UNKNOWN_ERROR';
 
-      let retryAfter: number | undefined;
-      const retryAfterHeader = response.headers.get('Retry-After');
-      if (retryAfterHeader) {
-        const parsed = parseInt(retryAfterHeader, 10);
-        if (!isNaN(parsed) && parsed > 0) {
-          retryAfter = parsed;
-        }
-      }
+      const retryAfter = parseRetryAfter(response.headers.get('Retry-After'));
 
-      throw new ApiError(message, code, response.status, retryAfter);
+      // Prefer X-Request-ID header, fall back to error envelope
+      const requestId =
+        response.headers.get('X-Request-ID') ||
+        errorData?.error?.request_id ||
+        undefined;
+
+      throw new ApiError(message, code, response.status, retryAfter, requestId);
     }
 
     return data as T;

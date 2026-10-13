@@ -95,9 +95,6 @@ class ChunkBuilderService:
                     new_chunks.append(CodeChunk(
                         file_id=c_data.file_id,
                         symbol_id=c_data.symbol_id,
-                        # CodeChunk model doesn't have parent_symbol_id right now.
-                        # Wait, did the user tell me to add parent_symbol_id to ChunkData?
-                        # Yes, but not to the CodeChunk model. Let's omit it from the model for now if it's not defined, or maybe I should check CodeChunk model again.
                         content=c_data.content,
                         start_line=c_data.start_line,
                         end_line=c_data.end_line,
