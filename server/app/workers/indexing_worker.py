@@ -122,9 +122,9 @@ class IndexingWorker:
         """Atomically pop the next job ID from QUEUE_NAME and push to PROCESSING_QUEUE_NAME."""
         try:
             return self.redis_client.lmove(
-                QUEUE_NAME, PROCESSING_QUEUE_NAME, wherefrom="LEFT", whereto="RIGHT"
+                QUEUE_NAME, PROCESSING_QUEUE_NAME, src="LEFT", dest="RIGHT"
             )
-        except (redis.ResponseError, AttributeError):
+        except (redis.ResponseError, AttributeError, TypeError):
             # Fallback for Redis versions that do not support LMOVE
             lua_script = """
             local job = redis.call('LPOP', KEYS[1])

@@ -35,7 +35,7 @@ class TestIndexingWorkerReliability:
 
         assert result == "job-123"
         mock_redis.lmove.assert_called_once_with(
-            QUEUE_NAME, PROCESSING_QUEUE_NAME, wherefrom="LEFT", whereto="RIGHT"
+            QUEUE_NAME, PROCESSING_QUEUE_NAME, src="LEFT", dest="RIGHT"
         )
 
     @patch("app.workers.indexing_worker.redis.from_url")

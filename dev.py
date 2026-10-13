@@ -1,10 +1,10 @@
 """
-Development runner to start FastAPI backend, Next.js frontend, and optionally the background indexing worker.
+Development runner to start FastAPI backend, Next.js frontend, and the background indexing worker.
 Explicitly activates server/.venv before starting backend services.
 
 Usage:
-    python dev.py
-    python dev.py --with-worker
+    python dev.py             # Starts backend, frontend, and indexing worker (default)
+    python dev.py --no-worker # Starts backend and frontend without indexing worker
 """
 
 import argparse
@@ -82,11 +82,19 @@ def terminate(proc: subprocess.Popen | None) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Codebase Intelligence - Local Development Runner")
     parser.add_argument(
+        "--no-worker",
+        action="store_true",
+        help="Do not start the background indexing worker",
+    )
+    parser.add_argument(
         "--with-worker",
         action="store_true",
-        help="Also start the background indexing worker",
+        default=True,
+        help="Start the background indexing worker (default: active)",
     )
     args = parser.parse_args()
+
+    start_worker = not args.no_worker
 
     backend_cmd, backend_env = get_command_config("uvicorn app.main:app --reload --host 127.0.0.1 --port 8000")
     npm_bin = "npm.cmd" if sys.platform == "win32" else "npm"
@@ -97,8 +105,10 @@ def main() -> None:
     print(f"  Venv Path:    {VENV_DIR}")
     print(f"  Backend API:  http://127.0.0.1:8000  (Docs: http://127.0.0.1:8000/docs)")
     print(f"  Frontend App: http://localhost:3000")
-    if args.with_worker:
+    if start_worker:
         print(f"  Worker:       Background Indexing Worker (active)")
+    else:
+        print(f"  Worker:       Disabled (--no-worker)")
     print("  Press Ctrl+C to stop all processes")
     print("=" * 65)
 
@@ -125,8 +135,8 @@ def main() -> None:
             shell=(sys.platform == "win32"),
         )
 
-        # Optionally start Worker
-        if args.with_worker:
+        # Start Worker
+        if start_worker:
             print("[dev] Launching background indexing worker...")
             worker_cmd, worker_env = get_command_config("python -m app.workers.indexing_worker")
             worker_proc = subprocess.Popen(
