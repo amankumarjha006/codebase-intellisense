@@ -1,9 +1,13 @@
+export interface GithubIdentity {
+  username: string;
+  github_user_id: string;
+}
+
 export interface CurrentUser {
   id: string;
   email: string;
   full_name: string | null;
-  is_active: boolean;
-  github_accounts: { github_user_id: string; username: string }[];
+  github: GithubIdentity | null;
 }
 
 export interface RepositoryOut {
