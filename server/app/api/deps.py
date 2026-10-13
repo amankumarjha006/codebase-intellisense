@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from uuid import UUID
 import redis.asyncio as redis
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator, Generator, Optional
 from app.core.config import settings
 from app.core.db import SessionLocal
 from app.core.redis import get_redis_client
@@ -36,49 +36,42 @@ async def get_redis() -> AsyncGenerator[redis.Redis, None]:
     client = await get_redis_client()
     yield client
 
-async def get_current_user(
+async def get_optional_current_user(
     request: Request,
     db: Session = Depends(get_db),
     redis_client: redis.Redis = Depends(get_redis)
+) -> Optional[User]:
+    """
+    Dependency to get the currently authenticated user from the HTTP-only session cookie,
+    returning None if unauthenticated or session is invalid.
+    """
+    session_id = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    if not session_id:
+        return None
+
+    try:
+        user_id_str = await redis_client.get(f"session:{session_id}")
+        if not user_id_str:
+            return None
+        user_uuid = UUID(user_id_str)
+        from app.repositories.user import UserAccountRepository
+        user_repo = UserAccountRepository(db)
+        return user_repo.get_user_by_id(user_uuid)
+    except Exception:
+        return None
+
+async def get_current_user(
+    user: Optional[User] = Depends(get_optional_current_user)
 ) -> User:
     """
     Dependency to get the currently authenticated user from the HTTP-only session cookie.
     Raises AuthException (handled by a custom exception handler to return 401) if invalid.
     """
-    session_id = request.cookies.get(settings.SESSION_COOKIE_NAME)
-    if not session_id:
-        raise AuthException(
-            code="UNAUTHENTICATED", 
-            message="User session is invalid or missing."
-        )
-
-    # Lookup user ID in Redis
-    user_id_str = await redis_client.get(f"session:{session_id}")
-    if not user_id_str:
-        raise AuthException(
-            code="UNAUTHENTICATED", 
-            message="User session is invalid or missing."
-        )
-
-    try:
-        user_uuid = UUID(user_id_str)
-    except ValueError:
-        raise AuthException(
-            code="UNAUTHENTICATED", 
-            message="User session is invalid or missing."
-        )
-
-    # Fetch user from database
-    from app.repositories.user import UserAccountRepository
-    user_repo = UserAccountRepository(db)
-    user = user_repo.get_user_by_id(user_uuid)
-    
     if not user:
         raise AuthException(
             code="UNAUTHENTICATED", 
             message="User session is invalid or missing."
         )
-
     return user
 
 def get_authorized_repository(
