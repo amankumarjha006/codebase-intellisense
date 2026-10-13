@@ -1,27 +1,33 @@
-import asyncio
 import logging
 import signal
 import sys
+import time
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
 import redis
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import SessionLocal
 from app.models.repository import IndexJob
+from app.repositories.knowledge import KnowledgeRepository
 from app.repositories.repository import RepositoryRepository
+from app.services.embedding.factory import get_embedding_provider
+from app.services.embedding.service import EmbeddingService
 from app.services.indexing import IndexingService
 
 logger = logging.getLogger(__name__)
 
 QUEUE_NAME = "indexing_jobs"
+PROCESSING_QUEUE_NAME = "indexing_jobs:processing"
 POLL_INTERVAL = 5
 
 
 class IndexingWorker:
-    """Background worker that processes indexing jobs from Redis queue."""
+    """Background worker that processes indexing jobs from Redis queue with crash resilience."""
 
     def __init__(self):
         self.redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
@@ -37,6 +43,12 @@ class IndexingWorker:
         signal.signal(signal.SIGTERM, self._signal_handler)
         signal.signal(signal.SIGINT, self._signal_handler)
 
+        # Recover any orphaned jobs from a previous worker crash
+        try:
+            self.recover_orphaned_jobs()
+        except Exception as e:
+            logger.error(f"Error during startup job recovery: {e}", exc_info=True)
+
         while self.running:
             try:
                 self._process_next_job()
@@ -48,7 +60,7 @@ class IndexingWorker:
                     self.db = None
 
             if self.running:
-                asyncio.run(asyncio.sleep(POLL_INTERVAL))
+                time.sleep(POLL_INTERVAL)
 
     def _signal_handler(self, signum, frame) -> None:
         """Handle shutdown signals."""
@@ -61,9 +73,92 @@ class IndexingWorker:
             self.db = SessionLocal()
         return self.db
 
+    def _pop_to_processing(self) -> Optional[str]:
+        """Atomically pop the next job ID from QUEUE_NAME and push to PROCESSING_QUEUE_NAME."""
+        try:
+            return self.redis_client.lmove(
+                QUEUE_NAME, PROCESSING_QUEUE_NAME, wherefrom="LEFT", whereto="RIGHT"
+            )
+        except (redis.ResponseError, AttributeError):
+            # Fallback for Redis versions that do not support LMOVE
+            lua_script = """
+            local job = redis.call('LPOP', KEYS[1])
+            if job then
+                redis.call('RPUSH', KEYS[2], job)
+            end
+            return job
+            """
+            return self.redis_client.eval(lua_script, 2, QUEUE_NAME, PROCESSING_QUEUE_NAME)
+
+    def _remove_from_processing(self, job_id_str: str) -> None:
+        """Remove a completed or failed job ID from the in-flight processing queue."""
+        try:
+            self.redis_client.lrem(PROCESSING_QUEUE_NAME, 0, job_id_str)
+        except Exception as e:
+            logger.error(f"Failed to remove job {job_id_str} from processing queue: {e}")
+
+    def recover_orphaned_jobs(self) -> None:
+        """Recover any orphaned jobs in PROCESSING_QUEUE_NAME or stuck in DB after a worker crash."""
+        logger.info("Checking for orphaned in-flight indexing jobs...")
+        db = self._get_db()
+        repo_repo = RepositoryRepository(db)
+
+        # 1. Check in-flight jobs in Redis processing queue
+        try:
+            in_flight_ids = self.redis_client.lrange(PROCESSING_QUEUE_NAME, 0, -1)
+            for job_id_str in in_flight_ids:
+                try:
+                    job_id = UUID(job_id_str)
+                    job = repo_repo.get_job_by_id(job_id)
+                    if not job:
+                        logger.warning(f"Orphaned job {job_id_str} not found in DB; removing from processing queue")
+                        self._remove_from_processing(job_id_str)
+                        continue
+
+                    if job.status in ("READY", "FAILED"):
+                        logger.info(f"Job {job_id_str} is already {job.status}; removing from processing queue")
+                        self._remove_from_processing(job_id_str)
+                    else:
+                        logger.warning(
+                            f"Marking orphaned in-flight job {job_id} as FAILED (was in status {job.status})"
+                        )
+                        job.status = "FAILED"
+                        job.failure_code = "WORKER_CRASHED"
+                        job.error_message = "Worker terminated unexpectedly during processing"
+                        job.completed_at = datetime.now(timezone.utc)
+                        db.commit()
+                        self._remove_from_processing(job_id_str)
+                except Exception as e:
+                    logger.error(f"Failed to reconcile processing job {job_id_str}: {e}")
+                    db.rollback()
+        except Exception as e:
+            logger.error(f"Failed to inspect processing queue: {e}")
+
+        # 2. Check any DB jobs stuck in FETCHING or INDEXING with no active worker
+        try:
+            stuck_jobs = list(
+                db.execute(
+                    select(IndexJob).where(IndexJob.status.in_(["FETCHING", "INDEXING"]))
+                )
+                .scalars()
+                .all()
+            )
+            for stuck_job in stuck_jobs:
+                logger.warning(f"Marking stuck database job {stuck_job.id} as FAILED (was in status {stuck_job.status})")
+                stuck_job.status = "FAILED"
+                stuck_job.failure_code = "WORKER_CRASHED"
+                stuck_job.error_message = "Worker terminated unexpectedly during processing"
+                stuck_job.completed_at = datetime.now(timezone.utc)
+            if stuck_jobs:
+                db.commit()
+                logger.info(f"Reconciled {len(stuck_jobs)} stuck indexing jobs in database")
+        except Exception as e:
+            logger.error(f"Error reconciling stuck database jobs: {e}")
+            db.rollback()
+
     def _process_next_job(self) -> None:
-        """Process the next job from the queue."""
-        job_id_str = self.redis_client.lpop(QUEUE_NAME)
+        """Process the next job from the queue with crash protection."""
+        job_id_str = self._pop_to_processing()
         if not job_id_str:
             return
 
@@ -71,6 +166,7 @@ class IndexingWorker:
             job_id = UUID(job_id_str)
         except ValueError:
             logger.error(f"Invalid job ID in queue: {job_id_str}")
+            self._remove_from_processing(job_id_str)
             return
 
         self.current_job_id = job_id
@@ -83,16 +179,14 @@ class IndexingWorker:
 
             if not job:
                 logger.warning(f"Job {job_id} not found in database")
+                self._remove_from_processing(job_id_str)
                 return
 
             if job.status != "QUEUED":
                 logger.warning(f"Job {job_id} is not in QUEUED status (current: {job.status})")
+                self._remove_from_processing(job_id_str)
                 return
 
-            from app.repositories.knowledge import KnowledgeRepository
-            from app.services.embedding.factory import get_embedding_provider
-            from app.services.embedding.service import EmbeddingService
-            
             knowledge_repo = KnowledgeRepository(db)
             provider = get_embedding_provider(settings)
             embedding_service = EmbeddingService(knowledge_repo, provider)
@@ -101,10 +195,12 @@ class IndexingWorker:
             indexing_service.run_indexing(job)
 
             logger.info(f"Completed indexing job {job_id}")
+            self._remove_from_processing(job_id_str)
 
         except Exception as e:
             logger.error(f"Failed to process job {job_id}: {e}", exc_info=True)
             self._mark_job_failed(job_id, str(e))
+            self._remove_from_processing(job_id_str)
         finally:
             self.current_job_id = None
 
@@ -115,7 +211,6 @@ class IndexingWorker:
             repo_repo = RepositoryRepository(db)
             job = repo_repo.get_job_by_id(job_id)
             if job:
-                from datetime import datetime, timezone
                 job.status = "FAILED"
                 job.error_message = error_message
                 job.failure_code = failure_code
