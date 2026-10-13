@@ -95,3 +95,58 @@ def get_authorized_repository(
             message="The requested repository was not found or you do not have permission to access it."
         )
     return repository
+
+
+def get_retrieval_service(db: Session = Depends(get_db)):
+    """Dependency for constructing the hybrid retrieval service."""
+    from app.repositories.knowledge import KnowledgeRepository
+    from app.services.retrieval import (
+        RetrievalService,
+        SemanticRetrievalStrategy,
+        KeywordRetrievalStrategy,
+        HybridRetrievalStrategy,
+    )
+    from app.services.embedding.service import EmbeddingService
+    from app.services.embedding.gemini import GeminiEmbeddingProvider
+
+    knowledge_repo = KnowledgeRepository(db)
+    provider = GeminiEmbeddingProvider(
+        api_key=settings.GEMINI_API_KEY,
+        model=settings.EMBEDDING_MODEL,
+        dimension=settings.EMBEDDING_DIMENSION,
+    )
+    embedding_service = EmbeddingService(knowledge_repo, provider)
+    semantic_strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
+    keyword_strategy = KeywordRetrievalStrategy(knowledge_repo)
+    hybrid_strategy = HybridRetrievalStrategy(keyword_strategy, semantic_strategy)
+    return RetrievalService(hybrid_strategy)
+
+
+def get_rag_query_service(
+    db: Session = Depends(get_db),
+    retrieval_service = Depends(get_retrieval_service),
+):
+    """Dependency for constructing the end-to-end RAG query service."""
+    from app.services.context.builder import ContextBuilder
+    from app.services.llm.factory import create_llm_provider
+    from app.services.rag.service import RAGService
+    from app.services.citation.service import CitationService
+    from app.services.answer.service import AnswerService
+    from app.services.rag_query.service import RAGQueryService
+
+    repo_repo = RepositoryRepository(db)
+    context_builder = ContextBuilder()
+    llm_provider = create_llm_provider(settings)
+    rag_service = RAGService(llm_provider)
+    citation_service = CitationService()
+    answer_service = AnswerService()
+
+    return RAGQueryService(
+        repository_repo=repo_repo,
+        retrieval_service=retrieval_service,
+        context_builder=context_builder,
+        rag_service=rag_service,
+        citation_service=citation_service,
+        answer_service=answer_service,
+    )
+

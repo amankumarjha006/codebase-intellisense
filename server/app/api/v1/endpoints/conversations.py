@@ -7,6 +7,9 @@ from app.api.deps import (
     get_db,
     get_current_user,
     get_authorized_repository,
+    get_redis,
+    get_retrieval_service,
+    get_rag_query_service,
 )
 from app.core.rate_limit import general_rate_limiter, rag_rate_limiter, stream_rate_limiter
 from app.models.user import User
@@ -25,10 +28,7 @@ from app.schemas.conversation import (
     MessageListOut,
 )
 from app.repositories.repository import RepositoryRepository
-from app.repositories.knowledge import KnowledgeRepository
-from app.services.retrieval import RetrievalService, KeywordRetrievalStrategy, SemanticRetrievalStrategy, HybridRetrievalStrategy
-from app.services.embedding.service import EmbeddingService
-from app.services.embedding.gemini import GeminiEmbeddingProvider
+from app.services.retrieval import RetrievalService
 from app.core.config import settings
 from app.services.rag_query.service import RAGQueryService
 from app.services.rag_query.exceptions import (
@@ -47,7 +47,6 @@ from app.services.conversation.message_service import ConversationMessageService
 from app.schemas.message import ConversationMessageRequest, ConversationMessageResponse
 from app.services.conversation.streaming_service import ConversationStreamingService
 from app.services.conversation.query_rewriter import QueryRewriter
-from app.api.deps import get_redis
 from fastapi.responses import StreamingResponse
 import redis.asyncio as redis
 router = APIRouter()
@@ -57,39 +56,12 @@ def get_conversation_service(db: Session = Depends(get_db)) -> ConversationServi
     message_repo = MessageRepository(db)
     return ConversationService(conversation_repo, message_repo)
 
-def get_conversation_message_service(db: Session = Depends(get_db)) -> ConversationMessageService:
+def get_conversation_message_service(
+    db: Session = Depends(get_db),
+    rag_query_service: RAGQueryService = Depends(get_rag_query_service),
+) -> ConversationMessageService:
     conversation_repo = ConversationRepository(db)
     message_repo = MessageRepository(db)
-    
-    repo_repo = RepositoryRepository(db)
-    knowledge_repo = KnowledgeRepository(db)
-
-    provider = GeminiEmbeddingProvider(
-        api_key=settings.GEMINI_API_KEY,
-        model=settings.EMBEDDING_MODEL,
-        dimension=settings.EMBEDDING_DIMENSION,
-    )
-    embedding_service = EmbeddingService(knowledge_repo, provider)
-    semantic_strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
-    keyword_strategy = KeywordRetrievalStrategy(knowledge_repo)
-    hybrid_strategy = HybridRetrievalStrategy(keyword_strategy, semantic_strategy)
-    retrieval_service = RetrievalService(hybrid_strategy)
-
-    context_builder = ContextBuilder()
-    llm_provider = create_llm_provider(settings)
-    rag_service = RAGService(llm_provider)
-    citation_service = CitationService()
-    answer_service = AnswerService()
-
-    rag_query_service = RAGQueryService(
-        repository_repo=repo_repo,
-        retrieval_service=retrieval_service,
-        context_builder=context_builder,
-        rag_service=rag_service,
-        citation_service=citation_service,
-        answer_service=answer_service,
-    )
-    
     return ConversationMessageService(
         conversation_repo=conversation_repo,
         message_repo=message_repo,
@@ -98,30 +70,18 @@ def get_conversation_message_service(db: Session = Depends(get_db)) -> Conversat
 
 def get_conversation_streaming_service(
     db: Session = Depends(get_db),
-    redis_client: redis.Redis = Depends(get_redis)
+    redis_client: redis.Redis = Depends(get_redis),
+    retrieval_service: RetrievalService = Depends(get_retrieval_service),
 ) -> ConversationStreamingService:
     conversation_repo = ConversationRepository(db)
     message_repo = MessageRepository(db)
     repo_repo = RepositoryRepository(db)
-    knowledge_repo = KnowledgeRepository(db)
-
-    provider = GeminiEmbeddingProvider(
-        api_key=settings.GEMINI_API_KEY,
-        model=settings.EMBEDDING_MODEL,
-        dimension=settings.EMBEDDING_DIMENSION,
-    )
-    embedding_service = EmbeddingService(knowledge_repo, provider)
-    semantic_strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
-    keyword_strategy = KeywordRetrievalStrategy(knowledge_repo)
-    hybrid_strategy = HybridRetrievalStrategy(keyword_strategy, semantic_strategy)
-    retrieval_service = RetrievalService(hybrid_strategy)
 
     context_builder = ContextBuilder()
     llm_provider = create_llm_provider(settings)
     rag_service = RAGService(llm_provider)
     citation_service = CitationService()
     answer_service = AnswerService()
-    
     query_rewriter = QueryRewriter(llm_provider=llm_provider)
 
     return ConversationStreamingService(
@@ -152,10 +112,10 @@ def create_conversation(
             title=request.title
         )
         return conversation
-    except ActiveVersionNotFoundError as e:
+    except ActiveVersionNotFoundError:
         return JSONResponse(
             status_code=400,
-            content={"error": {"code": "INVALID_REQUEST", "message": str(e)}}
+            content={"error": {"code": "INVALID_REQUEST", "message": "No active indexed version found for this repository."}}
         )
 
 
@@ -192,10 +152,10 @@ def get_conversation(
     try:
         conversation = conversation_service.get_conversation(conversation_id, user.id)
         return conversation
-    except ConversationNotFoundError as e:
+    except ConversationNotFoundError:
         return JSONResponse(
             status_code=404,
-            content={"error": {"code": "NOT_FOUND", "message": str(e)}}
+            content={"error": {"code": "NOT_FOUND", "message": "Conversation not found."}}
         )
 
 
@@ -208,10 +168,10 @@ def delete_conversation(
 ):
     try:
         conversation_service.delete_conversation(conversation_id, user.id)
-    except ConversationNotFoundError as e:
+    except ConversationNotFoundError:
         return JSONResponse(
             status_code=404,
-            content={"error": {"code": "NOT_FOUND", "message": str(e)}}
+            content={"error": {"code": "NOT_FOUND", "message": "Conversation not found."}}
         )
 
 
@@ -236,10 +196,10 @@ def list_messages(
             limit=limit,
             has_more=(skip + len(items)) < total
         )
-    except ConversationNotFoundError as e:
+    except ConversationNotFoundError:
         return JSONResponse(
             status_code=404,
-            content={"error": {"code": "NOT_FOUND", "message": str(e)}}
+            content={"error": {"code": "NOT_FOUND", "message": "Conversation not found."}}
         )
 
 
@@ -258,40 +218,35 @@ async def send_message(
             request=request
         )
         return response
-    except ConversationNotFoundError as e:
+    except ConversationNotFoundError:
         return JSONResponse(
             status_code=404,
-            content={"error": {"code": "NOT_FOUND", "message": str(e)}}
+            content={"error": {"code": "NOT_FOUND", "message": "Conversation not found."}}
         )
-    except TransientLLMError as e:
+    except TransientLLMError:
         return JSONResponse(
             status_code=503,
-            content={"error": {"code": "UPSTREAM_SERVICE_UNAVAILABLE", "message": str(e)}}
+            content={"error": {"code": "UPSTREAM_SERVICE_UNAVAILABLE", "message": "AI service is temporarily unavailable. Please try again later."}}
         )
-    except InvalidQueryError as e:
+    except InvalidQueryError:
         return JSONResponse(
             status_code=400,
-            content={"error": {"code": "INVALID_REQUEST", "message": str(e)}}
+            content={"error": {"code": "INVALID_REQUEST", "message": "Invalid query provided."}}
         )
-    except InvalidRepositoryVersionError as e:
+    except InvalidRepositoryVersionError:
         return JSONResponse(
             status_code=400,
-            content={"error": {"code": "INVALID_REQUEST", "message": str(e)}}
+            content={"error": {"code": "INVALID_REQUEST", "message": "Invalid repository version."}}
         )
-    except NoIndexedVersionError as e:
+    except NoIndexedVersionError:
         return JSONResponse(
             status_code=400,
-            content={"error": {"code": "INVALID_REQUEST", "message": str(e)}}
+            content={"error": {"code": "INVALID_REQUEST", "message": "No indexed version found for repository."}}
         )
-    except TransientLLMError as e:
+    except PermanentLLMError:
         return JSONResponse(
             status_code=502,
-            content={"error": {"code": "UPSTREAM_SERVICE_UNAVAILABLE", "message": str(e)}}
-        )
-    except PermanentLLMError as e:
-        return JSONResponse(
-            status_code=502,
-            content={"error": {"code": "UPSTREAM_SERVICE_ERROR", "message": str(e)}}
+            content={"error": {"code": "UPSTREAM_SERVICE_ERROR", "message": "AI service encountered an error processing the request."}}
         )
 
 @router.post("/conversations/{conversation_id}/messages/stream", summary="Stream a Message")
