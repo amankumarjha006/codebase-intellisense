@@ -16,6 +16,7 @@ from app.models.knowledge import (
     Symbol,
 )
 from app.models.repository import IndexJob, Repository, RepositoryVersion
+from app.repositories.knowledge import KnowledgeRepository
 from app.repositories.repository import RepositoryRepository
 
 logger = logging.getLogger(__name__)
@@ -116,9 +117,6 @@ LANGUAGE_EXTENSIONS = {
     ".vue": "vue",
     ".svelte": "svelte",
 }
-
-CHUNK_MAX_LINES = 100
-CHUNK_OVERLAP_LINES = 10
 
 
 class IndexingError(Exception):
@@ -496,22 +494,25 @@ class IndexingService:
     def _index_repository(self, repo_path: str, version: RepositoryVersion) -> None:
         """Index all files in the repository, then run symbol extraction."""
         from sqlalchemy import select as sa_select
-        from app.repositories.knowledge import KnowledgeRepository
         from app.services.symbol_extractor import SymbolExtractorService
 
         knowledge_repo = KnowledgeRepository(self.db)
 
         # --- Re-index cleanup: remove existing data for this version ---
         deleted_count = knowledge_repo.delete_files_for_version(version.id)
-        if deleted_count > 0:
+        if deleted_count and deleted_count > 0:
             logger.info(f"Re-index: removed {deleted_count} existing files for version {version.id}")
         knowledge_repo.delete_analysis_results_for_version(version.id)
 
         files = discover_files(repo_path)
         logger.info(f"Discovered {len(files)} files to index for version {version.id}")
 
-        for rel_path, abs_path in files:
-            self._index_file(repo_path, rel_path, abs_path, version)
+        file_records = [
+            self._prepare_file_record(rel_path, abs_path, version)
+            for rel_path, abs_path in files
+        ]
+        if file_records:
+            knowledge_repo.bulk_create_files(file_records)
 
         # --- Symbol extraction ---
         stmt = sa_select(File).where(File.repository_version_id == version.id)
@@ -543,8 +544,10 @@ class IndexingService:
                 from app.models.knowledge import CodeChunk
                 from sqlalchemy.orm import joinedload
                 
-                stmt = sa_select(CodeChunk).where(
-                    CodeChunk.file_id.in_([f.id for f in indexed_files])
+                stmt = (
+                    sa_select(CodeChunk)
+                    .join(File, CodeChunk.file_id == File.id)
+                    .where(File.repository_version_id == version.id)
                 )
                 stmt = stmt.options(joinedload(CodeChunk.file), joinedload(CodeChunk.symbol))
                 
@@ -562,12 +565,14 @@ class IndexingService:
 
         self.db.commit()
 
-    def _index_file(self, repo_root: str, rel_path: str, abs_path: str, version: RepositoryVersion) -> None:
-        """Index a single file."""
+    def _prepare_file_record(
+        self, rel_path: str, abs_path: str, version: RepositoryVersion
+    ) -> File:
+        """Create a File model instance without flushing to the database."""
         content, file_hash = read_file_content(abs_path)
         language = get_language_for_file(rel_path) or "text"
 
-        file_record = File(
+        return File(
             repository_version_id=version.id,
             file_path=rel_path,
             file_name=Path(rel_path).name,
@@ -575,12 +580,15 @@ class IndexingService:
             size_bytes=len(content.encode("utf-8")),
             hash=file_hash,
         )
+
+    def _index_file(
+        self, repo_root: str, rel_path: str, abs_path: str, version: RepositoryVersion
+    ) -> File:
+        """Index a single file."""
+        file_record = self._prepare_file_record(rel_path, abs_path, version)
         self.db.add(file_record)
         self.db.flush()
-
-        # Symbol extraction is handled in bulk by SymbolExtractorService
-        # after all files for this version have been indexed.
-        # Chunking is similarly handled in bulk.
+        return file_record
 
     def _analyze_repository(self, version: RepositoryVersion, repo_path: str = None) -> None:
         """Run repository-level analysis (tech stack, architecture, statistics)."""
