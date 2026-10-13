@@ -10,6 +10,10 @@ from app.main import app
 from app.core.config import settings
 from app.services.github import GithubAuthError
 from app.models.user import User, GithubAccount, GithubInstallation
+from urllib.parse import urlparse
+
+_parsed_frontend = urlparse(settings.FRONTEND_URL)
+FRONTEND_ORIGIN = f"{_parsed_frontend.scheme}://{_parsed_frontend.netloc}"
 
 @pytest_asyncio.fixture
 async def async_client():
@@ -66,21 +70,48 @@ async def test_login_github_redirects_and_generates_state(async_client, mock_red
     assert args[2] == "1"
 
 @pytest.mark.asyncio
-async def test_github_callback_missing_state_or_code(async_client):
-    # Missing state
-    response = await async_client.get(f"{settings.API_V1_STR}/auth/github/callback?code=abc")
-    assert response.status_code == 422  # Pydantic validation error for missing query param
+async def test_login_github_failure_redirects(async_client, mock_redis):
+    # Simulate Redis connection failure during login-start
+    mock_redis.setex.side_effect = Exception("Redis connection refused")
+    response = await async_client.get(f"{settings.API_V1_STR}/auth/github", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == f"{FRONTEND_ORIGIN}/?error=login_failed"
+    assert "Redis connection refused" not in response.headers["location"]
+    assert "Redis connection refused" not in response.text
 
-    # Missing code
-    response = await async_client.get(f"{settings.API_V1_STR}/auth/github/callback?state=xyz")
-    assert response.status_code == 422
+@pytest.mark.asyncio
+async def test_github_callback_missing_state_or_code(async_client):
+    # Missing code -> error=access_denied
+    response_no_code = await async_client.get(f"{settings.API_V1_STR}/auth/github/callback?state=xyz", follow_redirects=False)
+    assert response_no_code.status_code == 302
+    assert response_no_code.headers["location"] == f"{FRONTEND_ORIGIN}/?error=access_denied"
+
+    # Missing state -> error=login_failed
+    response_no_state = await async_client.get(f"{settings.API_V1_STR}/auth/github/callback?code=abc", follow_redirects=False)
+    assert response_no_state.status_code == 302
+    assert response_no_state.headers["location"] == f"{FRONTEND_ORIGIN}/?error=login_failed"
+
+@pytest.mark.asyncio
+async def test_github_callback_denied_query_param(async_client):
+    # GitHub returns error query param (e.g. user canceled / denied access)
+    response = await async_client.get(
+        f"{settings.API_V1_STR}/auth/github/callback?error=access_denied&error_description=The+user+has+denied+your+application",
+        follow_redirects=False
+    )
+    assert response.status_code == 302
+    assert response.headers["location"] == f"{FRONTEND_ORIGIN}/?error=access_denied"
+    assert "The user has denied" not in response.headers["location"]
+    assert "The user has denied" not in response.text
 
 @pytest.mark.asyncio
 async def test_github_callback_invalid_state(async_client, mock_redis):
-    mock_redis.getdel.return_value = None  # State not found
-    response = await async_client.get(f"{settings.API_V1_STR}/auth/github/callback?code=abc&state=invalid_state")
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "INVALID_REQUEST"
+    mock_redis.getdel.return_value = None  # State not found or expired
+    response = await async_client.get(
+        f"{settings.API_V1_STR}/auth/github/callback?code=abc&state=invalid_state",
+        follow_redirects=False
+    )
+    assert response.status_code == 302
+    assert response.headers["location"] == f"{FRONTEND_ORIGIN}/?error=login_failed"
     mock_redis.getdel.assert_called_once_with("oauth_state:invalid_state")
 
 @pytest.mark.asyncio
@@ -92,11 +123,12 @@ async def test_github_callback_state_single_use(async_client, mock_redis, mock_g
     # First call (valid state)
     res1 = await async_client.get(f"{settings.API_V1_STR}/auth/github/callback?code=abc&state=valid_state", follow_redirects=False)
     assert res1.status_code == 302
+    assert res1.headers["location"] == settings.FRONTEND_URL
     
     # Second call (replayed state)
     res2 = await async_client.get(f"{settings.API_V1_STR}/auth/github/callback?code=abc&state=valid_state", follow_redirects=False)
-    assert res2.status_code == 400
-    assert res2.json()["error"]["code"] == "INVALID_REQUEST"
+    assert res2.status_code == 302
+    assert res2.headers["location"] == f"{FRONTEND_ORIGIN}/?error=login_failed"
     
     assert mock_redis.getdel.call_count == 2
 
@@ -105,20 +137,38 @@ async def test_github_callback_state_single_use(async_client, mock_redis, mock_g
 @pytest.mark.asyncio
 async def test_github_callback_token_exchange_failure(async_client, mock_redis, mock_github_service):
     mock_redis.getdel.return_value = "1"
-    mock_github_service.exchange_code_for_token.side_effect = GithubAuthError("Token error")
+    secret_text = "secret_github_token_error"
+    mock_github_service.exchange_code_for_token.side_effect = GithubAuthError(secret_text)
     
     response = await async_client.get(f"{settings.API_V1_STR}/auth/github/callback?code=abc&state=valid", follow_redirects=False)
-    assert response.status_code == 502
-    assert response.json()["error"]["code"] == "GITHUB_API_ERROR"
+    assert response.status_code == 302
+    assert response.headers["location"] == f"{FRONTEND_ORIGIN}/?error=login_failed"
+    assert secret_text not in response.headers["location"]
+    assert secret_text not in response.text
 
 @pytest.mark.asyncio
 async def test_github_callback_profile_failure(async_client, mock_redis, mock_github_service):
     mock_redis.getdel.return_value = "1"
-    mock_github_service.get_authenticated_user.side_effect = GithubAuthError("Profile error")
+    secret_text = "secret_github_profile_error"
+    mock_github_service.get_authenticated_user.side_effect = GithubAuthError(secret_text)
     
     response = await async_client.get(f"{settings.API_V1_STR}/auth/github/callback?code=abc&state=valid", follow_redirects=False)
-    assert response.status_code == 502
-    assert response.json()["error"]["code"] == "GITHUB_API_ERROR"
+    assert response.status_code == 302
+    assert response.headers["location"] == f"{FRONTEND_ORIGIN}/?error=login_failed"
+    assert secret_text not in response.headers["location"]
+    assert secret_text not in response.text
+
+@pytest.mark.asyncio
+async def test_github_callback_unexpected_exception(async_client, mock_redis, mock_github_service, mock_db):
+    mock_redis.getdel.return_value = "1"
+    secret_text = "unexpected_database_connection_password"
+    mock_db.query.side_effect = Exception(secret_text)
+    
+    response = await async_client.get(f"{settings.API_V1_STR}/auth/github/callback?code=abc&state=valid", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == f"{FRONTEND_ORIGIN}/?error=login_failed"
+    assert secret_text not in response.headers["location"]
+    assert secret_text not in response.text
 
 @pytest.mark.asyncio
 async def test_github_callback_successful_auth(async_client, mock_redis, mock_github_service, mock_db):

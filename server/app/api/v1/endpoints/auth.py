@@ -17,54 +17,81 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 github_service = GithubService()
 
+from urllib.parse import urlparse
+
+def _build_frontend_redirect_url(error_code: str) -> str:
+    """Builds a redirect URL to the frontend origin root with an error query parameter."""
+    parsed = urlparse(settings.FRONTEND_URL)
+    return f"{parsed.scheme}://{parsed.netloc}/?error={error_code}"
+
 @router.get("/github", summary="Initiate GitHub App Authorization")
-async def login_github(redis_client: redis.Redis = Depends(get_redis)):
+async def login_github(request: Request, redis_client: redis.Redis = Depends(get_redis)):
     """Initiates the GitHub App user authorization flow."""
-    # Generate random CSRF state
-    state = secrets.token_urlsafe(32)
-    
-    # Store state in Redis with 10 minute expiration
-    state_key = f"oauth_state:{state}"
-    await redis_client.setex(state_key, 600, "1")
-    
-    # Construct authorization URL
-    auth_url = github_service.get_authorization_url(state)
-    return RedirectResponse(url=auth_url, status_code=302)
+    try:
+        # Generate random CSRF state
+        state = secrets.token_urlsafe(32)
+        
+        # Store state in Redis with 10 minute expiration
+        state_key = f"oauth_state:{state}"
+        await redis_client.setex(state_key, 600, "1")
+        
+        # Construct authorization URL
+        auth_url = github_service.get_authorization_url(state)
+        return RedirectResponse(url=auth_url, status_code=302)
+    except Exception as e:
+        req_id = getattr(request.state, "request_id", None) or request.headers.get(settings.REQUEST_ID_HEADER)
+        logger.exception("login_github_failed", extra={"request_id": req_id, "error_detail": str(e)})
+        return RedirectResponse(url=_build_frontend_redirect_url("login_failed"), status_code=302)
 
 @router.get("/github/callback", summary="GitHub Auth Callback")
 async def github_callback(
     request: Request,
     response: Response,
-    code: str = Query(..., description="Authorization code from GitHub"),
-    state: str = Query(..., description="CSRF state token"),
+    code: Optional[str] = Query(None, description="Authorization code from GitHub"),
+    state: Optional[str] = Query(None, description="CSRF state token"),
+    error: Optional[str] = Query(None, description="Error code from GitHub"),
+    error_description: Optional[str] = Query(None, description="Error description from GitHub"),
     installation_id: Optional[str] = Query(None, description="GitHub App Installation ID"),
     db: Session = Depends(get_db),
     redis_client: redis.Redis = Depends(get_redis)
 ):
     """Handles the GitHub code exchange, provisions the user, and issues a session cookie."""
-    # 1. Validate State
-    state_key = f"oauth_state:{state}"
-    # Atomic get and delete
-    state_value = await redis_client.getdel(state_key)
-    
-    if not state_value:
-        logger.warning("authentication_failure", extra={"reason": "invalid_oauth_state"})
-        # According to ERROR_CONTRACT, 400 Bad Request
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": {
-                    "code": "INVALID_REQUEST",
-                    "message": "Invalid or expired authorization state."
-                }
+    req_id = getattr(request.state, "request_id", None) or request.headers.get(settings.REQUEST_ID_HEADER)
+
+    # 1. GitHub access denied or missing code
+    if error or not code:
+        logger.warning(
+            "authentication_access_denied",
+            extra={
+                "github_error": error,
+                "error_description": error_description,
+                "request_id": req_id,
             }
         )
+        return RedirectResponse(url=_build_frontend_redirect_url("access_denied"), status_code=302)
+
+    # 2. Validate State
+    if not state:
+        logger.warning("authentication_failure", extra={"reason": "missing_oauth_state", "request_id": req_id})
+        return RedirectResponse(url=_build_frontend_redirect_url("login_failed"), status_code=302)
+
+    state_key = f"oauth_state:{state}"
+    try:
+        # Atomic get and delete
+        state_value = await redis_client.getdel(state_key)
+    except Exception as e:
+        logger.exception("oauth_state_redis_error", extra={"error_detail": str(e), "request_id": req_id})
+        return RedirectResponse(url=_build_frontend_redirect_url("login_failed"), status_code=302)
+    
+    if not state_value:
+        logger.warning("authentication_failure", extra={"reason": "invalid_oauth_state", "request_id": req_id})
+        return RedirectResponse(url=_build_frontend_redirect_url("login_failed"), status_code=302)
         
     try:
-        # 2. Exchange code for access token
+        # 3. Exchange code for access token
         access_token = await github_service.exchange_code_for_token(code)
         
-        # 3. Resolve authenticated GitHub user
+        # 4. Resolve authenticated GitHub user
         github_user_data = await github_service.get_authenticated_user(access_token)
         
         github_user_id = github_user_data["github_user_id"]
@@ -72,15 +99,17 @@ async def github_callback(
         email = github_user_data["email"]
         full_name = github_user_data["full_name"]
         
-        # 4. Installation verification (Network Call)
+        # 5. Installation verification (Network Call)
         verified_installation = None
         if installation_id:
             verified_installation = await github_service.verify_user_installation(access_token, installation_id)
             if not verified_installation:
-                logger.warning(f"Installation ID {installation_id} could not be verified for user {username}")
-                # We do not provision this installation
+                logger.warning(
+                    f"Installation ID {installation_id} could not be verified for user {username}",
+                    extra={"request_id": req_id}
+                )
         
-        # 5. Provisioning Transaction (Database operations)
+        # 6. Provisioning Transaction (Database operations)
         auth_service = AuthService(db)
         user = auth_service.provision_user_and_installation(
             github_user_data=github_user_data,
@@ -89,7 +118,7 @@ async def github_callback(
             installation_id=installation_id
         )
         
-        # 6. Create application authentication session
+        # 7. Create application authentication session
         session_id = secrets.token_urlsafe(32)
         await redis_client.setex(
             f"session:{session_id}", 
@@ -97,7 +126,7 @@ async def github_callback(
             str(user.id)
         )
         
-        # 7. Redirect to frontend with HTTP-only cookie
+        # 8. Redirect to frontend with HTTP-only cookie
         redirect_url = settings.FRONTEND_URL
         redirect_response = RedirectResponse(url=redirect_url, status_code=302)
         redirect_response.set_cookie(
@@ -109,33 +138,17 @@ async def github_callback(
             samesite="lax",  # Adjust based on exact frontend/backend domain structure
         )
         
-        logger.info("authentication_success", extra={"user_id": str(user.id)})
+        logger.info("authentication_success", extra={"user_id": str(user.id), "request_id": req_id})
         return redirect_response
 
     except GithubAuthError as e:
-        logger.warning("authentication_failure", extra={"reason": str(e)})
+        logger.warning("authentication_failure", extra={"reason": str(e), "request_id": req_id})
         db.rollback()
-        return JSONResponse(
-            status_code=502,
-            content={
-                "error": {
-                    "code": "GITHUB_API_ERROR",
-                    "message": str(e)
-                }
-            }
-        )
+        return RedirectResponse(url=_build_frontend_redirect_url("login_failed"), status_code=302)
     except Exception as e:
         db.rollback()
-        logger.exception("Unexpected error during GitHub callback")
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error": {
-                    "code": "INTERNAL_SERVER_ERROR",
-                    "message": "An unexpected error occurred during authentication."
-                }
-            }
-        )
+        logger.exception("Unexpected error during GitHub callback", extra={"request_id": req_id})
+        return RedirectResponse(url=_build_frontend_redirect_url("login_failed"), status_code=302)
 
 @router.get("/me", response_model=UserOut, summary="Get Current User")
 async def get_me(current_user: User = Depends(get_current_user)):

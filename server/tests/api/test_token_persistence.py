@@ -71,7 +71,10 @@ async def test_failed_github_authentication_does_not_persist_token(async_client,
     mock_github_service.exchange_code_for_token.side_effect = GithubAuthError("Failed")
     
     response = await async_client.get(f"{settings.API_V1_STR}/auth/github/callback?code=mock_code&state=valid", follow_redirects=False)
-    assert response.status_code == 502
+    assert response.status_code == 302
+    from urllib.parse import urlparse
+    parsed_frontend = urlparse(settings.FRONTEND_URL)
+    assert response.headers["location"] == f"{parsed_frontend.scheme}://{parsed_frontend.netloc}/?error=login_failed"
     
     # Db transaction rolled back
     mock_db.rollback.assert_called_once()
