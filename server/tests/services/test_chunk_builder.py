@@ -83,3 +83,52 @@ def test_ast_chunker_recursive_split():
         assembled += c.content
         
     assert assembled == source.decode('utf-8')
+
+
+def test_chunk_builder_service_skips_path_traversal(tmp_path):
+    from unittest.mock import MagicMock
+    from app.services.chunking.service import ChunkBuilderService
+    from app.models.knowledge import File
+
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    secret_file = tmp_path / "secret.py"
+    secret_file.write_text("SECRET = 'hidden'")
+
+    valid_file = repo_dir / "valid.py"
+    valid_file.write_text("def hello(): pass")
+
+    knowledge_repo = MagicMock()
+    knowledge_repo.db.execute.return_value.scalars.return_value.all.return_value = []
+
+    service = ChunkBuilderService(knowledge_repo, str(repo_dir))
+
+    traversal_file = File(
+        id=uuid4(),
+        repository_version_id=uuid4(),
+        file_path="../secret.py",
+        file_name="secret.py",
+        language="python",
+        size_bytes=len("SECRET = 'hidden'"),
+        hash="hash1"
+    )
+
+    legit_file = File(
+        id=uuid4(),
+        repository_version_id=uuid4(),
+        file_path="valid.py",
+        file_name="valid.py",
+        language="python",
+        size_bytes=len("def hello(): pass"),
+        hash="hash2"
+    )
+
+    stats = service.build_chunks(MagicMock(), [traversal_file, legit_file])
+
+    assert stats["files_skipped"] == 1
+    assert stats["files_processed"] == 1
+    assert stats["chunks_created"] == 1
+    knowledge_repo.delete_chunks_for_files.assert_called_once()
+    created_chunks = knowledge_repo.bulk_create_code_chunks.call_args[0][0]
+    assert len(created_chunks) == 1
+    assert created_chunks[0].file_id == legit_file.id

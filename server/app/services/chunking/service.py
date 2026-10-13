@@ -1,4 +1,6 @@
 import logging
+import os
+from pathlib import Path
 from typing import List
 from uuid import UUID
 
@@ -55,14 +57,22 @@ class ChunkBuilderService:
             symbols_by_file.setdefault(s.file_id, []).append(s)
             
         # 3. Process each file
-        import os
-        from pathlib import Path
-        
         new_chunks = []
         
         for file in files:
             try:
                 abs_path = os.path.join(self.repo_path, file.file_path)
+
+                # Containment check: resolved path must stay inside repo_path.
+                repo_real = os.path.realpath(self.repo_path)
+                abs_real = os.path.realpath(abs_path)
+                if not (abs_real == repo_real or abs_real.startswith(repo_real + os.sep)):
+                    logger.error(
+                        f"Path traversal detected for file {file.file_path!r}; skipping."
+                    )
+                    stats["files_skipped"] += 1
+                    continue
+
                 if not os.path.exists(abs_path):
                     stats["files_skipped"] += 1
                     continue
