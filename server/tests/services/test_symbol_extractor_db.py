@@ -18,20 +18,21 @@ from app.models.knowledge import File, Symbol
 from app.repositories.knowledge import KnowledgeRepository
 from app.services.symbol_extractor.service import SymbolExtractorService
 
-# Setup test DB engine (requires codebase_postgres container running)
-# We use the same URL from settings
-engine = create_engine(settings.DATABASE_URL)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+pytestmark = [pytest.mark.integration]
+
 
 @pytest.fixture(scope="module")
 def db_session():
     """Provides a real database session."""
-    session = TestingSessionLocal()
+    engine = create_engine(settings.DATABASE_URL)
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session = testing_session_local()
     try:
         yield session
     finally:
-        session.rollback() # Ensure cleanup
+        session.rollback()  # Ensure cleanup
         session.close()
+        engine.dispose()
 
 def create_mock_source_file(tmp_path) -> str:
     """Creates a temporary Python file to act as the source to parse."""

@@ -20,8 +20,7 @@ from app.services.retrieval.models import RetrievalRequest, RetrievalResult
 from app.services.retrieval.strategies import KeywordRetrievalStrategy, RetrievalStrategy
 from app.services.retrieval.service import RetrievalService
 
-engine = create_engine(settings.DATABASE_URL)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+pytestmark = [pytest.mark.integration]
 
 
 # ---------------------------------------------------------------------------
@@ -30,12 +29,15 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 @pytest.fixture
 def db_session():
-    session = TestingSessionLocal()
+    engine = create_engine(settings.DATABASE_URL)
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session = testing_session_local()
     try:
         yield session
     finally:
         session.rollback()
         session.close()
+        engine.dispose()
 
 
 def _create_user(db_session) -> User:

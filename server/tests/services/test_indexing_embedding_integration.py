@@ -13,8 +13,7 @@ from app.services.embedding.service import EmbeddingService
 from app.services.embedding.provider import EmbeddingProvider
 from app.services.embedding.exceptions import EmbeddingProviderRateLimitError
 
-engine = create_engine(settings.DATABASE_URL)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+pytestmark = [pytest.mark.integration]
 
 class FakeEmbeddingProvider(EmbeddingProvider):
     def __init__(self, dimension: int = 768):
@@ -31,12 +30,15 @@ class FakeEmbeddingProvider(EmbeddingProvider):
 
 @pytest.fixture
 def db_session():
-    session = TestingSessionLocal()
+    engine = create_engine(settings.DATABASE_URL)
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session = testing_session_local()
     try:
         yield session
     finally:
         session.rollback()
         session.close()
+        engine.dispose()
 
 
 def create_mock_repo(tmp_path) -> str:

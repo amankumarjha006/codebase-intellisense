@@ -10,17 +10,20 @@ from app.repositories.knowledge import KnowledgeRepository
 from app.services.embedding.service import EmbeddingService
 from tests.services.test_embedding_service import FakeEmbeddingProvider
 
-engine = create_engine(settings.DATABASE_URL)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+pytestmark = [pytest.mark.integration]
+
 
 @pytest.fixture(scope="module")
 def db_session():
-    session = TestingSessionLocal()
+    engine = create_engine(settings.DATABASE_URL)
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session = testing_session_local()
     try:
         yield session
     finally:
         session.rollback()
         session.close()
+        engine.dispose()
 
 def test_embedding_db_integration_and_cascade(db_session):
     repo = Repository(

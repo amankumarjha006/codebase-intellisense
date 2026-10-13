@@ -14,17 +14,20 @@ from app.models.repository import Repository, RepositoryVersion, UserRepository
 from app.models.knowledge import File, CodeChunk
 from app.api.deps import get_db, get_redis
 
-engine = create_engine(settings.DATABASE_URL)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+pytestmark = [pytest.mark.integration]
+
 
 @pytest.fixture
 def db_session():
-    session = TestingSessionLocal()
+    engine = create_engine(settings.DATABASE_URL)
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session = testing_session_local()
     try:
         yield session
     finally:
         session.rollback()
         session.close()
+        engine.dispose()
 
 @pytest.fixture
 def mock_redis(mocker):

@@ -11,18 +11,21 @@ from app.models.conversation import Conversation
 from app.models.user import User
 from app.models.agent import AgentRun, AgentCheckpoint
 
-engine = create_engine(settings.DATABASE_URL)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+pytestmark = [pytest.mark.integration]
+
 
 @pytest.fixture(scope="function")
 def db_session():
     # Use function scope to isolate transactions per test
-    session = TestingSessionLocal()
+    engine = create_engine(settings.DATABASE_URL)
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session = testing_session_local()
     try:
         yield session
     finally:
         session.rollback()
         session.close()
+        engine.dispose()
 
 def create_base_entities(db_session):
     user = User(
