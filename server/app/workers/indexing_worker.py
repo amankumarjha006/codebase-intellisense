@@ -95,8 +95,9 @@ class IndexingWorker:
             logger.error(f"Error during startup job recovery: {e}", exc_info=True)
 
         while self.running:
+            had_job = False
             try:
-                self._process_next_job()
+                had_job = self._process_next_job()
             except Exception as e:
                 logger.error(f"Error in worker loop: {e}", exc_info=True)
             finally:
@@ -104,7 +105,7 @@ class IndexingWorker:
                     self.db.close()
                     self.db = None
 
-            if self.running:
+            if self.running and not had_job:
                 time.sleep(POLL_INTERVAL)
 
     def _signal_handler(self, signum, frame) -> None:
@@ -221,18 +222,18 @@ class IndexingWorker:
             logger.error(f"Error reconciling stuck database jobs: {e}")
             db.rollback()
 
-    def _process_next_job(self) -> None:
-        """Process the next job from the queue with crash protection."""
+    def _process_next_job(self) -> bool:
+        """Process the next job from the queue with crash protection. Returns True if a job was popped."""
         job_id_str = self._pop_to_processing()
         if not job_id_str:
-            return
+            return False
 
         try:
             job_id = UUID(job_id_str)
         except ValueError:
             logger.error(f"Invalid job ID in queue: {job_id_str}")
             self._remove_from_processing(job_id_str)
-            return
+            return True
 
         self.current_job_id = job_id
         logger.info(f"Processing indexing job {job_id}")
@@ -245,12 +246,12 @@ class IndexingWorker:
             if not job:
                 logger.warning(f"Job {job_id} not found in database")
                 self._remove_from_processing(job_id_str)
-                return
+                return True
 
             if job.status != "QUEUED":
                 logger.warning(f"Job {job_id} is not in QUEUED status (current: {job.status})")
                 self._remove_from_processing(job_id_str)
-                return
+                return True
 
             knowledge_repo = KnowledgeRepository(db)
             provider = get_embedding_provider(settings)
@@ -262,11 +263,13 @@ class IndexingWorker:
 
             logger.info(f"Completed indexing job {job_id}")
             self._remove_from_processing(job_id_str)
+            return True
 
         except Exception as e:
             logger.error(f"Failed to process job {job_id}: {e}", exc_info=True)
             self._mark_job_failed(job_id, str(e))
             self._remove_from_processing(job_id_str)
+            return True
         finally:
             self.current_job_id = None
 
