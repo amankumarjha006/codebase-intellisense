@@ -141,7 +141,7 @@ class TestIndexingWorkerReliability:
             worker.recover_orphaned_jobs()
 
             assert mock_job.status == "FAILED"
-            assert mock_job.failure_code == "WORKER_CRASHED"
+            assert mock_job.failure_code == "INTERNAL_ERROR"
             assert "Worker terminated unexpectedly" in mock_job.error_message
             mock_db.commit.assert_called()
             mock_redis.lrem.assert_called_once_with(PROCESSING_QUEUE_NAME, 0, str(job_id))
@@ -189,6 +189,6 @@ class TestIndexingWorkerReliability:
         worker.recover_orphaned_jobs()
 
         assert stuck_job.status == "FAILED"
-        assert stuck_job.failure_code == "WORKER_CRASHED"
+        assert stuck_job.failure_code == "INTERNAL_ERROR"
         assert "Worker terminated unexpectedly" in stuck_job.error_message
         mock_db.commit.assert_called()

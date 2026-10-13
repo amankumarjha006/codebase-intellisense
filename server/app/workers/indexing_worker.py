@@ -123,7 +123,7 @@ class IndexingWorker:
                             f"Marking orphaned in-flight job {job_id} as FAILED (was in status {job.status})"
                         )
                         job.status = "FAILED"
-                        job.failure_code = "WORKER_CRASHED"
+                        job.failure_code = "INTERNAL_ERROR"
                         job.error_message = "Worker terminated unexpectedly during processing"
                         job.completed_at = datetime.now(timezone.utc)
                         db.commit()
@@ -146,7 +146,7 @@ class IndexingWorker:
             for stuck_job in stuck_jobs:
                 logger.warning(f"Marking stuck database job {stuck_job.id} as FAILED (was in status {stuck_job.status})")
                 stuck_job.status = "FAILED"
-                stuck_job.failure_code = "WORKER_CRASHED"
+                stuck_job.failure_code = "INTERNAL_ERROR"
                 stuck_job.error_message = "Worker terminated unexpectedly during processing"
                 stuck_job.completed_at = datetime.now(timezone.utc)
             if stuck_jobs:
