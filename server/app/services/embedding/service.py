@@ -134,8 +134,11 @@ class EmbeddingService:
 
                 # Determine backoff
                 delay = base_delay * (2 ** (attempt - 1))
-                if isinstance(e, EmbeddingProviderRateLimitError) and e.retry_after is not None:
-                    delay = max(delay, e.retry_after)
+                if isinstance(e, EmbeddingProviderRateLimitError):
+                    # Provider rate limits (e.g. Gemini 60s quota windows) need longer backoff
+                    delay = max(delay, 12.0 * attempt)
+                    if e.retry_after is not None:
+                        delay = max(delay, e.retry_after)
 
                 # Add jitter
                 delay = min(delay, 60.0)

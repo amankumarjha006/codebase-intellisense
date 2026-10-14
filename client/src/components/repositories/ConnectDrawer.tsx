@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { X, CheckCircle2, ChevronRight, Copy, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { api, RepositoryOut, ApiError } from '@/lib/api';
+import { mapErrorToCopy } from '@/lib/errors';
 import { getFailureMessage, DEFAULT_FAILURE_MESSAGE } from '@/lib/status';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
@@ -20,8 +21,27 @@ interface ConnectDrawerProps {
 
 const STAGES = ['QUEUED', 'FETCHING', 'INDEXING', 'ANALYZING', 'READY'] as const;
 
+/** Maximum consecutive poll errors before giving up. */
+const MAX_POLL_ERRORS = 10;
+/** Maximum continuous error duration before giving up (5 minutes). */
+const MAX_CONTINUOUS_ERROR_DURATION_MS = 5 * 60 * 1000;
+
+/** Small copyable "Reference: <id>" block for error states. */
+function RequestIdRef({ id }: { id?: string }) {
+  if (!id) return null;
+  return (
+    <span className="text-xs opacity-80 font-mono flex items-center gap-1 mt-1">
+      Reference: {id}
+      <button type="button" onClick={() => navigator.clipboard.writeText(id)} className="hover:text-foreground" aria-label="Copy reference ID">
+        <Copy size={12} />
+      </button>
+    </span>
+  );
+}
+
 export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository, onAnalyzeStart }: ConnectDrawerProps) {
   const router = useRouter();
+  const shouldReduceMotion = useReducedMotion();
 
   // Step 1: Form State
   const [repoInput, setRepoInput] = useState('');
@@ -40,6 +60,12 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
+  const [jobReqId, setJobReqId] = useState<string | undefined>(undefined);
+
+  // Polling health tracking (tracks consecutive errors and continuous error duration, not total job duration)
+  const [pollExhausted, setPollExhausted] = useState(false);
+  const consecutiveErrorsRef = useRef<number>(0);
+  const continuousErrorStartTimeRef = useRef<number | null>(null);
 
   // Normalize input
   const handleBlurOrPaste = () => {
@@ -102,7 +128,7 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
         return;
       }
 
-      let msg = 'Failed to connect repository. Please try again.';
+      let msg: string;
       if (apiErr.code === 'INVALID_REQUEST') {
         msg = 'Enter a repository as owner/name.';
       } else if (apiErr.code === 'GITHUB_API_ERROR' || apiErr.status === 404) {
@@ -114,12 +140,14 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
       } else if (apiErr.status === 429) {
         msg = "Too many requests. Please wait a moment.";
       } else if (apiErr.status === 503 || apiErr.status === 502) {
-        msg = "GitHub or our service is temporarily unavailable. Try again.";
+        msg = "Temporarily unavailable. Please try again.";
       } else if (!apiErr.status) {
         msg = "Can't reach the server.";
+      } else {
+        msg = "Something went wrong. Please try again.";
       }
 
-      setFormError({ message: msg });
+      setFormError({ message: msg, reqId: apiErr.requestId });
     } finally {
       setIsSubmitting(false);
     }
@@ -129,6 +157,9 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
     if (!connectedRepo || isStartingIndex) return;
     setIsStartingIndex(true);
     setFormError(null);
+    setPollExhausted(false);
+    consecutiveErrorsRef.current = 0;
+    continuousErrorStartTimeRef.current = null;
 
     try {
       const data = await api.analyzeRepository(connectedRepo.id, branchInput || null);
@@ -136,10 +167,25 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
       setJobId(data.job_id);
       setJobStatus('QUEUED');
       if (onAnalyzeStart) onAnalyzeStart();
-    } catch {
-      setFormError({ message: "Failed to start indexing. Please try again." });
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      setFormError({ message: "Something went wrong. Please try again.", reqId: apiErr?.requestId });
     } finally {
       setIsStartingIndex(false);
+    }
+  };
+
+  /** Manual refresh after poll exhaustion. */
+  const handleManualPollRefresh = () => {
+    setPollExhausted(false);
+    consecutiveErrorsRef.current = 0;
+    continuousErrorStartTimeRef.current = null;
+    // Re-trigger polling by "resetting" jobId
+    if (jobId && connectedRepo) {
+      const currentJobId = jobId;
+      setJobId(null);
+      // Small delay so effect sees the transition
+      setTimeout(() => setJobId(currentJobId), 50);
     }
   };
 
@@ -160,11 +206,27 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
         return;
       }
 
+      // Check consecutive error count and continuous error duration limits
+      const continuousErrorElapsed = continuousErrorStartTimeRef.current !== null
+        ? Date.now() - continuousErrorStartTimeRef.current
+        : 0;
+
+      if (consecutiveErrorsRef.current >= MAX_POLL_ERRORS || continuousErrorElapsed >= MAX_CONTINUOUS_ERROR_DURATION_MS) {
+        if (isMounted) {
+          setPollExhausted(true);
+        }
+        return;
+      }
+
       try {
         const data = await api.getIndexJob(connectedRepo.id, jobId, { signal: abortController.signal });
 
         if (isMounted) {
           setJobStatus(data.status);
+          // Reset consecutive errors and continuous error timer on any successful response
+          consecutiveErrorsRef.current = 0;
+          continuousErrorStartTimeRef.current = null;
+
           if (data.status === 'FAILED') {
             setJobError(getFailureMessage(data.failure_code));
           }
@@ -178,11 +240,44 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
       } catch (err: unknown) {
         if (!isMounted || abortController.signal.aborted) return;
         const apiErr = err as ApiError;
+
+        // On 401, stop polling and redirect
+        if (apiErr?.status === 401) {
+          router.push('/?error=session_expired');
+          return;
+        }
+
+        // On 404, stop polling and show mapped copy
+        if (apiErr?.status === 404) {
+          if (isMounted) {
+            setJobError(mapErrorToCopy(apiErr) || "We couldn't find that.");
+            setJobReqId(apiErr?.requestId);
+            setJobStatus('FAILED');
+          }
+          return;
+        }
+
+        // Track consecutive errors and continuous error time
+        consecutiveErrorsRef.current += 1;
+        if (continuousErrorStartTimeRef.current === null) {
+          continuousErrorStartTimeRef.current = Date.now();
+        }
+
+        const continuousErrorElapsed = Date.now() - continuousErrorStartTimeRef.current;
+        if (consecutiveErrorsRef.current >= MAX_POLL_ERRORS || continuousErrorElapsed >= MAX_CONTINUOUS_ERROR_DURATION_MS) {
+          if (isMounted) {
+            setPollExhausted(true);
+          }
+          return;
+        }
+
         if (apiErr?.status === 429) {
+          // Retry-After already capped at 120s by fetchWrapper
           currentInterval = apiErr.retryAfter ? apiErr.retryAfter * 1000 : 8000;
           timeoutId = setTimeout(poll, currentInterval);
           return;
         }
+
         currentInterval = Math.min(currentInterval + 2000, 8000);
         timeoutId = setTimeout(poll, currentInterval);
       }
@@ -194,7 +289,7 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
       abortController.abort();
       clearTimeout(timeoutId);
     };
-  }, [jobId, connectedRepo]);
+  }, [jobId, connectedRepo, router]);
 
   // Reset state when fully closed
   useEffect(() => {
@@ -209,6 +304,9 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
         setJobId(null);
         setJobStatus(null);
         setJobError(null);
+        setPollExhausted(false);
+        consecutiveErrorsRef.current = 0;
+        continuousErrorStartTimeRef.current = null;
       }, 300);
       return () => clearTimeout(t);
     } else if (initialRepository) {
@@ -307,14 +405,7 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
                                 Open it
                               </Link>
                             )}
-                            {formError.reqId && (
-                              <span className="text-xs opacity-80 font-mono flex items-center gap-1 mt-1">
-                                Req ID: {formError.reqId}
-                                <button type="button" onClick={() => navigator.clipboard.writeText(formError.reqId!)} className="hover:text-foreground">
-                                  <Copy size={12} />
-                                </button>
-                              </span>
-                            )}
+                            <RequestIdRef id={formError.reqId} />
                           </div>
                         )}
                       </div>
@@ -389,14 +480,7 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
                       {formError && (
                         <div className="text-sm text-destructive flex flex-col items-center gap-1">
                           <span className="flex items-center gap-1"><AlertCircle size={14}/> {formError.message}</span>
-                          {formError.reqId && (
-                            <span className="text-xs opacity-80 font-mono flex items-center gap-1 mt-1">
-                              Req ID: {formError.reqId}
-                              <button type="button" onClick={() => navigator.clipboard.writeText(formError.reqId!)} className="hover:text-foreground">
-                                <Copy size={12} />
-                              </button>
-                            </span>
-                          )}
+                          <RequestIdRef id={formError.reqId} />
                         </div>
                       )}
 
@@ -436,7 +520,7 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
                                       jobStatus === 'INDEXING' ? 0.5 :
                                       jobStatus === 'FETCHING' ? 0.25 : 0
                              }}
-                             transition={{ duration: 0.5, ease: 'easeOut' }}
+                             transition={{ duration: shouldReduceMotion ? 0 : 0.5, ease: 'easeOut' }}
                              style={{ height: '100%' }}
                            />
                         </div>
@@ -461,12 +545,16 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
                                <div className={`text-sm font-medium transition-colors duration-300 ${isCompleted || isCurrent ? 'text-foreground' : 'text-muted-foreground'}`}>
                                  {stage.charAt(0) + stage.slice(1).toLowerCase()}
                                  {isCurrent && (
-                                   <motion.span
-                                     initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                                     className="inline-block ml-2 w-3 text-accent"
-                                   >
-                                     <span className="animate-pulse">...</span>
-                                   </motion.span>
+                                   shouldReduceMotion
+                                     ? <span className="inline-block ml-2 text-accent text-xs">In progress</span>
+                                     : (
+                                       <motion.span
+                                         initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                         className="inline-block ml-2 w-3 text-accent"
+                                       >
+                                         <span className="animate-pulse">...</span>
+                                       </motion.span>
+                                     )
                                  )}
                                </div>
                              </div>
@@ -474,10 +562,27 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
                         })}
                       </div>
 
+                      {/* Poll exhaustion notice */}
+                      {pollExhausted && jobStatus !== 'READY' && jobStatus !== 'FAILED' && (
+                        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-md text-sm mt-4">
+                          <p className="font-semibold flex items-center gap-2"><AlertCircle size={16}/> Can&apos;t refresh status</p>
+                          <p className="mt-1 opacity-90">We stopped polling after too many errors. The job may still be running.</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3 bg-background text-foreground"
+                            onClick={handleManualPollRefresh}
+                          >
+                            <RefreshCw size={14} className="mr-2" /> Refresh status
+                          </Button>
+                        </div>
+                      )}
+
                       {jobStatus === 'FAILED' && (
                         <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-md text-sm mt-6">
                           <p className="font-semibold flex items-center gap-2"><AlertCircle size={16}/> Indexing Failed</p>
                           <p className="mt-1 opacity-90">{jobError || DEFAULT_FAILURE_MESSAGE}</p>
+                          <RequestIdRef id={jobReqId} />
                           <Button
                             variant="outline"
                             size="sm"
@@ -508,7 +613,7 @@ export function ConnectDrawer({ open, onOpenChange, onSuccess, initialRepository
                     </Button>
                   ) : (
                     <div className="flex flex-col gap-3 text-center">
-                      {jobId && jobStatus !== 'FAILED' && (
+                      {jobId && jobStatus !== 'FAILED' && !pollExhausted && (
                          <p className="text-xs text-muted-foreground">You can close this. Progress shows on the repository&apos;s row.</p>
                       )}
                       <Button

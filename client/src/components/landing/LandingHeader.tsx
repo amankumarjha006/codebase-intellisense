@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Github } from "@/components/icons";
@@ -15,6 +15,16 @@ const navLinks = [
   { id: "how-it-works", label: "How it works" },
   { id: "features", label: "Features" }, // Assuming a features section exists or will exist
 ];
+
+function LogoMark() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden="true">
+      <rect x="4" y="6" width="16" height="2.5" rx="1.25" fill="currentColor" />
+      <rect x="4" y="10.75" width="10" height="2.5" rx="1.25" fill="var(--accent)" />
+      <rect x="4" y="15.5" width="13" height="2.5" rx="1.25" fill="currentColor" />
+    </svg>
+  );
+}
 
 export function LandingHeader({ onLogin }: LandingHeaderProps) {
   const [scrolled, setScrolled] = useState(false);
@@ -107,13 +117,6 @@ export function LandingHeader({ onLogin }: LandingHeaderProps) {
     }
   };
 
-  const LogoMark = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden="true">
-      <rect x="4" y="6" width="16" height="2.5" rx="1.25" fill="currentColor" />
-      <rect x="4" y="10.75" width="10" height="2.5" rx="1.25" fill="var(--accent)" />
-      <rect x="4" y="15.5" width="13" height="2.5" rx="1.25" fill="currentColor" />
-    </svg>
-  );
 
   return (
     <>

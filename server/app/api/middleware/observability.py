@@ -22,6 +22,7 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
             
         # Set context var for structured logger
         token = request_id_ctx_var.set(req_id)
+        request.state.request_id = req_id
         
         start_time = time.perf_counter()
         

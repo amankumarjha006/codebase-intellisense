@@ -3,27 +3,27 @@
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api, RepositoryDetailOut, CurrentUser } from '@/lib/api';
+import { api, RepositoryDetailOut, ApiError } from '@/lib/api';
+import { mapErrorToCopy } from '@/lib/errors';
+import { Copy } from 'lucide-react';
 
 export default function RepositoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
   
   const [repository, setRepository] = useState<RepositoryDetailOut | null>(null);
-  const [user, setUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ copy: string; requestId?: string } | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         // Guard with current-user endpoint
-        const [userData, repoData] = await Promise.all([
+        const [, repoData] = await Promise.all([
           api.getCurrentUser(),
           api.getRepositoryDetail(id)
         ]);
-        setUser(userData);
         setRepository(repoData);
 
         // Update recent repositories in localStorage
@@ -32,18 +32,21 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
           let recent = stored ? JSON.parse(stored) : [];
           recent = [id, ...recent.filter((r: string) => r !== id)].slice(0, 5);
           localStorage.setItem('recent_repositories', JSON.stringify(recent));
-        } catch (e) {
+        } catch {
           // ignore
         }
       } catch (err: unknown) {
-        const apiErr = err as import('@/lib/api').ApiError;
-        if (apiErr.code === 'UNAUTHENTICATED' || (err as any).status === 401) {
+        const apiErr = err as ApiError;
+        if (apiErr.code === 'UNAUTHENTICATED' || apiErr.status === 401) {
           router.push('/?error=session_expired');
-        } else if (apiErr.code === 'REPOSITORY_NOT_FOUND' || (err as any).status === 404) {
-          setError('Repository not found or you do not have access.');
-        } else {
-          setError(apiErr.message || 'Failed to load repository');
+          return;
         }
+        const copy = mapErrorToCopy(apiErr);
+        if (copy === null) {
+          router.push('/?error=session_expired');
+          return;
+        }
+        setError({ copy, requestId: apiErr.requestId });
       } finally {
         setLoading(false);
       }
@@ -69,7 +72,20 @@ export default function RepositoryDetailPage({ params }: { params: Promise<{ id:
           </Link>
         </div>
         <div className="bg-red-50 p-4 rounded-md">
-          <p className="text-sm text-red-700">{error || 'Repository not found'}</p>
+          <p className="text-sm text-red-700">{error?.copy || "We couldn't find that."}</p>
+          {error?.requestId && (
+            <span className="text-[11px] text-red-500/70 font-mono flex items-center gap-1 mt-2 select-all">
+              Reference: {error.requestId}
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(error.requestId!)}
+                className="hover:text-red-700 transition-colors"
+                aria-label="Copy reference ID"
+              >
+                <Copy size={11} />
+              </button>
+            </span>
+          )}
         </div>
       </div>
     );

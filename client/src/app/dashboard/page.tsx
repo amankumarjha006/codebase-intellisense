@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api, RepositoryListItemOut, RepositoryOut, CurrentUser, ApiError } from '@/lib/api';
 import { deriveRowStatus, getFailureMessage, IN_PROGRESS_STATUSES } from '@/lib/status';
-import { Search, Plus, MoreVertical, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { mapErrorToCopy } from '@/lib/errors';
+import { Search, Plus, MoreVertical, RefreshCw, CheckCircle2, AlertCircle, Copy } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { ConnectDrawer } from '@/components/repositories/ConnectDrawer';
@@ -22,6 +23,24 @@ function getRelativeTime(dateStr: string) {
   const diffDays = Math.floor(diffHrs / 24);
   if (diffDays < 30) return `${diffDays}d ago`;
   return d.toLocaleDateString();
+}
+
+/** Small copyable "Reference: <id>" block for error states. */
+function RequestIdRef({ id }: { id?: string }) {
+  if (!id) return null;
+  return (
+    <span className="text-[11px] text-muted-foreground/80 font-mono flex items-center gap-1 mt-1 select-all">
+      Reference: {id}
+      <button
+        type="button"
+        onClick={() => navigator.clipboard.writeText(id)}
+        className="hover:text-foreground transition-colors"
+        aria-label="Copy reference ID"
+      >
+        <Copy size={11} />
+      </button>
+    </span>
+  );
 }
 
 function RowStatusContent({ repo, onAction }: { repo: RepositoryListItemOut; onAction: (e: React.MouseEvent) => void }) {
@@ -67,8 +86,10 @@ function RowStatusContent({ repo, onAction }: { repo: RepositoryListItemOut; onA
       >
         <RefreshCw size={12} className={shouldReduceMotion ? '' : 'animate-spin'} />
         {derivation.label}
-        {derivation.showProgress && !shouldReduceMotion && (
-          <div className="absolute bottom-0 left-0 h-[2px] bg-foreground/20 w-full animate-progress-line origin-left" />
+        {derivation.showProgress && (
+          shouldReduceMotion
+            ? <div className="absolute bottom-0 left-0 h-[2px] bg-foreground/30 w-full" />
+            : <div className="absolute bottom-0 left-0 h-[2px] bg-foreground/20 w-full animate-progress-line origin-left" />
         )}
       </motion.div>
     );
@@ -135,8 +156,10 @@ function RowStatusContent({ repo, onAction }: { repo: RepositoryListItemOut; onA
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-accent-soft text-accent border border-accent-border text-xs font-medium relative overflow-hidden">
             <CheckCircle2 size={12} />
             {derivation.label}
-            {derivation.showProgress && !shouldReduceMotion && (
-              <div className="absolute bottom-0 left-0 h-[2px] bg-accent/40 w-full animate-progress-line origin-left" />
+            {derivation.showProgress && (
+              shouldReduceMotion
+                ? <div className="absolute bottom-0 left-0 h-[2px] bg-accent/40 w-full" />
+                : <div className="absolute bottom-0 left-0 h-[2px] bg-accent/40 w-full animate-progress-line origin-left" />
             )}
           </div>
         </div>
@@ -176,7 +199,8 @@ function DashboardContent() {
   const [total, setTotal] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  /** Stores the user-facing copy and optional request ID — never raw err.message. */
+  const [error, setError] = useState<{ copy: string; requestId?: string } | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
@@ -215,7 +239,7 @@ function DashboardContent() {
         const u = await api.getCurrentUser();
         setUser(u);
       } catch (e: unknown) {
-        const err = e as { code?: string; status?: number; message?: string };
+        const err = e as { code?: string; status?: number };
         if (err.code === 'UNAUTHENTICATED' || err.status === 401) {
           router.push('/?error=session_expired');
         } else {
@@ -238,11 +262,17 @@ function DashboardContent() {
       setTotal(data.total);
       setHasMore(data.has_more);
     } catch (e: unknown) {
-      const err = e as { code?: string; status?: number; message?: string };
-      if (err.code === 'UNAUTHENTICATED' || err.status === 401) {
+      const apiErr = e as ApiError;
+      if (apiErr.code === 'UNAUTHENTICATED' || apiErr.status === 401) {
         router.push('/?error=session_expired');
       } else {
-        setError(err.message || 'Failed to load repositories');
+        const copy = mapErrorToCopy(apiErr);
+        if (copy === null) {
+          // 401 already handled above, but guard
+          router.push('/?error=session_expired');
+        } else {
+          setError({ copy, requestId: apiErr.requestId });
+        }
       }
     } finally {
       setLoading(false);
@@ -339,7 +369,21 @@ function DashboardContent() {
         }
 
         const apiErr = err as ApiError;
+
+        // On 401, stop polling and redirect to session-expired flow
+        if (apiErr?.status === 401) {
+          router.push('/?error=session_expired');
+          return;
+        }
+
+        // On 404, stop polling and show mapped copy
+        if (apiErr?.status === 404) {
+          setError({ copy: mapErrorToCopy(apiErr)!, requestId: apiErr?.requestId });
+          return;
+        }
+
         if (apiErr?.status === 429) {
+          // Retry-After is already capped at 120s by fetchWrapper
           nextDelay = apiErr.retryAfter ? apiErr.retryAfter * 1000 : 8000;
         } else {
           consecutiveErrorsRef.current += 1;
@@ -390,7 +434,7 @@ function DashboardContent() {
       abortController.abort();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [hasInProgress, limit]);
+  }, [hasInProgress, limit, router]);
 
   const handleConnectOpenChange = useCallback((open: boolean) => {
     const params = new URLSearchParams(window.location.search);
@@ -469,8 +513,23 @@ function DashboardContent() {
 
       {/* Error state */}
       {error && (
-        <div className="mb-6 bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-md text-sm">
-          {error}
+        <div className="mb-6 bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-md text-sm flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="flex-shrink-0" />
+            <span>{error.copy}</span>
+          </div>
+          <RequestIdRef id={error.requestId} />
+          <div className="mt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => loadRepositories(page, search)}
+              className="text-foreground"
+            >
+              <RefreshCw size={14} className="mr-1.5" />
+              Retry
+            </Button>
+          </div>
         </div>
       )}
 

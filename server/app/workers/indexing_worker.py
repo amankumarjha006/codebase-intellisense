@@ -282,7 +282,8 @@ class IndexingWorker:
             if job:
                 job.status = "FAILED"
                 job.error_message = error_message
-                job.failure_code = failure_code
+                if not job.failure_code:
+                    job.failure_code = failure_code
                 job.completed_at = datetime.now(timezone.utc)
                 db.commit()
         except Exception as e:

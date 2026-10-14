@@ -283,10 +283,10 @@ class ConversationStreamingService:
 
         except TransientLLMError as e:
             logger.warning("stream_failed", extra={"conversation_id": str(conversation_id), "error_type": type(e).__name__})
-            yield self._format_sse("error", {"code": "UPSTREAM_SERVICE_UNAVAILABLE", "message": str(e)})
+            yield self._format_sse("error", {"code": "UPSTREAM_SERVICE_UNAVAILABLE", "message": "AI service is temporarily unavailable. Please try again later."})
         except PermanentLLMError as e:
             logger.error("stream_failed", extra={"conversation_id": str(conversation_id), "error_type": type(e).__name__})
-            yield self._format_sse("error", {"code": "UPSTREAM_SERVICE_ERROR", "message": str(e)})
+            yield self._format_sse("error", {"code": "UPSTREAM_SERVICE_ERROR", "message": "AI service encountered an error processing the request."})
         except asyncio.CancelledError:
             logger.info("stream_cancelled", extra={
                 "conversation_id": str(conversation_id),
@@ -313,7 +313,7 @@ class ConversationStreamingService:
                         if not released:
                             logger.warning("conversation_lock_expiration", extra={
                                 "conversation_id": str(conversation_id),
-                                "message": "Lock expired before generation completed"
+                                "reason": "Lock expired before generation completed"
                             })
                         else:
                             logger.debug("conversation_lock_released", extra={

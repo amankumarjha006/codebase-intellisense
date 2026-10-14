@@ -32,6 +32,8 @@ const answerParts = [
   { text: " search query which it appends to the URL.", delay: 50 }
 ];
 
+import type { ThemedToken } from "shiki";
+
 export function LiveDemo() {
   const prefersReducedMotion = useReducedMotion();
   const [isPlaying, setIsPlaying] = useState(!prefersReducedMotion);
@@ -39,7 +41,7 @@ export function LiveDemo() {
   const [timeMs, setTimeMs] = useState(prefersReducedMotion ? 14000 : 0);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
-  const [tokens, setTokens] = useState<any[][]>([]);
+  const [tokens, setTokens] = useState<ThemedToken[][]>([]);
 
   useEffect(() => {
     let mounted = true;
