@@ -1,154 +1,264 @@
-'use client';
+import * as React from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Plus,
+  GitBranch,
+  BookOpen,
+  Terminal,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Settings,
+  Keyboard,
+  CheckCircle2,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
+import { GithubIcon } from '../ui/GithubIcon';
+import { cn } from '../../lib/utils';
+import { mockRepositories, mockCurrentUser } from '../../mock/data';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { motion } from 'motion/react';
-import { LayoutDashboard, MessageSquare, Search, Code2, GitBranch, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { UserMenu } from './UserMenu';
+interface SidebarProps {
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  onOpenConnect: () => void;
+  onOpenShortcuts: () => void;
+}
 
-/**
- * Feature flags for sidebar navigation items.
- * Set a flag to `true` to show the corresponding nav item.
- * All are `false` by default since these pages don't exist yet.
- */
-const FEATURE_FLAGS: Record<string, boolean> = {
-  chat: false,
-  search: false,
-  code: false,
-  architecture: false,
-  settings: false,
-};
-
-/** All possible nav items. Only shown when their feature flag is true (or always for Dashboard). */
-const ALL_NAV_ITEMS = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, flag: null },
-  { name: 'Chat', href: '/repositories/chat', icon: MessageSquare, flag: 'chat' },
-  { name: 'Search', href: '/repositories/search', icon: Search, flag: 'search' },
-  { name: 'Code', href: '/repositories/code', icon: Code2, flag: 'code' },
-  { name: 'Architecture', href: '/repositories/architecture', icon: GitBranch, flag: 'architecture' },
-];
-
-/** Matches a UUID v4 pattern (hex with dashes). */
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
-  const [recentRepos, setRecentRepos] = useState<string[]>([]);
-  const pathname = usePathname();
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('recent_repositories');
-      if (stored) {
-        // Filter to valid UUIDs only — prevent routing to non-ID paths
-        const parsed: unknown[] = JSON.parse(stored);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setRecentRepos(
-          parsed
-            .filter((v): v is string => typeof v === 'string' && UUID_RE.test(v))
-            .slice(0, 5)
-        );
-      }
-    } catch {
-      // ignore parse errors
-    }
-  }, [pathname]);
-
-  // Only show nav items whose feature flag is enabled (or always for Dashboard)
-  const visibleNavItems = ALL_NAV_ITEMS.filter(
-    (item) => item.flag === null || FEATURE_FLAGS[item.flag]
-  );
+export function Sidebar({
+  collapsed,
+  onToggleCollapse,
+  onOpenConnect,
+  onOpenShortcuts,
+}: SidebarProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
 
   return (
-    <motion.aside
-      initial={false}
-      animate={{ width: collapsed ? 64 : 260 }}
-      transition={{ duration: 0.2, ease: "easeInOut" }}
-      className="hidden md:flex flex-col h-full border-r border-border bg-card z-20 flex-shrink-0"
+    <aside
+      className={cn(
+        'relative flex flex-col h-screen border-r border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] transition-all duration-300 z-30 select-none shrink-0',
+        collapsed ? 'w-[var(--width-sidebar-collapsed)]' : 'w-[var(--width-sidebar-expanded)]'
+      )}
     >
-      <div className="h-16 flex items-center justify-between px-4 border-b border-border">
-        {!collapsed && (
-          <div className="flex flex-col overflow-hidden min-w-0">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">Codebase Intelligence</span>
-            <span className="text-sm font-medium text-foreground truncate flex items-center gap-2 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(99,102,241,0.5)] flex-shrink-0" />
-              owner/repository
-            </span>
-          </div>
-        )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className={cn("p-1.5 rounded-md hover:bg-secondary text-muted-foreground transition-colors flex-shrink-0", collapsed && "mx-auto")}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      {/* Brand Header */}
+      <div className="flex h-14 items-center justify-between px-3 border-b border-[var(--color-border)]">
+        <NavLink
+          to="/dashboard"
+          className="flex items-center gap-2.5 overflow-hidden group py-1"
         >
-          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          <div className="h-8 w-8 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-accent)] shrink-0 group-hover:border-[var(--color-accent)] transition-colors">
+            <Terminal size={17} />
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-bold tracking-tight text-[var(--color-text)] truncate font-sans">
+                Codebase Intellisense
+              </span>
+              <span className="text-[10px] text-[var(--color-muted)] font-mono truncate">
+                v0.1.0-preview
+              </span>
+            </div>
+          )}
+        </NavLink>
+
+        <button
+          onClick={onToggleCollapse}
+          className="p-1 rounded-[var(--radius-control)] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)] transition hidden md:flex items-center justify-center"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        {visibleNavItems.map((item) => {
-          // For now, treat exact match or startsWith depending on routing structure.
-          // Since it's a placeholder shell, strict exact matching is fine.
-          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`));
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              title={collapsed ? item.name : undefined}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+      {/* Main Navigation */}
+      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-5 no-scrollbar">
+        {/* Primary Links */}
+        <div className="space-y-0.5">
+          <NavLink
+            to="/dashboard"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-2.5 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
                 isActive
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground font-medium",
-                collapsed && "justify-center px-0"
+                  ? 'bg-[var(--color-raised)] text-[var(--color-text)] border border-[var(--color-border-strong)]'
+                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
+              )
+            }
+            title={collapsed ? 'Dashboard' : undefined}
+          >
+            <LayoutDashboard size={16} className="shrink-0" />
+            {!collapsed && <span>Dashboard</span>}
+          </NavLink>
+
+          <button
+            onClick={onOpenConnect}
+            className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors text-left"
+            title={collapsed ? 'Connect repository' : undefined}
+          >
+            <Plus size={16} className="shrink-0 text-[var(--color-accent)]" />
+            {!collapsed && <span>Connect repository</span>}
+          </button>
+        </div>
+
+        {/* Recent Repositories */}
+        <div>
+          {!collapsed && (
+            <div className="px-2.5 mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+              <span>Repositories</span>
+              <span className="font-mono text-[9px]">{mockRepositories.length}</span>
+            </div>
+          )}
+
+          <div className="space-y-0.5">
+            {mockRepositories.map((repo) => {
+              const isSelected = location.pathname.startsWith(`/repositories/${repo.id}`);
+              return (
+                <NavLink
+                  key={repo.id}
+                  to={`/repositories/${repo.id}`}
+                  className={cn(
+                    'group flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
+                    isSelected
+                      ? 'bg-[var(--color-raised)] text-[var(--color-text)] border border-[var(--color-border-strong)]'
+                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
+                  )}
+                  title={collapsed ? `${repo.owner}/${repo.name}` : undefined}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <GitBranch size={14} className="shrink-0 text-[var(--color-muted)] group-hover:text-[var(--color-text)]" />
+                    {!collapsed && <span className="truncate">{repo.name}</span>}
+                  </div>
+
+                  {!collapsed && (
+                    <div className="shrink-0">
+                      {repo.latest_job_status === 'READY' && (
+                        <CheckCircle2 size={12} className="text-[var(--color-accent)]" />
+                      )}
+                      {repo.latest_job_status === 'INDEXING' && (
+                        <Loader2 size={12} className="animate-spin text-[var(--color-warning)]" />
+                      )}
+                      {repo.latest_job_status === 'FAILED' && (
+                        <AlertCircle size={12} className="text-[var(--color-error)]" />
+                      )}
+                    </div>
+                  )}
+                </NavLink>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Resources & Docs */}
+        <div>
+          {!collapsed && (
+            <div className="px-2.5 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+              Resources
+            </div>
+          )}
+          <div className="space-y-0.5">
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors"
+              title={collapsed ? 'GitHub Docs' : undefined}
+            >
+              <div className="flex items-center gap-2">
+                <BookOpen size={15} className="shrink-0" />
+                {!collapsed && <span>Documentation</span>}
+              </div>
+              {!collapsed && <ExternalLink size={11} className="text-[var(--color-muted)]" />}
+            </a>
+
+            <button
+              onClick={onOpenShortcuts}
+              className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors text-left"
+              title={collapsed ? 'Keyboard shortcuts' : undefined}
+            >
+              <div className="flex items-center gap-2">
+                <Keyboard size={15} className="shrink-0" />
+                {!collapsed && <span>Shortcuts</span>}
+              </div>
+              {!collapsed && <span className="font-mono text-[10px] text-[var(--color-muted)]">?</span>}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* User Menu Footer */}
+      <div className="p-2 border-t border-[var(--color-border)]">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className={cn(
+                'w-full flex items-center gap-2.5 p-1.5 rounded-[var(--radius-control)] text-left hover:bg-[var(--color-raised)] transition outline-none group',
+                collapsed ? 'justify-center' : 'justify-between'
               )}
             >
-              <item.icon size={18} className={cn("flex-shrink-0", isActive && "text-primary")} />
-              {!collapsed && <span>{item.name}</span>}
-            </Link>
-          );
-        })}
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="h-7 w-7 rounded-full bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-xs font-semibold text-[var(--color-text)] shrink-0">
+                  {mockCurrentUser.initials}
+                </div>
+                {!collapsed && (
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-medium text-[var(--color-text)] truncate">
+                      {mockCurrentUser.name}
+                    </span>
+                    <span className="text-[10px] text-[var(--color-muted)] truncate">
+                      @{mockCurrentUser.github_login}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </button>
+          </DropdownMenuTrigger>
 
-        {recentRepos.length > 0 && !collapsed && (
-          <div className="mt-8 mb-2 px-3">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Recent repositories</h3>
-            <div className="space-y-1">
-              {recentRepos.map((repoId) => (
-                <Link
-                  key={repoId}
-                  href={`/repositories/${repoId}`}
-                  className="block px-3 py-2 rounded-md text-xs text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors truncate"
-                  title={repoId}
-                >
-                  {repoId}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+          <DropdownMenuContent side="right" align="end" className="w-56 mb-2">
+            <DropdownMenuLabel>
+              <div className="flex flex-col">
+                <span className="font-semibold text-xs text-[var(--color-text)]">
+                  {mockCurrentUser.name}
+                </span>
+                <span className="text-[11px] font-normal text-[var(--color-muted)]">
+                  {mockCurrentUser.email}
+                </span>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              <span>Dashboard</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onOpenShortcuts}>
+              <Keyboard className="mr-2 h-4 w-4" />
+              <span>Keyboard Shortcuts</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.open(`https://github.com/${mockCurrentUser.github_login}`, '_blank')}>
+              <GithubIcon className="mr-2 h-4 w-4" />
+              <span>GitHub Profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              destructive
+              onClick={() => navigate('/status/session-expired')}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Sign out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-
-      <div className="p-3 border-t border-border space-y-1">
-        {FEATURE_FLAGS.settings && (
-          <Link
-            href="/settings"
-            title={collapsed ? "Settings" : undefined}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-              pathname.startsWith('/settings')
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-              collapsed && "justify-center px-0"
-            )}
-          >
-            <Settings size={18} className="flex-shrink-0" />
-            {!collapsed && <span>Settings</span>}
-          </Link>
-        )}
-        <UserMenu collapsed={collapsed} />
-      </div>
-    </motion.aside>
+    </aside>
   );
 }
