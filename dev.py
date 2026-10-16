@@ -126,8 +126,8 @@ def main() -> None:
             shell=True,
         )
 
-        # Start Frontend (Next.js)
-        print("[dev] Launching Next.js frontend on port 3000...")
+        # Start Frontend (Vite)
+        print("[dev] Launching Vite frontend on port 3000...")
         frontend_cmd = [npm_bin, "run", "dev"]
         frontend_proc = subprocess.Popen(
             frontend_cmd,
