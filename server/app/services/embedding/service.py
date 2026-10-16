@@ -22,13 +22,19 @@ class EmbeddingService:
         self.max_batch_items = settings.EMBEDDING_MAX_BATCH_ITEMS
         self.max_batch_tokens = settings.EMBEDDING_MAX_BATCH_TOKENS
         self.max_retries = settings.EMBEDDING_MAX_RETRIES
+        self.chars_per_token = getattr(settings, "EMBEDDING_CHARS_PER_TOKEN", 3)
+
+    @staticmethod
+    def estimate_tokens(text: str, chars_per_token: int | None = None) -> int:
+        """
+        Estimate tokens for a text string using configurable chars-per-token ratio.
+        Default is 3 (conservative for code).
+        """
+        ratio = chars_per_token if chars_per_token is not None else getattr(settings, "EMBEDDING_CHARS_PER_TOKEN", 3)
+        return max(1, len(text) // ratio)
 
     def _estimate_tokens(self, text: str) -> int:
-        """
-        Heuristic for estimating tokens.
-        A conservative estimate is 1 token per 3-4 characters. We use 3 for safety.
-        """
-        return max(1, len(text) // 3)
+        return self.estimate_tokens(text, self.chars_per_token)
 
     def generate_and_store_embeddings(self, chunks: List[CodeChunk]) -> dict[str, int]:
         """

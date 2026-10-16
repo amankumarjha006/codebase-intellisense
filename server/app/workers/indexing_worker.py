@@ -18,7 +18,7 @@ from app.repositories.knowledge import KnowledgeRepository
 from app.repositories.repository import RepositoryRepository
 from app.services.embedding.factory import get_embedding_provider
 from app.services.embedding.service import EmbeddingService
-from app.services.indexing import IndexingService
+from app.services.indexing import IndexingService, RepositoryTooLargeError
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,15 @@ class IndexingWorker:
     def start(self) -> None:
         """Start the worker loop."""
         self.running = True
-        logger.info("Indexing worker started")
+        logger.info(
+            f"Indexing worker started with effective embedding settings: "
+            f"model={settings.EMBEDDING_MODEL}, "
+            f"dimension={settings.EMBEDDING_DIMENSION}, "
+            f"batch_items={settings.EMBEDDING_MAX_BATCH_ITEMS}, "
+            f"batch_tokens={settings.EMBEDDING_MAX_BATCH_TOKENS}, "
+            f"interval_seconds={settings.EMBEDDING_MIN_INTERVAL_SECONDS}, "
+            f"chars_per_token={getattr(settings, 'EMBEDDING_CHARS_PER_TOKEN', 3)}"
+        )
 
         signal.signal(signal.SIGTERM, self._signal_handler)
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -236,7 +244,15 @@ class IndexingWorker:
             return True
 
         self.current_job_id = job_id
-        logger.info(f"Processing indexing job {job_id}")
+        logger.info(
+            f"Processing indexing job {job_id} with effective embedding settings: "
+            f"model={settings.EMBEDDING_MODEL}, "
+            f"dimension={settings.EMBEDDING_DIMENSION}, "
+            f"batch_items={settings.EMBEDDING_MAX_BATCH_ITEMS}, "
+            f"batch_tokens={settings.EMBEDDING_MAX_BATCH_TOKENS}, "
+            f"interval_seconds={settings.EMBEDDING_MIN_INTERVAL_SECONDS}, "
+            f"chars_per_token={getattr(settings, 'EMBEDDING_CHARS_PER_TOKEN', 3)}"
+        )
 
         db = self._get_db()
         try:
@@ -265,6 +281,11 @@ class IndexingWorker:
             self._remove_from_processing(job_id_str)
             return True
 
+        except RepositoryTooLargeError:
+            logger.warning(f"Job {job_id} failed: repository exceeds token cap")
+            self._mark_job_failed(job_id, "The repository is too large to be indexed.", failure_code="REPOSITORY_TOO_LARGE")
+            self._remove_from_processing(job_id_str)
+            return True
         except Exception as e:
             logger.error(f"Failed to process job {job_id}: {e}", exc_info=True)
             self._mark_job_failed(job_id, str(e))
@@ -282,7 +303,7 @@ class IndexingWorker:
             if job:
                 job.status = "FAILED"
                 job.error_message = error_message
-                if not job.failure_code:
+                if not isinstance(job.failure_code, str):
                     job.failure_code = failure_code
                 job.completed_at = datetime.now(timezone.utc)
                 db.commit()

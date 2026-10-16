@@ -94,8 +94,8 @@ class IndexJobOut(BaseModel):
     repository_id: UUID
     repository_version_id: UUID
     status: str
-    started_at: datetime | None
-    completed_at: datetime | None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     failure_code: str | None = None
     failure_message: str | None = None
     

@@ -72,6 +72,7 @@ async def test_analyze_repository_explicit_branch(async_client, mock_auth, mock_
     async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
     
     mock_decrypt = mocker.patch("app.api.v1.endpoints.repositories.get_decrypted_token", return_value="decrypted")
+    mock_enqueue = mocker.patch("app.api.v1.endpoints.repositories.enqueue_indexing_job")
     
     mock_github = mocker.patch("app.api.v1.endpoints.repositories.GithubService")
     mock_github_instance = mock_github.return_value
@@ -100,12 +101,14 @@ async def test_analyze_repository_explicit_branch(async_client, mock_auth, mock_
     mock_repo_service_instance.queue_analysis.assert_called_once_with(
         repository=mock_auth_dep.get_for_user.return_value, branch="develop", commit_sha="commit_123"
     )
+    mock_enqueue.assert_called_once_with(job.id)
 
 # 2. Default branch
 @pytest.mark.asyncio
 async def test_analyze_repository_default_branch(async_client, mock_auth, mock_db, mocker, repo_id, mock_auth_dep):
     async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
     mocker.patch("app.api.v1.endpoints.repositories.get_decrypted_token", return_value="decrypted")
+    mock_enqueue = mocker.patch("app.api.v1.endpoints.repositories.enqueue_indexing_job")
     
     mock_github = mocker.patch("app.api.v1.endpoints.repositories.GithubService")
     mock_github_instance = mock_github.return_value
@@ -134,6 +137,7 @@ async def test_analyze_repository_default_branch(async_client, mock_auth, mock_d
     mock_repo_service_instance.queue_analysis.assert_called_once_with(
         repository=mock_auth_dep.get_for_user.return_value, branch="main", commit_sha="commit_456"
     )
+    mock_enqueue.assert_called_once_with(job.id)
 
 # 3. Active job
 @pytest.mark.asyncio
