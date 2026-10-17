@@ -35,11 +35,10 @@ async def test_send_message_success(service, mocks):
     mock_conv = Conversation(id=conv_id, repository_id=repo_id, repository_version_id=version_id, user_id=user_id)
     mocks["conversation_repo"].get_for_user.return_value = mock_conv
 
-    # Setup message repo to return the message it receives
-    from datetime import datetime
+    from datetime import datetime, timezone
     def mock_create(msg):
         msg.id = uuid4()
-        msg.created_at = datetime.utcnow()
+        msg.created_at = datetime.now(timezone.utc)
         if hasattr(msg, 'citations') and msg.citations:
             for c in msg.citations:
                 c.id = uuid4()
