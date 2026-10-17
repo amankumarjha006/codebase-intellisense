@@ -693,6 +693,49 @@ async def test_get_repository_architecture_level_file_and_truncation(async_clien
 
 
 @pytest.mark.asyncio
+async def test_get_repository_architecture_default_bounds_to_300_nodes(async_client, mock_auth, mock_db, mocker):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    repo_id = str(uuid4())
+    
+    from app.models.repository import Repository, RepositoryVersion
+    from app.models.knowledge import AnalysisResult
+    repo = Repository(id=UUID(repo_id), name="test-repo", clone_url="https://github.com/test/test", is_private=False)
+    
+    mock_auth_dep = mocker.patch("app.api.deps.RepositoryRepository")
+    mock_auth_dep_instance = mock_auth_dep.return_value
+    mock_auth_dep_instance.get_for_user.return_value = repo
+    
+    version_id = uuid4()
+    version = RepositoryVersion(id=version_id, repository_id=UUID(repo_id), commit_sha="abc", index_status="SUCCESS", branch="main", indexed_at=datetime(2026, 1, 2, tzinfo=timezone.utc))
+    
+    mock_repo_repo = mocker.patch("app.api.v1.endpoints.repositories.RepositoryRepository")
+    mock_repo_repo_instance = mock_repo_repo.return_value
+    mock_repo_repo_instance.get_active_version.return_value = version
+    
+    # Generate 350 nodes
+    nodes = [{"id": f"node_{i}", "type": "file", "name": f"file_{i}.py"} for i in range(350)]
+    relationships = [{"source": "node_0", "target": f"node_{i}", "type": "IMPORTS"} for i in range(1, 350)]
+    
+    analysis_result = AnalysisResult(
+        repository_version_id=version_id,
+        analysis_type="ARCHITECTURE",
+        payload={"nodes": nodes, "relationships": relationships}
+    )
+    
+    mock_knowledge_repo = mocker.patch("app.api.v1.endpoints.repositories.KnowledgeRepository")
+    mock_knowledge_repo_instance = mock_knowledge_repo.return_value
+    mock_knowledge_repo_instance.get_analysis_result.return_value = analysis_result
+    
+    # Request without query parameters
+    response = await async_client.get(f"{settings.API_V1_STR}/repositories/{repo_id}/architecture")
+    assert response.status_code == 200
+    p = response.json()["payload"]
+    assert len(p["nodes"]) == 300
+    assert p["truncated"] is True
+    assert p["total_nodes"] == 350
+
+
+@pytest.mark.asyncio
 async def test_get_repository_architecture_no_active_version(async_client, mock_auth, mock_db, mocker):
     async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
     repo_id = str(uuid4())

@@ -560,10 +560,6 @@ def get_repository_architecture(
             }
         )
 
-    # Keep default response as-is when neither level nor max_nodes is specified
-    if level is None and max_nodes is None:
-        return AnalysisResultOut.model_validate(arch)
-
     payload = arch.payload or {}
     nodes = list(payload.get("nodes", []))
     relationships = list(payload.get("relationships", []))
