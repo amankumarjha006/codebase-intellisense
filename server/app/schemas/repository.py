@@ -8,6 +8,7 @@ from datetime import datetime
 
 class RepositoryCreate(BaseModel):
     url: str
+    account_id: UUID | None = None
 
     @field_validator("url")
     @classmethod

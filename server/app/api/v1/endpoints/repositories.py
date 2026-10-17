@@ -46,7 +46,8 @@ from app.services.repository import (
     RepositoryServiceError,
     InvalidRepositoryUrlError,
     RepositoryNotAccessibleError,
-    RepositoryActiveJobError
+    RepositoryActiveJobError,
+    parse_github_url,
 )
 from app.services.github import GithubAuthError
 from app.workers import enqueue_indexing_job
@@ -153,9 +154,7 @@ async def connect_repository(
     db: Session = Depends(get_db),
     _: None = Depends(general_rate_limiter),):
     """Connects a GitHub repository for the authenticated user."""
-    github_account = current_user.github_accounts[0] if current_user.github_accounts else None
-    
-    if not github_account:
+    if not current_user.github_accounts:
         return JSONResponse(
             status_code=400,
             content={
@@ -165,6 +164,40 @@ async def connect_repository(
                 }
             }
         )
+
+    github_account = None
+
+    # 1. Match by explicit account_id if specified in the request
+    if request.account_id:
+        github_account = next(
+            (acc for acc in current_user.github_accounts if acc.id == request.account_id),
+            None
+        )
+        if not github_account:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "code": "INVALID_REQUEST",
+                        "message": f"GitHub account {request.account_id} not found for this user."
+                    }
+                }
+            )
+
+    # 2. Match by repository owner username
+    if not github_account:
+        try:
+            owner, _ = parse_github_url(request.url)
+            github_account = next(
+                (acc for acc in current_user.github_accounts if acc.username.lower() == owner.lower()),
+                None
+            )
+        except Exception:
+            pass
+
+    # 3. Fallback to first connected GitHub account
+    if not github_account:
+        github_account = current_user.github_accounts[0]
 
     try:
         token = get_decrypted_token(github_account)

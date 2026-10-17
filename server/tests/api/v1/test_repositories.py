@@ -66,6 +66,22 @@ def mock_auth_no_github(mocker, mock_redis, mock_db):
     
     return mock_user
 
+@pytest.fixture
+def mock_auth_multi_account(mocker, mock_redis, mock_db):
+    user_id = str(uuid4())
+    mock_redis.get.return_value = user_id
+    
+    mock_user = User(id=uuid4(), email="multi@example.com", full_name="Multi User")
+    acc1 = GithubAccount(id=uuid4(), github_user_id="111", username="work_corp", access_token_encrypted="tok1")
+    acc2 = GithubAccount(id=uuid4(), github_user_id="222", username="personal_dev", access_token_encrypted="tok2")
+    mock_user.github_accounts = [acc1, acc2]
+    
+    mock_user_repo = mocker.patch("app.repositories.user.UserAccountRepository")
+    mock_user_repo_instance = mock_user_repo.return_value
+    mock_user_repo_instance.get_user_by_id.return_value = mock_user
+    
+    return mock_user
+
 
 # List Tests
 @pytest.mark.asyncio
@@ -223,6 +239,55 @@ async def test_connect_repository_token_decryption_failure(async_client, mock_au
     response = await async_client.post(
         f"{settings.API_V1_STR}/repositories",
         json={"url": "https://github.com/owner/repo"}
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_REQUEST"
+
+
+@pytest.mark.asyncio
+async def test_connect_repository_multi_account_matches_owner(async_client, mock_auth_multi_account, mocker):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    mock_decrypt = mocker.patch("app.api.v1.endpoints.repositories.get_decrypted_token", return_value="personal_token")
+    mock_repo_service = mocker.patch("app.api.v1.endpoints.repositories.RepositoryService")
+    mock_repo_service_instance = mock_repo_service.return_value
+    repo = Repository(id=uuid4(), owner="personal_dev", name="cool-repo", is_private=False, created_at=datetime.now(timezone.utc))
+    mock_repo_service_instance.connect_repository = AsyncMock(return_value=repo)
+
+    response = await async_client.post(
+        f"{settings.API_V1_STR}/repositories",
+        json={"url": "https://github.com/personal_dev/cool-repo"}
+    )
+    assert response.status_code == 201
+    # Crucial assertion: Must decrypt token for personal_dev (github_accounts[1]), NOT default to github_accounts[0]
+    expected_account = mock_auth_multi_account.github_accounts[1]
+    mock_decrypt.assert_called_once_with(expected_account)
+
+
+@pytest.mark.asyncio
+async def test_connect_repository_multi_account_explicit_account_id(async_client, mock_auth_multi_account, mocker):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    mock_decrypt = mocker.patch("app.api.v1.endpoints.repositories.get_decrypted_token", return_value="explicit_token")
+    mock_repo_service = mocker.patch("app.api.v1.endpoints.repositories.RepositoryService")
+    mock_repo_service_instance = mock_repo_service.return_value
+    repo = Repository(id=uuid4(), owner="third_party", name="shared-repo", is_private=False, created_at=datetime.now(timezone.utc))
+    mock_repo_service_instance.connect_repository = AsyncMock(return_value=repo)
+
+    target_account = mock_auth_multi_account.github_accounts[1]
+    response = await async_client.post(
+        f"{settings.API_V1_STR}/repositories",
+        json={"url": "https://github.com/third_party/shared-repo", "account_id": str(target_account.id)}
+    )
+    assert response.status_code == 201
+    mock_decrypt.assert_called_once_with(target_account)
+
+
+@pytest.mark.asyncio
+async def test_connect_repository_multi_account_invalid_account_id(async_client, mock_auth_multi_account):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    unknown_account_id = str(uuid4())
+    response = await async_client.post(
+        f"{settings.API_V1_STR}/repositories",
+        json={"url": "https://github.com/third_party/shared-repo", "account_id": unknown_account_id}
     )
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "INVALID_REQUEST"
