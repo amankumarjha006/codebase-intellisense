@@ -616,12 +616,11 @@ class IndexingService:
         if isinstance(deleted_count, int) and deleted_count > 0:
             logger.info(f"Re-index: removed {deleted_count} existing files for version {version.id}")
         knowledge_repo.delete_analysis_results_for_version(version.id)
-        import unittest.mock
-        if isinstance(discover_files, (unittest.mock.Mock, unittest.mock.MagicMock)):
-            files = discover_files(repo_path)
-            skip_counts = {}
+        discovery_result = discover_files_with_stats(repo_path)
+        if isinstance(discovery_result, tuple) and len(discovery_result) == 2 and isinstance(discovery_result[1], dict):
+            files, skip_counts = discovery_result
         else:
-            files, skip_counts = discover_files_with_stats(repo_path)
+            files, skip_counts = discovery_result, {}
         total_discovered = len(files) + sum(skip_counts.values())
         logger.info(
             f"File discovery complete for version {version.id}: "
