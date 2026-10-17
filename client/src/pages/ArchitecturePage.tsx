@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { Repository, ArchitectureDocument, ArchitectureSection, Citation } from '../lib/types';
-import { getStoredScenarios } from '../lib/scenarios';
 import { shortSha, formatRelativeTime, sleep } from '../lib/utils';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
 import { Button } from '../components/ui/button';
@@ -21,7 +20,6 @@ import { SourcePanel } from '../components/chat/SourcePanel';
 
 export function ArchitecturePage() {
   const { id: repoId } = useParams<{ id: string }>();
-  const navigate = useNavigate();
 
   const [repository, setRepository] = React.useState<Repository | null>(null);
   const [doc, setDoc] = React.useState<ArchitectureDocument | null>(null);
@@ -29,8 +27,6 @@ export function ArchitecturePage() {
   const [generating, setGenerating] = React.useState(false);
   const [activeSectionId, setActiveSectionId] = React.useState<string | null>(null);
   const [selectedCitation, setSelectedCitation] = React.useState<Citation | null>(null);
-
-  const scenarios = getStoredScenarios();
 
   const loadDoc = React.useCallback(async () => {
     if (!repoId) return;
@@ -63,7 +59,7 @@ export function ArchitecturePage() {
     }
   };
 
-  if (!repository) {
+  if (!repository || loading) {
     return <div className="p-8 text-center text-xs text-[var(--color-muted)]">Loading repository...</div>;
   }
 

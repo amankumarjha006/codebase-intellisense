@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Settings,
   Keyboard,
   CheckCircle2,
   Loader2,

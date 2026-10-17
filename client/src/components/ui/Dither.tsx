@@ -127,7 +127,7 @@ export function Dither({ className = '', waveSpeed = 0.5, ...props }: DitherProp
           container.removeChild(gl.canvas);
         }
       };
-    } catch (e) {
+    } catch {
       // Fallback silently if WebGL is unavailable
       return;
     }

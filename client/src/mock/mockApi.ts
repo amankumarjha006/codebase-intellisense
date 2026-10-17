@@ -362,7 +362,7 @@ export const mockApi = {
   },
 
   /** Get file tree */
-  async getFileTree(repoId: string): Promise<FileTreeNode> {
+  async getFileTree(_repoId: string): Promise<FileTreeNode> {
     await sleep(150);
     return mockFileTree;
   },

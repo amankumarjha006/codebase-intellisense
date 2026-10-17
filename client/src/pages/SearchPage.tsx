@@ -47,7 +47,7 @@ export function SearchPage() {
 
   React.useEffect(() => {
     executeSearch(query);
-  }, [executeSearch]);
+  }, [executeSearch, query]);
 
   const handleCopy = (path: string) => {
     navigator.clipboard.writeText(path);

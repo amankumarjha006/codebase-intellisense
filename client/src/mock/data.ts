@@ -1,6 +1,5 @@
 import {
   Repository,
-  RepositoryListItem,
   User,
   Conversation,
   ChatMessage,

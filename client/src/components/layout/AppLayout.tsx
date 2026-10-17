@@ -4,11 +4,8 @@ import { MotionConfig } from 'motion/react';
 import {
   Menu,
   Search,
-  Command as CommandIcon,
   GitBranch,
-  Terminal,
   Plus,
-  X,
   Keyboard,
 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
