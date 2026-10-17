@@ -3,6 +3,8 @@ from typing import Optional
 from uuid import UUID
 from datetime import datetime
 
+from app.schemas.message import MessageCitationOut
+
 class ConversationCreate(BaseModel):
     title: str | None = Field(None, max_length=512)
 
@@ -13,6 +15,8 @@ class ConversationOut(BaseModel):
     repository_version_id: UUID
     title: str | None
     created_at: datetime
+    last_message_at: datetime | None = None
+    message_count: int = 0
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -33,6 +37,7 @@ class MessageOut(BaseModel):
     role: str
     content: str
     created_at: datetime
+    citations: list[MessageCitationOut] = Field(default_factory=list)
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -42,3 +47,4 @@ class MessageListOut(BaseModel):
     page: int = Field(ge=1)
     limit: int = Field(ge=1, le=100)
     has_more: bool
+

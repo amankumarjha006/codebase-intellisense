@@ -35,12 +35,9 @@ class ConversationRepository:
         self, user_id: UUID, repository_id: UUID, skip: int = 0, limit: int = 100
     ) -> tuple[Sequence[Conversation], int]:
         """Returns paginated conversations for a user in a repository."""
-        base_query = select(Conversation).where(
-            Conversation.user_id == user_id,
-            Conversation.repository_id == repository_id
-        )
-        
         from sqlalchemy import func
+        from app.models.conversation import Message
+
         total = self.db.execute(
             select(func.count()).select_from(Conversation).where(
                 Conversation.user_id == user_id,
@@ -48,11 +45,38 @@ class ConversationRepository:
             )
         ).scalar_one()
 
-        items = self.db.execute(
-            base_query.order_by(desc(Conversation.created_at), desc(Conversation.id))
+        msg_count_subquery = (
+            select(func.count(Message.id))
+            .where(Message.conversation_id == Conversation.id)
+            .scalar_subquery()
+        )
+        last_msg_subquery = (
+            select(func.max(Message.created_at))
+            .where(Message.conversation_id == Conversation.id)
+            .scalar_subquery()
+        )
+
+        query = (
+            select(
+                Conversation,
+                msg_count_subquery.label("message_count"),
+                last_msg_subquery.label("last_message_at"),
+            )
+            .where(
+                Conversation.user_id == user_id,
+                Conversation.repository_id == repository_id
+            )
+            .order_by(desc(Conversation.created_at), desc(Conversation.id))
             .offset(skip)
             .limit(limit)
-        ).scalars().all()
+        )
+
+        rows = self.db.execute(query).all()
+        items = []
+        for conv, count, last_at in rows:
+            conv.message_count = count or 0
+            conv.last_message_at = last_at
+            items.append(conv)
 
         return items, total
 

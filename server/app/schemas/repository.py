@@ -148,6 +148,7 @@ class FileDetailOut(BaseModel):
 
 class FileListOut(BaseModel):
     files: list[FileOut]
+    total: int | None = None
 
 class SearchRequest(BaseModel):
     query: str

@@ -242,3 +242,96 @@ async def test_list_messages(async_client, mock_auth, mock_db, mocker, user_id):
     assert data["items"][0]["id"] == str(msg_id)
     assert data["items"][0]["role"] == "user"
     assert data["items"][0]["content"] == "Hello!"
+    assert data["items"][0]["citations"] == []
+
+
+@pytest.mark.asyncio
+async def test_list_messages_with_citations(async_client, mock_auth, mock_db, mocker, user_id):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+
+    conv_id = uuid4()
+    user_msg_id = uuid4()
+    asst_msg_id = uuid4()
+    cit_id = uuid4()
+    
+    mock_get = mocker.patch("app.repositories.conversation.ConversationRepository.get_for_user")
+    mock_get.return_value = Conversation(id=conv_id, user_id=user_id, created_at=datetime.now(timezone.utc))
+
+    from app.models.conversation import Citation
+    user_msg = Message(
+        id=user_msg_id,
+        conversation_id=conv_id,
+        role="user",
+        content="Hello!",
+        created_at=datetime.now(timezone.utc),
+    )
+    user_msg.citations = []
+
+    asst_msg = Message(
+        id=asst_msg_id,
+        conversation_id=conv_id,
+        role="assistant",
+        content="Here is code.",
+        created_at=datetime.now(timezone.utc),
+    )
+    asst_msg.citations = [
+        Citation(
+            id=cit_id,
+            message_id=asst_msg_id,
+            file_path="src/main.py",
+            start_line=1,
+            end_line=10,
+        )
+    ]
+
+    mock_list_msgs = mocker.patch("app.repositories.message.MessageRepository.list_for_conversation")
+    mock_list_msgs.return_value = ([user_msg, asst_msg], 2)
+
+    response = await async_client.get(
+        f"{settings.API_V1_STR}/conversations/{conv_id}/messages?page=1&limit=50"
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 2
+    assert data["items"][0]["role"] == "user"
+    assert data["items"][0]["citations"] == []
+    assert data["items"][1]["role"] == "assistant"
+    assert len(data["items"][1]["citations"]) == 1
+    assert data["items"][1]["citations"][0]["file_path"] == "src/main.py"
+    assert data["items"][1]["citations"][0]["start_line"] == 1
+    assert data["items"][1]["citations"][0]["end_line"] == 10
+
+
+@pytest.mark.asyncio
+async def test_list_conversations_with_metadata(async_client, mock_auth, mock_db, mocker, repo_id, user_id, mock_auth_dep):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+
+    conv_id = uuid4()
+    last_msg_time = datetime.now(timezone.utc)
+    conv = Conversation(
+        id=conv_id,
+        user_id=user_id,
+        repository_id=repo_id,
+        repository_version_id=uuid4(),
+        title="List Metadata Test",
+        created_at=datetime.now(timezone.utc),
+    )
+    conv.message_count = 7
+    conv.last_message_at = last_msg_time
+
+    mock_list = mocker.patch("app.repositories.conversation.ConversationRepository.list_for_user")
+    mock_list.return_value = ([conv], 1)
+
+    response = await async_client.get(
+        f"{settings.API_V1_STR}/repositories/{repo_id}/conversations?page=1&limit=10"
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    item = data["items"][0]
+    assert item["id"] == str(conv_id)
+    assert item["message_count"] == 7
+    assert item["last_message_at"] is not None
+

@@ -2,7 +2,7 @@ from typing import Sequence
 from uuid import UUID
 
 from sqlalchemy import select, asc, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.conversation import Message
 
@@ -34,15 +34,19 @@ class MessageRepository:
 
     def get_by_id(self, message_id: UUID) -> Message | None:
         return self.db.execute(
-            select(Message).where(Message.id == message_id)
+            select(Message)
+            .where(Message.id == message_id)
+            .options(selectinload(Message.citations))
         ).scalar_one_or_none()
 
     def list_for_conversation(
         self, conversation_id: UUID, skip: int = 0, limit: int = 100
     ) -> tuple[Sequence[Message], int]:
         """Returns paginated messages for a conversation."""
-        base_query = select(Message).where(
-            Message.conversation_id == conversation_id
+        base_query = (
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .options(selectinload(Message.citations))
         )
         
         total = self.db.execute(

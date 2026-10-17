@@ -256,6 +256,9 @@ def get_repository_versions(
 @router.get("/{repository_id}/files", response_model=FileListOut, summary="List Files")
 def get_repository_files(
     repository_id: UUID,
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    q: str | None = Query(None),
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
     _: None = Depends(general_rate_limiter),):
@@ -275,9 +278,26 @@ def get_repository_files(
         )
         
     knowledge_repo = KnowledgeRepository(db)
-    files = knowledge_repo.get_files_for_version(active_version.id)
-    
-    return FileListOut(files=files)
+    try:
+        files = knowledge_repo.get_files_for_version(active_version.id, skip=offset, limit=limit, q=q)
+    except TypeError:
+        files = knowledge_repo.get_files_for_version(active_version.id)
+        
+    total = None
+    count_fn = getattr(knowledge_repo, "count_files_for_version", None)
+    if callable(count_fn):
+        try:
+            res = count_fn(active_version.id, q=q)
+            if isinstance(res, int):
+                total = res
+            else:
+                total = len(files)
+        except Exception:
+            total = len(files)
+    else:
+        total = len(files)
+        
+    return FileListOut(files=files, total=total)
 
 @router.get("/{repository_id}/files/{file_id}", response_model=FileDetailOut, summary="Get File Content")
 def get_repository_file_content(
@@ -506,6 +526,8 @@ def get_repository_technology_stack(
 @router.get("/{repository_id}/architecture", response_model=AnalysisResultOut, summary="Get Architecture")
 def get_repository_architecture(
     repository_id: UUID,
+    level: str | None = Query(None, description="Level filter, e.g. 'file'"),
+    max_nodes: int | None = Query(None, ge=1, le=2000, description="Max nodes to return (default 300 when level or max_nodes specified)"),
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
     _: None = Depends(general_rate_limiter),):
@@ -537,8 +559,58 @@ def get_repository_architecture(
                 }
             }
         )
+
+    # Keep default response as-is when neither level nor max_nodes is specified
+    if level is None and max_nodes is None:
+        return AnalysisResultOut.model_validate(arch)
+
+    payload = arch.payload or {}
+    nodes = list(payload.get("nodes", []))
+    relationships = list(payload.get("relationships", []))
+
+    if level == "file":
+        nodes = [n for n in nodes if n.get("type") == "file"]
+        file_ids = {n["id"] for n in nodes if "id" in n}
+        relationships = [
+            r for r in relationships
+            if r.get("source") in file_ids and r.get("target") in file_ids
+        ]
+
+    limit = max_nodes if max_nodes is not None else 300
+    total_nodes = len(nodes)
+    truncated = False
+
+    if total_nodes > limit:
+        truncated = True
+        from collections import Counter
+        degree = Counter()
+        for r in relationships:
+            degree[r.get("source")] += 1
+            degree[r.get("target")] += 1
         
-    return AnalysisResultOut.model_validate(arch)
+        # Keep the most connected nodes; tie-break deterministically by id
+        nodes = sorted(
+            nodes,
+            key=lambda n: (degree[n.get("id")], n.get("id", "")),
+            reverse=True
+        )[:limit]
+        retained_ids = {n["id"] for n in nodes if "id" in n}
+        relationships = [
+            r for r in relationships
+            if r.get("source") in retained_ids and r.get("target") in retained_ids
+        ]
+
+    filtered_payload = dict(payload)
+    filtered_payload["nodes"] = nodes
+    filtered_payload["relationships"] = relationships
+    filtered_payload["truncated"] = truncated
+    filtered_payload["total_nodes"] = total_nodes
+
+    return AnalysisResultOut(
+        analysis_type=arch.analysis_type,
+        repository_version_id=arch.repository_version_id,
+        payload=filtered_payload
+    )
 
 
 @router.post("/{repository_id}/analyze", response_model=AnalyzeRepositoryOut, status_code=status.HTTP_202_ACCEPTED, summary="Analyze Repository")

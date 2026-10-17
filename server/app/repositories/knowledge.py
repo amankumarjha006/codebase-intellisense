@@ -109,15 +109,44 @@ class KnowledgeRepository:
             .where(File.repository_version_id == repository_version_id)
         ).scalar_one()
 
-    def get_files_for_version(self, repository_version_id: UUID) -> list[File]:
+    def get_files_for_version(
+        self,
+        repository_version_id: UUID,
+        skip: int = 0,
+        limit: int | None = None,
+        q: str | None = None,
+    ) -> list[File]:
         """Get files for a given repository version, ordered deterministically by path."""
-        return list(
-            self.db.execute(
-                select(File)
-                .where(File.repository_version_id == repository_version_id)
-                .order_by(File.file_path.asc(), File.id.asc())
-            ).scalars().all()
+        stmt = (
+            select(File)
+            .where(File.repository_version_id == repository_version_id)
         )
+        if q:
+            clean_q = q.replace("%", "\\%").replace("_", "\\_")
+            stmt = stmt.where(File.file_path.ilike(f"%{clean_q}%"))
+        stmt = stmt.order_by(File.file_path.asc(), File.id.asc())
+        if skip > 0:
+            stmt = stmt.offset(skip)
+        if limit is not None:
+            stmt = stmt.limit(limit)
+
+        return list(self.db.execute(stmt).scalars().all())
+
+    def count_files_for_version(
+        self,
+        repository_version_id: UUID,
+        q: str | None = None,
+    ) -> int:
+        """Count files for a given repository version, optionally filtered by path."""
+        stmt = (
+            select(func.count(File.id))
+            .where(File.repository_version_id == repository_version_id)
+        )
+        if q:
+            clean_q = q.replace("%", "\\%").replace("_", "\\_")
+            stmt = stmt.where(File.file_path.ilike(f"%{clean_q}%"))
+        return self.db.execute(stmt).scalar_one()
+
 
     def get_file_content_for_version(self, file_id: UUID, repository_version_id: UUID) -> tuple[File, str] | None:
         """
