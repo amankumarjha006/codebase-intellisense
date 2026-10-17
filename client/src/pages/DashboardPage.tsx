@@ -42,8 +42,12 @@ export function DashboardPage() {
     try {
       const data = await api.getRepositories();
       setRepositories(data);
-    } catch (err: any) {
-      setError(err?.message || "Can't reach the server. Please check connection.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Can't reach the server. Please check connection.");
+      }
     } finally {
       setLoading(false);
     }

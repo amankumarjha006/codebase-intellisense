@@ -28,15 +28,24 @@ import { mockRepositories } from '../../mock/data';
 import { Button } from '../ui/button';
 import { Drawer, DrawerContent } from '../ui/drawer';
 
+import { useAuth } from '../../lib/AuthContext';
+
 export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
 
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [connectOpen, setConnectOpen] = React.useState(false);
   const [commandOpen, setCommandOpen] = React.useState(false);
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      navigate('/status/session-expired', { replace: true });
+    }
+  }, [loading, user, navigate]);
 
   // Global keyboard shortcuts
   React.useEffect(() => {
@@ -72,6 +81,21 @@ export function AppLayout() {
   const currentRepo = currentRepoId
     ? mockRepositories.find((r) => r.id === currentRepoId)
     : null;
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[var(--color-page)] text-[var(--color-muted)] font-mono text-xs">
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-[var(--color-accent)] animate-ping" />
+          <span>Authenticating...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <MotionConfig reducedMotion="user">

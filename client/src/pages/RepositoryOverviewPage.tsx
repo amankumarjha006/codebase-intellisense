@@ -38,8 +38,12 @@ export function RepositoryOverviewPage() {
         const job = await api.getIndexJob(id);
         setIndexJob(job);
       }
-    } catch (err: any) {
-      setError(err?.message || 'Repository not found');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Repository not found');
+      }
     } finally {
       setLoading(false);
     }

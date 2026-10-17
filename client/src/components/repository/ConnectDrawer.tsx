@@ -66,8 +66,8 @@ export function ConnectDrawer({ open, onOpenChange }: ConnectDrawerProps) {
       const res = await api.connectRepository(repoUrl.trim());
       setConnectedRepo(res.repository);
       setStep('configure');
-    } catch (err: any) {
-      if (err.message) {
+    } catch (err: unknown) {
+      if (err instanceof Error) {
         setErrorMsg(err.message);
       } else {
         setErrorMsg('Failed to connect repository. Please verify the URL and your access.');

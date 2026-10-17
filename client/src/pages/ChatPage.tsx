@@ -77,7 +77,7 @@ export function ChatPage() {
       setMessages([]);
       return;
     }
-    api.getMessages(activeConvId).then((msgs) => {
+    api.getMessages(activeConvId).then((msgs: ChatMessage[]) => {
       setMessages(msgs);
       scrollToBottom();
     });
@@ -122,7 +122,7 @@ export function ChatPage() {
     // Append user message immediately
     const userMsg: ChatMessage = {
       id: `temp_${Date.now()}`,
-      conversation_id: convId,
+      conversation_id: convId as string,
       role: 'user',
       content: text,
       citations: [],
@@ -136,19 +136,19 @@ export function ChatPage() {
     setErrorInfo(null);
     scrollToBottom();
 
-    await api.streamMessage(convId, text, {
-      onToken: (tok) => {
+    await api.streamMessage(convId as string, text, {
+      onToken: (tok: string) => {
         setStreamedText((prev) => prev + tok);
         scrollToBottom();
       },
-      onCitation: (cit) => {
+      onCitation: (cit: Citation) => {
         setStreamedCitations((prev) => [...prev, cit]);
       },
-      onError: (err) => {
+      onError: (err: { error_type: string; message: string; retry_after?: number }) => {
         setErrorInfo(err);
         setStreaming(false);
       },
-      onComplete: (completedMsg) => {
+      onComplete: (completedMsg: ChatMessage) => {
         setMessages((prev) => [...prev, completedMsg]);
         setStreaming(false);
         setStreamedText('');

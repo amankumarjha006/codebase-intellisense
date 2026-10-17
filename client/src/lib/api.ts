@@ -1,428 +1,419 @@
-import {
-  Repository,
-  RepositoryListItem,
-  Conversation,
-  ChatMessage,
-  FileTreeNode,
-  FileContent,
-  SearchResult,
-  SearchFilters,
-  ArchitectureDocument,
-  User,
-  IndexJob,
-  ConnectResponse,
-  Citation,
-} from './types';
-import {
-  mockCurrentUser,
-  mockRepositories,
-  mockIndexJobs,
-  mockConversations,
-  mockMessages,
-  mockFileTree,
-  mockFileContents,
-  mockSearchResults,
-  mockSearchFilters,
-  mockArchitectureDocument,
-} from '../mock/data';
-import { sleep, randomHex } from './utils';
-import { getStoredScenarios } from './scenarios';
+import { parseRetryAfter } from './retryAfter';
 
-// In-memory clones to allow mutable interactions in the session
-let repositories: Repository[] = JSON.parse(JSON.stringify(mockRepositories));
-let conversations: Record<string, Conversation[]> = JSON.parse(JSON.stringify(mockConversations));
-let messages: Record<string, ChatMessage[]> = JSON.parse(JSON.stringify(mockMessages));
-let jobs: Record<string, IndexJob> = JSON.parse(JSON.stringify(mockIndexJobs));
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
-export const api = {
-  /** Get current user */
-  async getCurrentUser(): Promise<User> {
-    await sleep(80);
-    return mockCurrentUser;
-  },
-
-  /** Get repositories list based on active dashboard scenario */
-  async getRepositories(): Promise<RepositoryListItem[]> {
-    await sleep(200);
-    const scenarios = getStoredScenarios();
-
-    if (scenarios.dashboard === 'loading') {
-      await sleep(10000); // simulate infinite loading for previewing skeleton
-    }
-
-    if (scenarios.dashboard === 'error') {
-      throw new Error("Can't reach the server. Unable to connect to host backend.");
-    }
-
-    if (scenarios.dashboard === 'empty') {
-      return [];
-    }
-
-    return repositories.map((r) => ({
-      id: r.id,
-      name: r.name,
-      owner: r.owner,
-      description: r.description,
-      is_private: r.is_private,
-      language: r.language,
-      default_branch: r.default_branch,
-      latest_job_status: r.latest_job_status,
-      latest_job_failure_code: r.latest_job_failure_code,
-      active_version_short_sha: r.active_version_short_sha,
-      last_indexed_at: r.last_indexed_at,
-      lines_of_code: r.lines_of_code,
-      ast_nodes: r.ast_nodes,
-    }));
-  },
-
-  /** Get repository by ID */
-  async getRepository(id: string): Promise<Repository> {
-    await sleep(150);
-    const repo = repositories.find((r) => r.id === id);
-    if (!repo) {
-      throw new Error(`Repository with ID '${id}' not found`);
-    }
-    return repo;
-  },
-
-  /** Connect a new repository by GitHub URL */
-  async connectRepository(url: string): Promise<ConnectResponse> {
-    await sleep(600);
-
-    // Validation checks
-    const cleaned = url.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '');
-    const parts = cleaned.split('/');
-
-    if (parts.length !== 2 || !parts[0] || !parts[1]) {
-      throw {
-        code: 'INVALID_REQUEST',
-        message: 'Please enter a valid GitHub repository URL in the format https://github.com/owner/repo',
-      };
-    }
-
-    const [owner, name] = parts;
-
-    // Check if already connected
-    const existing = repositories.find(
-      (r) => r.owner.toLowerCase() === owner.toLowerCase() && r.name.toLowerCase() === name.toLowerCase()
-    );
-
-    if (existing) {
-      throw {
-        code: 'ALREADY_EXISTS',
-        message: `Repository ${owner}/${name} is already connected.`,
-        existing_id: existing.id,
-      };
-    }
-
-    // Simulate rate limit for testing if specific url is supplied
-    if (url.includes('ratelimit')) {
-      throw {
-        code: 'RATE_LIMITED',
-        message: 'GitHub API rate limit exceeded for repository check. Please try again in 45 seconds.',
-        retry_after: 45,
-      };
-    }
-
-    const newRepoId = `repo_${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${randomHex(4)}`;
-    const newRepo: Repository = {
-      id: newRepoId,
-      name,
-      owner,
-      full_name: `${owner}/${name}`,
-      description: 'Connected via Codebase Intellisense prototype',
-      is_private: false,
-      language: 'TypeScript',
-      default_branch: 'main',
-      latest_job_status: 'QUEUED',
-      latest_job_failure_code: null,
-      active_version_short_sha: null,
-      indexed_commit: null,
-      last_indexed_at: null,
-      lines_of_code: 0,
-      ast_nodes: 0,
-      codebase_volume: {
-        lines_of_code: 0,
-        ast_nodes: 0,
-        language: 'TypeScript',
-      },
-      verification_scope: 'Full repository',
-      index_history: [],
-    };
-
-    repositories.unshift(newRepo);
-
-    // Create tracking job
-    jobs[newRepoId] = {
-      id: `job_${randomHex(8)}`,
-      repository_id: newRepoId,
-      status: 'QUEUED',
-      failure_code: null,
-      failure_message: null,
-      started_at: new Date().toISOString(),
-      completed_at: null,
-      progress: {
-        phase: 'Queued in worker pipeline',
-        percent: 0,
-        files_processed: 0,
-        files_total: 100,
-        current_file: null,
-      },
-    };
-
-    return {
-      repository: newRepo,
-    };
-  },
-
-  /** Get index job for repository */
-  async getIndexJob(repoId: string): Promise<IndexJob | null> {
-    await sleep(100);
-    return jobs[repoId] || null;
-  },
-
-  /** Trigger reindex */
-  async reindexRepository(repoId: string): Promise<IndexJob> {
-    await sleep(300);
-    const repo = repositories.find((r) => r.id === repoId);
-    if (!repo) throw new Error('Repository not found');
-
-    const job: IndexJob = {
-      id: `job_${randomHex(8)}`,
-      repository_id: repoId,
-      status: 'QUEUED',
-      failure_code: null,
-      failure_message: null,
-      started_at: new Date().toISOString(),
-      completed_at: null,
-      progress: {
-        phase: 'Cloning repository main branch',
-        percent: 5,
-        files_processed: 0,
-        files_total: 250,
-        current_file: null,
-      },
-    };
-
-    jobs[repoId] = job;
-    repo.latest_job_status = 'INDEXING';
-    return job;
-  },
-
-  /** Get conversations for a repository */
-  async getConversations(repoId: string): Promise<Conversation[]> {
-    await sleep(120);
-    return conversations[repoId] || [];
-  },
-
-  /** Create new conversation */
-  async createConversation(repoId: string, initialTitle?: string): Promise<Conversation> {
-    await sleep(100);
-    const repo = repositories.find((r) => r.id === repoId);
-    const conv: Conversation = {
-      id: `conv_${randomHex(8)}`,
-      repository_id: repoId,
-      title: initialTitle || 'New question',
-      pinned_sha: repo?.active_version_short_sha || 'main',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      message_count: 0,
-    };
-
-    if (!conversations[repoId]) {
-      conversations[repoId] = [];
-    }
-    conversations[repoId].unshift(conv);
-    messages[conv.id] = [];
-    return conv;
-  },
-
-  /** Get messages in a conversation */
-  async getMessages(convId: string): Promise<ChatMessage[]> {
-    await sleep(150);
-    return messages[convId] || [];
-  },
-
-  /** Send a message and stream assistant response */
-  async streamMessage(
-    convId: string,
-    content: string,
-    callbacks: {
-      onToken: (token: string) => void;
-      onCitation: (citation: Citation) => void;
-      onError?: (err: { error_type: string; message: string; retry_after?: number }) => void;
-      onComplete: (message: ChatMessage) => void;
-    }
-  ): Promise<void> {
-    // Save user message
-    const userMsg: ChatMessage = {
-      id: `msg_u_${randomHex(6)}`,
-      conversation_id: convId,
-      role: 'user',
-      content,
-      citations: [],
-      created_at: new Date().toISOString(),
-    };
-
-    if (!messages[convId]) messages[convId] = [];
-    messages[convId].push(userMsg);
-
-    const scenarios = getStoredScenarios();
-
-    if (scenarios.chat === 'error_rate_limit') {
-      await sleep(400);
-      callbacks.onError?.({
-        error_type: 'rate_limited',
-        message: 'LLM rate limit reached for this session. Please wait before asking another question.',
-        retry_after: 30,
-      });
-      return;
-    }
-
-    if (scenarios.chat === 'error_no_answer') {
-      await sleep(500);
-      callbacks.onError?.({
-        error_type: 'no_answer',
-        message: 'No confident answer could be grounded from the indexed source files for this question. Try rephrasing or pointing to a specific module.',
-      });
-      return;
-    }
-
-    // Default simulated grounded streaming response
-    await sleep(250);
-
-    const sampleTokens = [
-      'Based ', 'on ', 'the ', 'indexed ', 'repository ', 'source ', 'files, ',
-      'here ', 'is ', 'how ', 'this ', 'is ', 'implemented:\n\n',
-      '### Architecture Overview\n',
-      'The ', 'module ', 'defines ', 'a ', 'clear ', 'separation ', 'of ', 'concerns ', 'across ', 'the ', 'services.\n\n',
-      '```python\n',
-      '# Verified implementation pattern\n',
-      'class ServiceHandler:\n',
-      '    def __init__(self, config: Settings) -> None:\n',
-      '        self.config = config\n',
-      '        self.retriever = HybridRetriever()\n',
-      '```\n\n',
-      'Every ', 'method ', 'call ', 'is ', 'verified ', 'against ', 'the ', 'abstract ', 'syntax ', 'tree ',
-      'and ', 'matches ', 'the ', 'pinned ', 'commit ', 'SHA.\n\n',
-      'Let me know if you would like me to unpack the query optimizer or error handler in more detail.',
-    ];
-
-    let fullText = '';
-    for (const token of sampleTokens) {
-      await sleep(25);
-      fullText += token;
-      callbacks.onToken(token);
-    }
-
-    // Emit citations
-    const sampleCitation: Citation = {
-      path: 'server/app/services/indexing/ast_chunker.py',
-      start_line: 42,
-      end_line: 78,
-      language: 'python',
-      snippet: mockFileContents['server/app/services/indexing/ast_chunker.py']?.content.slice(0, 400),
-    };
-
-    await sleep(80);
-    callbacks.onCitation(sampleCitation);
-
-    const assistantMsg: ChatMessage = {
-      id: `msg_a_${randomHex(6)}`,
-      conversation_id: convId,
-      role: 'assistant',
-      content: fullText,
-      citations: [sampleCitation],
-      created_at: new Date().toISOString(),
-    };
-
-    messages[convId].push(assistantMsg);
-    callbacks.onComplete(assistantMsg);
-  },
-
-  /** Search code */
-  async searchCode(repoId: string, query: string): Promise<{ results: SearchResult[]; filters: SearchFilters }> {
-    await sleep(220);
-    if (!query.trim()) {
-      return { results: mockSearchResults, filters: mockSearchFilters };
-    }
-
-    const q = query.toLowerCase();
-    const filtered = mockSearchResults.filter(
-      (r) =>
-        r.file_path.toLowerCase().includes(q) ||
-        (r.symbol_name && r.symbol_name.toLowerCase().includes(q)) ||
-        r.snippet.toLowerCase().includes(q)
-    );
-
-    return {
-      results: filtered.length > 0 ? filtered : mockSearchResults,
-      filters: mockSearchFilters,
-    };
-  },
-
-  /** Get file tree */
-  async getFileTree(repoId: string): Promise<FileTreeNode> {
-    await sleep(150);
-    return mockFileTree;
-  },
-
-  /** Get file content */
-  async getFileContent(repoId: string, path: string): Promise<FileContent> {
-    await sleep(120);
-    if (mockFileContents[path]) {
-      return mockFileContents[path];
-    }
-
-    // Generate fallback file content
-    const ext = path.split('.').pop() || 'txt';
-    const langMap: Record<string, string> = {
-      py: 'python',
-      ts: 'typescript',
-      tsx: 'typescript',
-      js: 'javascript',
-      jsx: 'javascript',
-      json: 'json',
-      md: 'markdown',
-      yml: 'yaml',
-      yaml: 'yaml',
-    };
-
-    return {
-      path,
-      language: langMap[ext] || 'text',
-      size_bytes: 1420,
-      line_count: 36,
-      sha: '3a8f1c2',
-      last_commit_message: 'feat: update file structure and imports',
-      last_commit_author: 'Aman Kumar Jha',
-      last_commit_date: '2026-10-15T14:30:00Z',
-      content: `// Source file: ${path}
-// Verified at commit 3a8f1c2
-
-export function initializeModule() {
-  console.log("Module initialized for ${path}");
-  return { status: "ready" };
+export interface BackendErrorEnvelope {
+  error?: {
+    code?: string;
+    message?: string;
+    request_id?: string;
+  };
+  detail?: string | Array<{ msg?: string; loc?: string[] }>;
 }
-`,
-    };
-  },
 
-  /** Get architecture document */
-  async getArchitectureDocument(repoId: string): Promise<ArchitectureDocument> {
-    await sleep(200);
-    const scenarios = getStoredScenarios();
+export class ApiError extends Error {
+  public code: string;
+  public status?: number;
+  public requestId?: string;
+  public retryAfter?: number;
 
-    if (scenarios.architecture === 'empty') {
-      return {
-        repository_id: repoId,
-        sha: '3a8f1c2',
-        generated_at: new Date().toISOString(),
-        sections: [],
-        pipeline_diagram: null,
-      };
+  constructor(message: string, code: string, status?: number, retryAfter?: number, requestId?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.status = status;
+    this.retryAfter = retryAfter;
+    this.requestId = requestId;
+  }
+}
+
+export interface GithubIdentity {
+  username: string;
+  github_user_id: string;
+}
+
+export interface CurrentUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+  github: GithubIdentity | null;
+}
+
+export interface RepositoryListItemOut {
+  id: string;
+  owner: string;
+  name: string;
+  is_private: boolean;
+  created_at: string;
+  latest_job_status: string | null;
+  latest_job_failure_code: string | null;
+  active_version_short_sha: string | null;
+  last_indexed_at: string | null;
+}
+
+export interface RepositoryListOut {
+  items: RepositoryListItemOut[];
+  total: number;
+  page: number;
+  limit: number;
+  has_more: boolean;
+}
+
+export interface RepositoryVersionSummary {
+  id: string;
+  commit_sha: string;
+  status: string;
+  branch: string;
+  indexed_at: string | null;
+}
+
+export interface RepositoryDetailOut {
+  id: string;
+  owner: string;
+  name: string;
+  is_private: boolean;
+  active_version: RepositoryVersionSummary | null;
+}
+
+export interface AnalyzeRepositoryOut {
+  job_id: string;
+  repository_version_id: string;
+  status: string;
+  message: string;
+}
+
+export interface IndexJobOut {
+  id: string;
+  repository_id: string;
+  repository_version_id: string;
+  status: string;
+  failure_code: string | null;
+  failure_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface AnalysisResultOut {
+  analysis_type: string;
+  repository_version_id: string;
+  payload: Record<string, unknown>;
+}
+
+export interface FileOut {
+  id: string;
+  path: string;
+  language: string;
+  size: number;
+  sha256: string;
+}
+
+export interface FileListOut {
+  files: FileOut[];
+  total?: number | null;
+}
+
+export interface FileDetailOut {
+  id: string;
+  path: string;
+  language: string;
+  size: number;
+  sha256: string;
+  content: string;
+}
+
+export interface SearchResultItem {
+  id: string;
+  file_path: string;
+  start_line: number;
+  end_line: number;
+  snippet: string;
+  score: number;
+}
+
+export interface SearchResponse {
+  results: SearchResultItem[];
+  repository_version_id: string;
+}
+
+export interface ConversationOut {
+  id: string;
+  repository_id: string;
+  user_id: string;
+  repository_version_id: string;
+  title: string | null;
+  created_at: string;
+  last_message_at?: string | null;
+  message_count?: number;
+}
+
+export interface ConversationListOut {
+  items: ConversationOut[];
+  total: number;
+  page: number;
+  limit: number;
+  has_more: boolean;
+}
+
+export interface MessageCitationOut {
+  id: string;
+  file_path: string;
+  start_line: number;
+  end_line: number;
+}
+
+export interface MessageOut {
+  id: string;
+  conversation_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  citations?: MessageCitationOut[];
+}
+
+export interface MessageListOut {
+  items: MessageOut[];
+  total: number;
+  page: number;
+  limit: number;
+  has_more: boolean;
+}
+
+export async function fetchWrapper<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const url = `${API_URL}${endpoint}`;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> | undefined),
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  let abortListener: (() => void) | undefined;
+  if (options.signal) {
+    if (options.signal.aborted) {
+      controller.abort();
+    } else {
+      abortListener = () => controller.abort();
+      options.signal.addEventListener('abort', abortListener);
+    }
+  }
+
+  const config: RequestInit = {
+    ...options,
+    headers,
+    credentials: 'include',
+    signal: controller.signal,
+  };
+
+  try {
+    const response = await fetch(url, config);
+
+    if (response.status === 204) {
+      return {} as T;
     }
 
-    return mockArchitectureDocument;
+    let data: unknown = null;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+    }
+
+    if (!response.ok) {
+      const errorData = data as BackendErrorEnvelope | null;
+      const code = errorData?.error?.code || (response.status === 401 ? 'UNAUTHENTICATED' : 'UNKNOWN_ERROR');
+      const message = errorData?.error?.message || `Request failed with status ${response.status}`;
+
+      const retryAfter = parseRetryAfter(response.headers.get('Retry-After'));
+      const requestId =
+        response.headers.get('X-Request-ID') ||
+        errorData?.error?.request_id ||
+        undefined;
+
+      throw new ApiError(message, code, response.status, retryAfter, requestId);
+    }
+
+    return data as T;
+  } finally {
+    clearTimeout(timeoutId);
+    if (options.signal && abortListener) {
+      options.signal.removeEventListener('abort', abortListener);
+    }
+  }
+}
+
+/** Real API client communicating with FastAPI backend */
+export const realApi = {
+  // Auth
+  getCurrentUser: (options: RequestInit = {}) =>
+    fetchWrapper<CurrentUser>('/auth/me', options),
+
+  logout: (options: RequestInit = {}) =>
+    fetchWrapper<void>('/auth/logout', { method: 'POST', ...options }),
+
+  // Repositories
+  listRepositories: (page = 1, limit = 50, search = '', options: RequestInit = {}) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    if (search) {
+      params.append('search', search);
+    }
+    return fetchWrapper<RepositoryListOut>(`/repositories?${params.toString()}`, options);
   },
+
+  connectRepository: (url: string, options: RequestInit = {}) =>
+    fetchWrapper<RepositoryDetailOut>('/repositories', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+      ...options,
+    }),
+
+  getRepositoryDetail: (id: string, options: RequestInit = {}) =>
+    fetchWrapper<RepositoryDetailOut>(`/repositories/${id}`, options),
+
+  getRepositoryVersions: (id: string, options: RequestInit = {}) =>
+    fetchWrapper<RepositoryVersionSummary[]>(`/repositories/${id}/versions`, options),
+
+  getRepositoryActiveVersion: (id: string, options: RequestInit = {}) =>
+    fetchWrapper<RepositoryVersionSummary>(`/repositories/${id}/versions/active`, options),
+
+  analyzeRepository: (id: string, branch?: string | null, options: RequestInit = {}) =>
+    fetchWrapper<AnalyzeRepositoryOut>(`/repositories/${id}/analyze`, {
+      method: 'POST',
+      body: JSON.stringify(branch ? { branch } : {}),
+      ...options,
+    }),
+
+  getIndexJob: (repoId: string, jobId: string, options: RequestInit = {}) =>
+    fetchWrapper<IndexJobOut>(`/repositories/${repoId}/jobs/${jobId}`, options),
+
+  listRepositoryJobs: (repoId: string, options: RequestInit = {}) =>
+    fetchWrapper<IndexJobOut[]>(`/repositories/${repoId}/jobs`, options),
+
+  // Knowledge & Analysis
+  getRepositoryOverview: (id: string, options: RequestInit = {}) =>
+    fetchWrapper<AnalysisResultOut>(`/repositories/${id}/overview`, options),
+
+  getRepositoryTechStack: (id: string, options: RequestInit = {}) =>
+    fetchWrapper<AnalysisResultOut>(`/repositories/${id}/technology-stack`, options),
+
+  getRepositoryArchitecture: (id: string, level?: 'file', maxNodes?: number, options: RequestInit = {}) => {
+    const params = new URLSearchParams();
+    if (level) params.append('level', level);
+    if (maxNodes !== undefined) params.append('max_nodes', maxNodes.toString());
+    const queryStr = params.toString() ? `?${params.toString()}` : '';
+    return fetchWrapper<AnalysisResultOut>(`/repositories/${id}/architecture${queryStr}`, options);
+  },
+
+  getRepositoryFiles: (id: string, limit?: number, offset?: number, q?: string, options: RequestInit = {}) => {
+    const params = new URLSearchParams();
+    if (limit !== undefined) params.append('limit', limit.toString());
+    if (offset !== undefined) params.append('offset', offset.toString());
+    if (q) params.append('q', q);
+    const queryStr = params.toString() ? `?${params.toString()}` : '';
+    return fetchWrapper<FileListOut>(`/repositories/${id}/files${queryStr}`, options);
+  },
+
+  getRepositoryFileContent: (repoId: string, fileId: string, options: RequestInit = {}) =>
+    fetchWrapper<FileDetailOut>(`/repositories/${repoId}/files/${fileId}`, options),
+
+  searchRepository: (repoId: string, query: string, repositoryVersionId?: string, limit = 20, options: RequestInit = {}) =>
+    fetchWrapper<SearchResponse>(`/repositories/${repoId}/search`, {
+      method: 'POST',
+      body: JSON.stringify({
+        query,
+        ...(repositoryVersionId ? { repository_version_id: repositoryVersionId } : {}),
+        limit,
+      }),
+      ...options,
+    }),
+
+  // Conversations
+  listConversations: (repoId: string, page = 1, limit = 20, options: RequestInit = {}) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    return fetchWrapper<ConversationListOut>(`/repositories/${repoId}/conversations?${params.toString()}`, options);
+  },
+
+  createConversation: (repoId: string, title?: string, options: RequestInit = {}) =>
+    fetchWrapper<ConversationOut>(`/repositories/${repoId}/conversations`, {
+      method: 'POST',
+      body: JSON.stringify(title ? { title } : {}),
+      ...options,
+    }),
+
+  getConversation: (conversationId: string, options: RequestInit = {}) =>
+    fetchWrapper<ConversationOut>(`/conversations/${conversationId}`, options),
+
+  deleteConversation: (conversationId: string, options: RequestInit = {}) =>
+    fetchWrapper<void>(`/conversations/${conversationId}`, {
+      method: 'DELETE',
+      ...options,
+    }),
+
+  listMessages: (conversationId: string, page = 1, limit = 50, options: RequestInit = {}) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    return fetchWrapper<MessageListOut>(`/conversations/${conversationId}/messages?${params.toString()}`, options);
+  },
+
+  sendMessage: (conversationId: string, content: string, options: RequestInit = {}) =>
+    fetchWrapper<unknown>(`/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+      ...options,
+    }),
 };
+
+// Mock layer detection: enabled only in dev when VITE_USE_MOCKS=true
+export const isMockEnabled = Boolean(
+  import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true'
+);
+
+type MockApiType = typeof import('../mock/mockApi').mockApi;
+
+let mockApiCache: MockApiType | null = null;
+
+async function getMockApi(): Promise<MockApiType> {
+  if (import.meta.env.DEV) {
+    if (!mockApiCache) {
+      const mod = await import('../mock/mockApi');
+      mockApiCache = mod.mockApi;
+    }
+    return mockApiCache;
+  }
+  throw new Error('Mock API is not available in production');
+}
+
+export const api = new Proxy({} as MockApiType & typeof realApi, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop !== 'string') return undefined;
+
+    if (!isMockEnabled) {
+      const realMethod = (realApi as Record<string, unknown>)[prop];
+      if (typeof realMethod === 'function') {
+        return realMethod.bind(realApi);
+      }
+      return realMethod;
+    }
+
+    return async (...args: unknown[]) => {
+      const mock = await getMockApi();
+      const fn = (mock as Record<string, unknown>)[prop];
+      if (typeof fn === 'function') {
+        return fn.apply(mock, args);
+      }
+      return fn;
+    };
+  },
+});

@@ -27,7 +27,7 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
   React.useEffect(() => {
     if (!citation) return;
     setLoading(true);
-    api.getFileContent(repoId, citation.path).then((data) => {
+    api.getFileContent(repoId, citation.path).then((data: FileContent) => {
       setFileContent(data);
       setLoading(false);
     });

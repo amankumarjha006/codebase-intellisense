@@ -18,7 +18,9 @@ import {
 } from 'lucide-react';
 import { GithubIcon } from '../ui/GithubIcon';
 import { cn } from '../../lib/utils';
-import { mockRepositories, mockCurrentUser } from '../../mock/data';
+import { mockRepositories } from '../../mock/data';
+import { useAuth } from '../../lib/AuthContext';
+import { deriveUserDisplay } from '../../lib/user';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +45,8 @@ export function Sidebar({
 }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
+  const userDisplay = deriveUserDisplay(user);
 
   return (
     <aside
@@ -208,15 +212,15 @@ export function Sidebar({
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div className="h-7 w-7 rounded-full bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-xs font-semibold text-[var(--color-text)] shrink-0">
-                  {mockCurrentUser.initials}
+                  {userDisplay.initials}
                 </div>
                 {!collapsed && (
                   <div className="flex flex-col min-w-0">
                     <span className="text-xs font-medium text-[var(--color-text)] truncate">
-                      {mockCurrentUser.name}
+                      {userDisplay.name}
                     </span>
                     <span className="text-[10px] text-[var(--color-muted)] truncate">
-                      @{mockCurrentUser.github_login}
+                      @{userDisplay.username}
                     </span>
                   </div>
                 )}
@@ -228,10 +232,10 @@ export function Sidebar({
             <DropdownMenuLabel>
               <div className="flex flex-col">
                 <span className="font-semibold text-xs text-[var(--color-text)]">
-                  {mockCurrentUser.name}
+                  {userDisplay.name}
                 </span>
                 <span className="text-[11px] font-normal text-[var(--color-muted)]">
-                  {mockCurrentUser.email}
+                  {userDisplay.email}
                 </span>
               </div>
             </DropdownMenuLabel>
@@ -244,14 +248,14 @@ export function Sidebar({
               <Keyboard className="mr-2 h-4 w-4" />
               <span>Keyboard Shortcuts</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.open(`https://github.com/${mockCurrentUser.github_login}`, '_blank')}>
+            <DropdownMenuItem onClick={() => window.open(`https://github.com/${userDisplay.username}`, '_blank')}>
               <GithubIcon className="mr-2 h-4 w-4" />
               <span>GitHub Profile</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               destructive
-              onClick={() => navigate('/status/session-expired')}
+              onClick={() => logout()}
             >
               <LogOut className="mr-2 h-4 w-4" />
               <span>Sign out</span>

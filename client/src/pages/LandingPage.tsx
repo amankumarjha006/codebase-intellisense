@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Terminal,
   ArrowRight,
@@ -11,6 +11,8 @@ import {
   FileCode,
   Menu,
   ExternalLink,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import { GithubIcon } from '../components/ui/GithubIcon';
 import { BlurText } from '../components/ui/BlurText';
@@ -19,12 +21,18 @@ import { Dither } from '../components/ui/Dither';
 import { Button } from '../components/ui/button';
 import { Drawer, DrawerContent } from '../components/ui/drawer';
 import { ScenarioSwitcher } from '../components/ui/ScenarioSwitcher';
+import { API_URL } from '../lib/api';
+import { LANDING_ERROR_COPY } from '../lib/errors';
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [activeCitation, setActiveCitation] = React.useState(false);
+
+  const errorParam = searchParams.get('error');
+  const errorCopy = errorParam ? LANDING_ERROR_COPY[errorParam] || null : null;
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -35,8 +43,9 @@ export function LandingPage() {
   }, []);
 
   const handleSignIn = () => {
-    navigate('/status/signing-in');
+    window.location.href = `${API_URL}/auth/github`;
   };
+
 
   return (
     <div className="min-h-screen bg-[var(--color-page)] text-[var(--color-text)] font-sans antialiased selection:bg-[var(--color-accent-tint)] selection:text-[var(--color-accent)]">
@@ -132,8 +141,32 @@ export function LandingPage() {
         </DrawerContent>
       </Drawer>
 
+      {/* Allowlisted Auth Error Banner */}
+      {errorCopy && (
+        <div className="max-w-4xl mx-auto pt-24 px-4 sm:px-6">
+          <div className="rounded-[var(--radius-control)] border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 px-4 py-3 text-xs text-[var(--color-danger)] flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={15} className="shrink-0" />
+              <span className="font-medium">{errorCopy}</span>
+            </div>
+            <button
+              onClick={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete('error');
+                setSearchParams(next, { replace: true });
+              }}
+              className="text-[var(--color-muted)] hover:text-[var(--color-text)] p-0.5 rounded transition"
+              aria-label="Dismiss error"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 relative overflow-hidden">
+      <section className={`${errorCopy ? 'pt-10' : 'pt-32'} pb-20 px-4 sm:px-6 relative overflow-hidden`}>
+
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)] text-[var(--color-accent)] text-xs font-medium">
             <Sparkles size={12} />

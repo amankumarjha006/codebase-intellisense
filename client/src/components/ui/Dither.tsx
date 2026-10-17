@@ -110,7 +110,7 @@ export function Dither({ className = '', waveSpeed = 0.5, ...props }: DitherProp
       window.addEventListener('resize', resize);
       resize();
 
-      let startTime = performance.now();
+      const startTime = performance.now();
       const update = (now: number) => {
         const elapsed = (now - startTime) / 1000;
         program.uniforms.uTime.value = elapsed * waveSpeed;

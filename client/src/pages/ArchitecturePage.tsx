@@ -28,7 +28,7 @@ export function ArchitecturePage() {
   const [loading, setLoading] = React.useState(true);
   const [generating, setGenerating] = React.useState(false);
   const [activeSectionId, setActiveSectionId] = React.useState<string | null>(null);
-  const [selectedCitation, setSelectedCitation] = React.useState<any | null>(null);
+  const [selectedCitation, setSelectedCitation] = React.useState<Citation | null>(null);
 
   const scenarios = getStoredScenarios();
 
