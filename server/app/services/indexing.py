@@ -257,18 +257,16 @@ def compute_file_hash(content: bytes) -> str:
 def clone_repository(clone_url: str, target_dir: str, branch: str = "main", github_token: Optional[str] = None) -> str:
     """Clone a repository and return the commit SHA."""
     env = os.environ.copy()
-    gitconfig_path = None
+    env["GIT_TERMINAL_PROMPT"] = "0"
     
     if github_token:
-        # Prevent token leakage in command line args by using a temporary global git config
-        fd, gitconfig_path = tempfile.mkstemp(prefix="gitconfig_")
-        with os.fdopen(fd, 'w') as f:
-            # We specifically target github.com, but if clone_url has a different host, 
-            # this header is ignored. It's safe for github endpoints.
-            f.write(f'[http "https://github.com"]\n\textraHeader = Authorization: Bearer {github_token}\n')
-        env["GIT_CONFIG_GLOBAL"] = gitconfig_path
-        # Prevent interactive prompts if token fails
-        env["GIT_TERMINAL_PROMPT"] = "0"
+        # Pass authentication header via in-memory git configuration environment variables
+        # rather than creating temporary config files on disk or exposing secrets in argv.
+        header_val = f"Authorization: Bearer {github_token}"
+        env["GIT_CONFIG_COUNT"] = "1"
+        env["GIT_CONFIG_KEY_0"] = "http.extraHeader"
+        env["GIT_CONFIG_VALUE_0"] = header_val
+        env["GIT_CONFIG_PARAMETERS"] = f"'http.extraHeader={header_val}'"
 
     try:
         result = subprocess.run(
@@ -293,19 +291,16 @@ def clone_repository(clone_url: str, target_dir: str, branch: str = "main", gith
             env=env
         )
         if commit_result.returncode != 0:
-            raise GitError(f"Failed to get commit SHA: {commit_result.stderr}")
+            err = commit_result.stderr
+            if github_token:
+                err = err.replace(github_token, "***")
+            raise GitError(f"Failed to get commit SHA: {err}")
 
         return commit_result.stdout.strip()
     except subprocess.TimeoutExpired:
         raise GitError("Git operation timed out")
     except FileNotFoundError:
         raise GitError("Git not found in PATH")
-    finally:
-        if gitconfig_path and os.path.exists(gitconfig_path):
-            try:
-                os.remove(gitconfig_path)
-            except OSError:
-                pass
 
 
 def discover_files_with_stats(
