@@ -23,13 +23,22 @@ import { Drawer, DrawerContent } from '../components/ui/drawer';
 import { ScenarioSwitcher } from '../components/ui/ScenarioSwitcher';
 import { API_URL } from '../lib/api';
 import { LANDING_ERROR_COPY } from '../lib/errors';
+import { useAuth } from '../lib/AuthContext';
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [activeCitation, setActiveCitation] = React.useState(false);
+
+  // If user is already logged in, redirect directly to dashboard
+  React.useEffect(() => {
+    if (user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   const errorParam = searchParams.get('error');
   const errorCopy = errorParam ? LANDING_ERROR_COPY[errorParam] || null : null;
@@ -45,6 +54,11 @@ export function LandingPage() {
   const handleSignIn = () => {
     window.location.href = `${API_URL}/auth/github`;
   };
+
+  // Prevent flash of landing page content while redirecting
+  if (user) {
+    return null;
+  }
 
 
   return (

@@ -13,7 +13,14 @@ interface AuthContextType {
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = React.useState<CurrentUser | null>(null);
+  const [user, setUser] = React.useState<CurrentUser | null>(() => {
+    try {
+      const cached = localStorage.getItem('cb_user');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<ApiError | null>(null);
 
@@ -32,16 +39,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         };
         setUser(mockUser);
+        try {
+          localStorage.setItem('cb_user', JSON.stringify(mockUser));
+        } catch {}
         return mockUser;
       }
       const data = await realApi.getCurrentUser();
       setUser(data);
+      try {
+        localStorage.setItem('cb_user', JSON.stringify(data));
+      } catch {}
       return data;
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err);
       }
       setUser(null);
+      try {
+        localStorage.removeItem('cb_user');
+      } catch {}
       return null;
     } finally {
       setLoading(false);
@@ -64,6 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn('Logout request failed:', err);
     } finally {
       setUser(null);
+      try {
+        localStorage.removeItem('cb_user');
+      } catch {}
       window.location.href = '/';
     }
   }, []);

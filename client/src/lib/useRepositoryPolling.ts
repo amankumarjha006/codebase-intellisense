@@ -41,6 +41,7 @@ export function useRepositoryPolling({
   const abortControllerRef = React.useRef<AbortController | null>(null);
   const isRequestInProgressRef = React.useRef(false);
   const isMountedRef = React.useRef(true);
+  const currentRequestIdRef = React.useRef(0);
 
   // Stable references for dependencies
   const repositoriesRef = React.useRef<RepositoryListItemOut[]>(repositories);
@@ -66,18 +67,25 @@ export function useRepositoryPolling({
 
   const fetchRepositories = React.useCallback(
     async (isBackgroundPoll = false): Promise<RepositoryListOut | null> => {
-      if (isRequestInProgressRef.current) {
-        return null; // prevent overlapping requests
+      // Prevent overlapping background polls
+      if (isBackgroundPoll && isRequestInProgressRef.current) {
+        return null;
       }
 
+      // If a foreground fetch is triggered while a request is in progress, abort the prior request
+      if (!isBackgroundPoll && abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      const requestId = ++currentRequestIdRef.current;
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
       isRequestInProgressRef.current = true;
+
       if (!isBackgroundPoll) {
         setLoading(true);
         setError(null);
       }
-
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
 
       try {
         const data = await realApi.listRepositories(
@@ -87,7 +95,9 @@ export function useRepositoryPolling({
           { signal: controller.signal }
         );
 
-        if (!isMountedRef.current) return null;
+        if (!isMountedRef.current || requestId !== currentRequestIdRef.current) {
+          return null;
+        }
 
         setRepositories(data.items);
         setTotal(data.total);
@@ -95,7 +105,13 @@ export function useRepositoryPolling({
         setError(null);
         return data;
       } catch (err: unknown) {
-        if (!isMountedRef.current) return null;
+        if (!isMountedRef.current || requestId !== currentRequestIdRef.current) {
+          return null;
+        }
+
+        if (err instanceof Error && err.name === 'AbortError') {
+          return null;
+        }
 
         if (err instanceof ApiError) {
           if (err.status === 401) {
@@ -116,15 +132,17 @@ export function useRepositoryPolling({
 
         // Only set page-level error if this wasn't a background polling hiccup
         if (!isBackgroundPoll) {
-          if (err instanceof Error && err.name !== 'AbortError') {
+          if (err instanceof Error) {
             setError(err);
           }
         }
-        throw err;
+        return null;
       } finally {
-        isRequestInProgressRef.current = false;
-        if (isMountedRef.current && !isBackgroundPoll) {
-          setLoading(false);
+        if (requestId === currentRequestIdRef.current) {
+          isRequestInProgressRef.current = false;
+          if (isMountedRef.current && !isBackgroundPoll) {
+            setLoading(false);
+          }
         }
       }
     },
@@ -206,16 +224,14 @@ export function useRepositoryPolling({
     refetch();
   }, [page, limit, search, refetch]);
 
-  // Handle visibility changes: pause on hide, resume on visible
+  // Handle visibility changes: pause on hide, resume & refetch on visible
   React.useEffect(() => {
     const handleVisibilityChange = () => {
       if (typeof document === 'undefined') return;
 
       if (document.visibilityState === 'visible') {
-        // Tab became visible again; check if anything is still active
-        if (hasActiveJob(repositoriesRef.current)) {
-          scheduleNextPoll(1000);
-        }
+        // Tab became visible again; immediately pull fresh state from DB
+        refetch();
       } else {
         // Tab hidden; pause polling timer
         clearTimer();
