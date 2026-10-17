@@ -1,7 +1,27 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
-from sqlalchemy.orm import Session
-from sqlalchemy import select, func, or_
+
+from sqlalchemy import select, func, or_, true
+from sqlalchemy.orm import Session, aliased
+
 from app.models.repository import Repository, UserRepository, RepositoryVersion, IndexJob
+
+
+@dataclass(frozen=True, slots=True)
+class RepositoryListRow:
+    """Immutable projection returned by list_for_user."""
+    id: UUID
+    owner: str
+    name: str
+    is_private: bool
+    created_at: datetime
+    latest_job_status: str | None
+    latest_job_failure_code: str | None
+    active_version_short_sha: str | None
+    last_indexed_at: datetime | None
 
 class RepositoryRepository:
     def __init__(self, db: Session):
@@ -86,7 +106,7 @@ class RepositoryRepository:
         page: int,
         limit: int,
         search: str | None = None,
-    ) -> tuple[list[Repository], int]:
+    ) -> tuple[list[RepositoryListRow], int]:
         base_stmt = select(Repository).join(UserRepository).where(UserRepository.user_id == user_id)
         
         if search:
@@ -102,10 +122,79 @@ class RepositoryRepository:
         total = self.db.execute(count_stmt).scalar_one()
 
         offset = (page - 1) * limit
-        stmt = base_stmt.order_by(Repository.created_at.desc(), Repository.id.desc()).offset(offset).limit(limit)
-        
-        items = self.db.execute(stmt).scalars().all()
-        return list(items), total
+        paginated_stmt = (
+            base_stmt
+            .order_by(Repository.created_at.desc(), Repository.id.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+
+        paginated_sq = paginated_stmt.subquery("paginated_repos")
+        AR = aliased(Repository, paginated_sq)
+
+        latest_job_sq = (
+            select(
+                IndexJob.status.label("latest_job_status"),
+                IndexJob.failure_code.label("latest_job_failure_code"),
+            )
+            .where(IndexJob.repository_id == AR.id)
+            .order_by(IndexJob.created_at.desc(), IndexJob.id.desc())
+            .limit(1)
+            .lateral("latest_job")
+        )
+
+        active_version_sq = (
+            select(
+                func.substr(RepositoryVersion.commit_sha, 1, 7).label("active_version_short_sha"),
+                RepositoryVersion.indexed_at.label("last_indexed_at"),
+            )
+            .where(
+                RepositoryVersion.repository_id == AR.id,
+                RepositoryVersion.index_status == "SUCCESS",
+            )
+            .order_by(
+                RepositoryVersion.indexed_at.desc().nulls_last(),
+                RepositoryVersion.id.desc(),
+            )
+            .limit(1)
+            .lateral("active_version")
+        )
+
+        stmt = (
+            select(
+                AR.id,
+                AR.owner,
+                AR.name,
+                AR.is_private,
+                AR.created_at,
+                latest_job_sq.c.latest_job_status,
+                latest_job_sq.c.latest_job_failure_code,
+                active_version_sq.c.active_version_short_sha,
+                active_version_sq.c.last_indexed_at,
+            )
+            .select_from(AR)
+            .outerjoin(latest_job_sq, true())
+            .outerjoin(active_version_sq, true())
+            .order_by(AR.created_at.desc(), AR.id.desc())
+        )
+
+        rows = self.db.execute(stmt).all()
+
+        items = [
+            RepositoryListRow(
+                id=r.id,
+                owner=r.owner,
+                name=r.name,
+                is_private=r.is_private,
+                created_at=r.created_at,
+                latest_job_status=r.latest_job_status,
+                latest_job_failure_code=r.latest_job_failure_code,
+                active_version_short_sha=r.active_version_short_sha,
+                last_indexed_at=r.last_indexed_at,
+            )
+            for r in rows
+        ]
+        return items, total
 
     def create_version(
         self,

@@ -40,11 +40,24 @@ class ConversationMessageService:
         # MessageRepository.create automatically commits the transaction.
         user_msg = self.message_repo.create(user_msg)
 
+        # Capture plain values before releasing the DB connection.
+        conv_id = conversation.id
+        conv_repo_id = conversation.repository_id
+        conv_version_id = conversation.repository_version_id
+        # Serialize user_msg while the session is still open (accesses .citations)
+        user_msg_out = MessageOutWithCitations.model_validate(user_msg)
+
+        # Release DB connection so pool.checkedout() == 0 during network
+        # calls in RAGQueryService (embedding, LLM).
+        db = getattr(self.message_repo, "db", None)
+        if db:
+            db.close()
+
         # 3. Invoke RAGQueryService (Network I/O without holding an open DB transaction)
         rag_request = RAGQueryRequest(
-            repository_id=conversation.repository_id,
+            repository_id=conv_repo_id,
             query=request.content,
-            repository_version_id=conversation.repository_version_id
+            repository_version_id=conv_version_id
         )
         
         # Use RetryExecutor to handle transient upstream failures
@@ -54,8 +67,9 @@ class ConversationMessageService:
         )
 
         # 4. Persist the assistant message and citations (Transaction 2)
+        # The session lazily re-acquires a connection here.
         assistant_msg = Message(
-            conversation_id=conversation.id,
+            conversation_id=conv_id,
             role="assistant",
             content=rag_response.answer
         )
@@ -78,7 +92,8 @@ class ConversationMessageService:
 
         # 5. Return structured result
         return ConversationMessageResponse(
-            user_message=MessageOutWithCitations.model_validate(user_msg),
+            user_message=user_msg_out,
             assistant_message=MessageOutWithCitations.model_validate(assistant_msg),
-            repository_version_id=conversation.repository_version_id
+            repository_version_id=conv_version_id
         )
+

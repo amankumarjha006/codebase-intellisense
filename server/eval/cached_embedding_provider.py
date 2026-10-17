@@ -1,23 +1,32 @@
 import json
 import os
 import hashlib
-from typing import List
+from pathlib import Path
+from typing import List, Union
 from app.services.embedding.provider import EmbeddingProvider
+
+DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / "query_embeddings_cache.json"
 
 class CachedEmbeddingProvider(EmbeddingProvider):
     """
     Wraps an existing EmbeddingProvider to cache generated embeddings locally.
     This prevents unnecessary Gemini API calls during repeated evaluation runs.
     """
-    def __init__(self, provider: EmbeddingProvider, model: str, dimension: int, cache_path: str = "server/eval/query_embeddings_cache.json"):
+    def __init__(
+        self,
+        provider: EmbeddingProvider,
+        model: str,
+        dimension: int,
+        cache_path: Union[str, Path, None] = None,
+    ):
         self.provider = provider
         self.model = model
         self.dimension = dimension
-        self.cache_path = cache_path
+        self.cache_path = Path(cache_path) if cache_path is not None else DEFAULT_CACHE_PATH
         self._cache = self._load_cache()
         
     def _load_cache(self) -> dict:
-        if os.path.exists(self.cache_path):
+        if self.cache_path.exists():
             try:
                 with open(self.cache_path, "r", encoding="utf-8") as f:
                     return json.load(f)
@@ -27,9 +36,9 @@ class CachedEmbeddingProvider(EmbeddingProvider):
         
     def _save_cache(self):
         # Ensure directory exists
-        os.makedirs(os.path.dirname(os.path.abspath(self.cache_path)), exist_ok=True)
+        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
         # Write to temp file then rename for atomic safety
-        temp_path = self.cache_path + ".tmp"
+        temp_path = self.cache_path.with_name(f"{self.cache_path.name}.tmp")
         with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(self._cache, f, indent=2)
         os.replace(temp_path, self.cache_path)

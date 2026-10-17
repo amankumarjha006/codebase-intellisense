@@ -182,33 +182,47 @@ class TestGetForUser:
 # ---------------------------------------------------------------------------
 
 class TestListForUser:
-    def _setup(self, mock_db, total, items):
+    def _make_row(self, **overrides):
+        """Create a mock result row matching the lateral-join SELECT columns."""
+        defaults = dict(
+            id=uuid4(), owner="o", name="n", is_private=False,
+            created_at=None,
+            latest_job_status=None, latest_job_failure_code=None,
+            active_version_short_sha=None, last_indexed_at=None,
+        )
+        defaults.update(overrides)
+        row = MagicMock()
+        for k, v in defaults.items():
+            setattr(row, k, v)
+        return row
+
+    def _setup(self, mock_db, total, rows):
         count_result = MagicMock()
         count_result.scalar_one.return_value = total
         items_result = MagicMock()
-        items_result.scalars.return_value.all.return_value = items
+        items_result.all.return_value = rows
         mock_db.execute.side_effect = [count_result, items_result]
 
     def test_returns_items_and_total(self, repo, mock_db):
-        repos = [Repository(), Repository()]
-        self._setup(mock_db, total=2, items=repos)
+        rows = [self._make_row(), self._make_row()]
+        self._setup(mock_db, total=2, rows=rows)
         items, total = repo.list_for_user(user_id=uuid4(), page=1, limit=10)
         assert total == 2
         assert len(items) == 2
 
     def test_empty_result(self, repo, mock_db):
-        self._setup(mock_db, total=0, items=[])
+        self._setup(mock_db, total=0, rows=[])
         items, total = repo.list_for_user(user_id=uuid4(), page=1, limit=10)
         assert total == 0
         assert items == []
 
     def test_two_db_calls_for_count_and_items(self, repo, mock_db):
-        self._setup(mock_db, total=0, items=[])
+        self._setup(mock_db, total=0, rows=[])
         repo.list_for_user(user_id=uuid4(), page=1, limit=10)
         assert mock_db.execute.call_count == 2
 
     def test_search_included_in_query(self, repo, mock_db):
-        self._setup(mock_db, total=0, items=[])
+        self._setup(mock_db, total=0, rows=[])
         repo.list_for_user(user_id=uuid4(), page=1, limit=10, search="fastapi")
         # The count query (first execute call) should contain the search term
         count_stmt = mock_db.execute.call_args_list[0][0][0]
@@ -216,18 +230,27 @@ class TestListForUser:
         assert "fastapi" in compiled.lower()
 
     def test_no_search_does_not_add_filter(self, repo, mock_db):
-        self._setup(mock_db, total=0, items=[])
+        self._setup(mock_db, total=0, rows=[])
         repo.list_for_user(user_id=uuid4(), page=1, limit=10, search=None)
         # Should still execute 2 queries without error
         assert mock_db.execute.call_count == 2
 
     def test_items_query_has_ordering(self, repo, mock_db):
-        self._setup(mock_db, total=0, items=[])
+        self._setup(mock_db, total=0, rows=[])
         repo.list_for_user(user_id=uuid4(), page=1, limit=10)
         items_stmt = mock_db.execute.call_args_list[1][0][0]
         compiled = str(items_stmt.compile(compile_kwargs={"literal_binds": True}))
         assert "ORDER BY" in compiled
         assert "created_at DESC" in compiled
+
+    def test_returns_repository_list_row_dataclass(self, repo, mock_db):
+        from app.repositories.repository import RepositoryListRow
+        rows = [self._make_row(owner="acme", latest_job_status="READY")]
+        self._setup(mock_db, total=1, rows=rows)
+        items, _ = repo.list_for_user(user_id=uuid4(), page=1, limit=10)
+        assert isinstance(items[0], RepositoryListRow)
+        assert items[0].owner == "acme"
+        assert items[0].latest_job_status == "READY"
 
 
 # ---------------------------------------------------------------------------

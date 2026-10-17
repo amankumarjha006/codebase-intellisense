@@ -6,7 +6,7 @@ from fastapi import Request, Depends, Response
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.api.deps import get_current_user, get_redis
+from app.api.deps import get_optional_current_user, get_redis
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class RateLimiter:
         request: Request,
         response: Response,
         redis_client: redis.Redis = Depends(get_redis),
-        user: Optional[User] = Depends(get_current_user)
+        user: Optional[User] = Depends(get_optional_current_user)
     ):
         if not settings.RATE_LIMIT_ENABLED:
             return
@@ -56,10 +56,10 @@ class RateLimiter:
         # Determine identity
         if user:
             identity = str(user.id)
+            key = f"rate_limit:{self.category}:user:{identity}"
         else:
             identity = request.client.host if request.client else "unknown"
-            
-        key = f"rate_limit:{self.category}:user:{identity}"
+            key = f"rate_limit:{self.category}:ip:{identity}"
         
         try:
             # Execute Lua script for atomicity

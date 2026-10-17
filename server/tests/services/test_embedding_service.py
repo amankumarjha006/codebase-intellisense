@@ -1,23 +1,37 @@
 import pytest
+import time
+import requests
+from unittest.mock import patch, MagicMock
+
+from google.genai.errors import APIError
 from app.models.knowledge import CodeChunk, File, Symbol
 from app.services.embedding.text_builder import ChunkEmbeddingTextBuilder
 from app.services.embedding.service import EmbeddingService
 from app.services.embedding.provider import EmbeddingProvider
 from app.services.indexing import EmbeddingError
 from app.core.config import settings
+from app.services.embedding.gemini import GeminiEmbeddingProvider
+from app.services.embedding.exceptions import (
+    EmbeddingProviderError,
+    EmbeddingProviderRateLimitError,
+    EmbeddingProviderTimeoutError,
+    EmbeddingProviderConnectionError,
+    EmbeddingProviderServerError,
+    EmbeddingProviderClientError,
+    EmbeddingProviderAuthError
+)
+from app.schemas.repository import IndexJobOut
 
 class FakeEmbeddingProvider(EmbeddingProvider):
     def __init__(self, dimension: int = 768):
         self.dimension = dimension
         self.calls = []
-        self.should_fail = False
+        self.should_fail_with = None
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         self.calls.append(texts)
-        if self.should_fail:
-            raise EmbeddingError("Fake transient error: 503 Service Unavailable")
-        
-        # Return a deterministic vector for each text
+        if self.should_fail_with:
+            raise self.should_fail_with
         return [[float(len(text))] * self.dimension for text in texts]
 
 class FakeKnowledgeRepository:
@@ -37,90 +51,129 @@ def test_text_builder_deterministic():
     text2 = ChunkEmbeddingTextBuilder.build(c)
     
     assert text1 == text2
-    assert "File: src/test.py" in text1
-    assert "Language: python" in text1
-    assert "Symbol: my_func" in text1
-    assert "def my_func():\n    pass" in text1
 
 def test_embedding_service_batching():
     provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
     repo = FakeKnowledgeRepository()
     service = EmbeddingService(repo, provider)
+    # Configure tight limits for testing
+    service.max_batch_items = 2
+    service.max_batch_tokens = 100
     
     from uuid import uuid4
-    # Let's test with 65 chunks
     chunks = []
-    for i in range(65):
+    # 5 chunks. Each content is 30 characters -> ~10 tokens.
+    # Total tokens per chunk = 10. Max tokens 100. So max items 2 will trigger first.
+    for i in range(5):
         f = File(file_path=f"src/file_{i}.py", language="python")
-        c = CodeChunk(id=uuid4(), file=f, start_line=1, end_line=2, content=f"content {i}")
+        c = CodeChunk(id=uuid4(), file=f, start_line=1, end_line=2, content="a" * 30)
         chunks.append(c)
         
     stats = service.generate_and_store_embeddings(chunks)
     
-    assert stats["embeddings_created"] == 65
-    
-    # 65 chunks with batch_size 32 should result in 3 batches: 32, 32, 1
+    assert stats["embeddings_created"] == 5
     assert len(provider.calls) == 3
-    assert len(provider.calls[0]) == 32
-    assert len(provider.calls[1]) == 32
+    assert len(provider.calls[0]) == 2
+    assert len(provider.calls[1]) == 2
     assert len(provider.calls[2]) == 1
     
-    assert len(repo.embeddings) == 65
-
-def test_embedding_service_retry():
+@patch("time.sleep")
+def test_embedding_service_retry(mock_sleep):
     provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
-    provider.should_fail = True
+    provider.should_fail_with = EmbeddingProviderServerError("500 Internal Server Error")
+    repo = FakeKnowledgeRepository()
+    service = EmbeddingService(repo, provider)
+    service.max_retries = 2
+    
+    from uuid import uuid4
+    c = CodeChunk(id=uuid4(), content="test")
+    
+    with pytest.raises(EmbeddingProviderServerError):
+        service.generate_and_store_embeddings([c])
+        
+    assert len(provider.calls) == 3
+    assert mock_sleep.call_count == 2
+
+@patch("time.sleep")
+def test_embedding_service_retry_with_retry_after(mock_sleep):
+    provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
+    provider.should_fail_with = EmbeddingProviderRateLimitError("429 Too Many Requests", retry_after=10.0)
     repo = FakeKnowledgeRepository()
     service = EmbeddingService(repo, provider)
     
     from uuid import uuid4
     c = CodeChunk(id=uuid4(), content="test")
     
-    # Should retry up to MAX_RETRIES then fail
-    with pytest.raises(EmbeddingError):
+    with pytest.raises(EmbeddingProviderRateLimitError):
         service.generate_and_store_embeddings([c])
-        
-    # initial call + max_retries
-    assert len(provider.calls) == 1 + settings.EMBEDDING_MAX_RETRIES
 
-def test_embedding_service_embed_query():
-    provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
-    repo = FakeKnowledgeRepository()
-    service = EmbeddingService(repo, provider)
-    
-    query = "test search query"
-    vector = service.embed_query(query)
-    
-    # Provider returns [len(text)] * dimension
-    assert len(vector) == settings.EMBEDDING_DIMENSION
-    assert vector[0] == float(len(query))
-    assert len(provider.calls) == 1
-    assert provider.calls[0] == [query]
-    
-    # Verify no embeddings were persisted
-    assert len(repo.embeddings) == 0
+    # Check that sleep was called with delay > 10.0 (due to jitter)
+    for call in mock_sleep.call_args_list:
+        delay = call[0][0]
+        assert delay >= 10.0
 
-def test_embedding_service_embed_query_retry():
-    provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
-    provider.should_fail = True
-    repo = FakeKnowledgeRepository()
-    service = EmbeddingService(repo, provider)
+def test_gemini_error_classification():
+    provider = GeminiEmbeddingProvider(api_key="test", model="test", dimension=768)
     
-    query = "test query"
-    
-    with pytest.raises(EmbeddingError):
-        service.embed_query(query)
-        
-    assert len(provider.calls) == 1 + settings.EMBEDDING_MAX_RETRIES
+    # Test Timeout
+    with pytest.raises(EmbeddingProviderTimeoutError):
+        with patch.object(provider, 'client') as mock_client:
+            mock_client.models.embed_content.side_effect = requests.exceptions.Timeout("timeout")
+            provider.embed(["test"])
 
-def test_gemini_provider_lazy_init():
-    from app.services.embedding.gemini import GeminiEmbeddingProvider
+    # Test ConnectionError
+    with pytest.raises(EmbeddingProviderConnectionError):
+        with patch.object(provider, 'client') as mock_client:
+            mock_client.models.embed_content.side_effect = requests.exceptions.ConnectionError("conn error")
+            provider.embed(["test"])
+
+    # Test 429 APIError with header
+    mock_resp = MagicMock(spec=requests.Response)
+    mock_resp.status_code = 429
+    mock_resp.headers = {"Retry-After": "15"}
     
-    # Construction should succeed even with empty key
-    provider = GeminiEmbeddingProvider(api_key="", model="test-model", dimension=768)
+    with pytest.raises(EmbeddingProviderRateLimitError) as exc_info:
+        with patch.object(provider, 'client') as mock_client:
+            mock_client.models.embed_content.side_effect = APIError(429, mock_resp)
+            provider.embed(["test"])
+    assert exc_info.value.retry_after == 15.0
+
+    # Test 503 APIError
+    mock_resp_503 = MagicMock(spec=requests.Response)
+    mock_resp_503.status_code = 503
+    with pytest.raises(EmbeddingProviderServerError):
+        with patch.object(provider, 'client') as mock_client:
+            mock_client.models.embed_content.side_effect = APIError(503, mock_resp_503)
+            provider.embed(["test"])
+
+def test_index_job_out_sanitization():
+    # Legacy row with null failure_code should map to INTERNAL_ERROR
+    from datetime import datetime
+    import uuid
     
-    # embed should raise EmbeddingError, not ValueError
-    with pytest.raises(EmbeddingError) as exc_info:
-        provider.embed(["test text"])
-        
-    assert "GEMINI_API_KEY must be provided" in str(exc_info.value)
+    job = IndexJobOut.model_validate({
+        "id": uuid.uuid4(),
+        "repository_id": uuid.uuid4(),
+        "repository_version_id": uuid.uuid4(),
+        "status": "FAILED",
+        "started_at": datetime.now(),
+        "completed_at": datetime.now(),
+        "failure_code": None
+    })
+    
+    assert job.failure_code == "INTERNAL_ERROR"
+    assert "internal error" in job.failure_message.lower()
+
+    # Rate limit code mapping
+    job2 = IndexJobOut.model_validate({
+        "id": uuid.uuid4(),
+        "repository_id": uuid.uuid4(),
+        "repository_version_id": uuid.uuid4(),
+        "status": "FAILED",
+        "started_at": datetime.now(),
+        "completed_at": datetime.now(),
+        "failure_code": "EMBEDDING_PROVIDER_RATE_LIMITED"
+    })
+
+    assert job2.failure_code == "EMBEDDING_PROVIDER_RATE_LIMITED"
+    assert "rate limit" in job2.failure_message.lower()

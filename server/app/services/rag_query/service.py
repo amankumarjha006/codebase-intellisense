@@ -56,6 +56,13 @@ class RAGQueryService:
                 raise NoIndexedVersionError(f"No active successfully indexed version found for repository {request.repository_id}.")
             resolved_version_id = version.id
 
+        # Release DB connection before retrieval.  The retrieval layer
+        # calls the embedding provider (network I/O) before opening its
+        # own DB queries, so pool.checkedout() must be 0 here.
+        db = getattr(self.repository_repo, "db", None)
+        if db:
+            db.close()
+
         # 3. Retrieval
         retrieval_req = RetrievalRequest(
             repository_version_id=resolved_version_id,
@@ -63,6 +70,11 @@ class RAGQueryService:
             limit=request.retrieval_limit
         )
         retrieval_results = self.retrieval_service.search(retrieval_req)
+
+        # Release DB connection before the LLM call.  Retrieval
+        # results are plain Pydantic DTOs — safe after close.
+        if db:
+            db.close()
 
         # 4. Context Assembly
         context_req = ContextRequest(
@@ -72,7 +84,7 @@ class RAGQueryService:
         )
         assembled_context = self.context_builder.build(context_req)
 
-        # 5. RAG Generation
+        # 5. RAG Generation (network I/O — pool.checkedout() == 0)
         rag_req = RAGRequest(
             query=request.query,
             context=assembled_context
@@ -99,3 +111,4 @@ class RAGQueryService:
             citations=answer_res.citations,
             repository_version_id=resolved_version_id
         )
+

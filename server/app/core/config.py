@@ -35,7 +35,9 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
 
     # Indexing Configuration
-    MAX_INDEXABLE_FILE_SIZE_BYTES: int = 5242880  # 5 MB
+    MAX_INDEXABLE_FILE_SIZE_BYTES: int = 200000  # 200 KB per-file limit
+    INDEXING_MAX_ESTIMATED_TOKENS: int = 1000000  # 1M token cap per repository
+    INDEXING_DATA_FILE_MAX_BYTES: int = 50000     # 50 KB limit for data files (csv, json, etc)
     CHUNK_MAX_CHARS: int = 4096
     
     # Retrieval Configuration
@@ -45,8 +47,13 @@ class Settings(BaseSettings):
     EMBEDDING_PROVIDER: str = "google"
     EMBEDDING_MODEL: str = "gemini-embedding-2"
     EMBEDDING_DIMENSION: int = 768
-    EMBEDDING_BATCH_SIZE: int = 32
-    EMBEDDING_MAX_RETRIES: int = 3
+    EMBEDDING_MAX_RETRIES: int = 4
+    EMBEDDING_CHARS_PER_TOKEN: int = 3
+
+    # Batch limits tuned for Gemini free tier (30,000 tokens/min limit)
+    EMBEDDING_MAX_BATCH_ITEMS: int = 16
+    EMBEDDING_MAX_BATCH_TOKENS: int = 3000
+    EMBEDDING_MIN_INTERVAL_SECONDS: float = 12.0
 
     # LLM Configuration
     LLM_PRIMARY_PROVIDER: str = "gemini"

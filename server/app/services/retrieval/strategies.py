@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.repositories.knowledge import KnowledgeRepository
 from app.services.retrieval.models import RetrievalRequest, RetrievalResult
 from app.services.indexing import EmbeddingError
+from app.services.embedding.exceptions import EmbeddingProviderError
 
 
 
@@ -89,9 +90,14 @@ class SemanticRetrievalStrategy:
         self._knowledge_repo = knowledge_repo
         self._embedding_service = embedding_service
 
-    def retrieve(self, request: RetrievalRequest) -> list[RetrievalResult]:
-        # Embed the query
-        query_vector = self._embedding_service.embed_query(request.query)
+    def pre_embed(self, query: str) -> list[float]:
+        """Embed the query without touching the database."""
+        return self._embedding_service.embed_query(query)
+
+    def retrieve(self, request: RetrievalRequest, *, query_vector: list[float] | None = None) -> list[RetrievalResult]:
+        # Embed the query only if not pre-computed
+        if query_vector is None:
+            query_vector = self._embedding_service.embed_query(request.query)
 
         # Search the database
         rows = self._knowledge_repo.search_semantic_chunks(
@@ -148,12 +154,27 @@ class HybridRetrievalStrategy:
             limit=self._candidate_limit,
         )
 
+        # Step 1: Embed the query BEFORE any DB session is opened.
+        # This ensures engine.pool.checkedout() == 0 during the
+        # embedding provider call (network I/O).
+        try:
+            query_vector = self._semantic_strategy.pre_embed(candidate_request.query)
+        except (EmbeddingError, EmbeddingProviderError) as e:
+            logger.warning(f"Semantic embedding failed, falling back to keyword-only: {e}")
+            query_vector = None
+
+        # Step 2: DB queries (keyword + semantic SQL using pre-computed vector)
         keyword_candidates = self._keyword_strategy.retrieve(candidate_request)
         
-        try:
-            semantic_candidates = self._semantic_strategy.retrieve(candidate_request)
-        except EmbeddingError as e:
-            logger.warning(f"Semantic retrieval failed, falling back to keyword-only: {e}")
+        if query_vector is not None:
+            try:
+                semantic_candidates = self._semantic_strategy.retrieve(
+                    candidate_request, query_vector=query_vector
+                )
+            except (EmbeddingError, EmbeddingProviderError) as e:
+                logger.warning(f"Semantic retrieval failed, falling back to keyword-only: {e}")
+                semantic_candidates = []
+        else:
             semantic_candidates = []
 
         if not keyword_candidates and not semantic_candidates:

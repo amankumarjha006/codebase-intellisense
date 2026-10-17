@@ -75,7 +75,7 @@ async def test_rate_limiter_unauthenticated_fallback(mock_redis, mock_request, m
     
     # Should use IP
     args = mock_redis.eval.call_args[0]
-    assert args[2] == "rate_limit:test:user:127.0.0.1"
+    assert args[2] == "rate_limit:test:ip:127.0.0.1"
 
 @pytest.mark.asyncio
 async def test_rate_limiter_infrastructure_failure(mock_redis, mock_request, mock_response, user):
@@ -87,3 +87,35 @@ async def test_rate_limiter_infrastructure_failure(mock_redis, mock_request, moc
         await limiter(request=mock_request, response=mock_response, redis_client=mock_redis, user=user)
         
     assert "infrastructure failure" in exc_info.value.message
+
+
+@pytest.mark.asyncio
+async def test_optional_current_user_returns_none_when_no_cookie(mock_request):
+    from app.api.deps import get_optional_current_user
+    mock_request.cookies = {}
+    mock_db = MagicMock()
+    mock_redis = AsyncMock()
+
+    result = await get_optional_current_user(mock_request, db=mock_db, redis_client=mock_redis)
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_optional_current_user_returns_none_when_session_expired(mock_request):
+    from app.api.deps import get_optional_current_user
+    from app.core.config import settings
+    mock_request.cookies = {settings.SESSION_COOKIE_NAME: "expired-sess"}
+    mock_db = MagicMock()
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+
+    result = await get_optional_current_user(mock_request, db=mock_db, redis_client=mock_redis)
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_raises_auth_exception_when_none():
+    from app.api.deps import get_current_user, AuthException
+    with pytest.raises(AuthException) as exc_info:
+        await get_current_user(user=None)
+    assert exc_info.value.code == "UNAUTHENTICATED"

@@ -19,8 +19,22 @@ class EmbeddingService:
     def __init__(self, knowledge_repo: KnowledgeRepository, provider: EmbeddingProvider):
         self.knowledge_repo = knowledge_repo
         self.provider = provider
-        self.batch_size = settings.EMBEDDING_BATCH_SIZE
+        self.max_batch_items = settings.EMBEDDING_MAX_BATCH_ITEMS
+        self.max_batch_tokens = settings.EMBEDDING_MAX_BATCH_TOKENS
         self.max_retries = settings.EMBEDDING_MAX_RETRIES
+        self.chars_per_token = getattr(settings, "EMBEDDING_CHARS_PER_TOKEN", 3)
+
+    @staticmethod
+    def estimate_tokens(text: str, chars_per_token: int | None = None) -> int:
+        """
+        Estimate tokens for a text string using configurable chars-per-token ratio.
+        Default is 3 (conservative for code).
+        """
+        ratio = chars_per_token if chars_per_token is not None else getattr(settings, "EMBEDDING_CHARS_PER_TOKEN", 3)
+        return max(1, len(text) // ratio)
+
+    def _estimate_tokens(self, text: str) -> int:
+        return self.estimate_tokens(text, self.chars_per_token)
 
     def generate_and_store_embeddings(self, chunks: List[CodeChunk]) -> dict[str, int]:
         """
@@ -34,17 +48,40 @@ class EmbeddingService:
 
         embeddings_created = 0
         
-        # We process chunks in batches
-        for i in range(0, len(chunks), self.batch_size):
-            batch_chunks = chunks[i:i + self.batch_size]
+        # Token-aware batching
+        batches = []
+        current_batch = []
+        current_tokens = 0
+
+        for chunk in chunks:
+            text = ChunkEmbeddingTextBuilder.build(chunk)
+            tokens = self._estimate_tokens(text)
             
-            # 1. Build deterministic texts
-            texts = [ChunkEmbeddingTextBuilder.build(chunk) for chunk in batch_chunks]
+            if current_batch and (len(current_batch) >= self.max_batch_items or current_tokens + tokens > self.max_batch_tokens):
+                batches.append(current_batch)
+                current_batch = []
+                current_tokens = 0
+
+            current_batch.append((chunk, text, tokens))
+            current_tokens += tokens
+
+        if current_batch:
+            batches.append(current_batch)
+
+        total_batches = len(batches)
+
+        for i, batch in enumerate(batches):
+            batch_num = i + 1
+            batch_chunks = [item[0] for item in batch]
+            texts = [item[1] for item in batch]
+            total_tokens = sum(item[2] for item in batch)
             
-            # 2. Call provider with retries
-            vectors = self._embed_with_retry(texts)
+            logger.info(f"Processing embedding batch {batch_num}/{total_batches} (items: {len(batch_chunks)}, estimated_tokens: {total_tokens})")
             
-            # 3. Create Embedding records
+            # Call provider with retries
+            vectors = self._embed_with_retry(texts, batch_num, total_batches)
+
+            # Create Embedding records
             embedding_records = []
             for chunk, vector in zip(batch_chunks, vectors):
                 record = Embedding(
@@ -56,37 +93,69 @@ class EmbeddingService:
                 )
                 embedding_records.append(record)
                 
-            # 4. Persist (without committing)
+            # Persist (without committing)
             self.knowledge_repo.bulk_create_embeddings(embedding_records)
             embeddings_created += len(embedding_records)
             
-            logger.info(f"Persisted {len(embedding_records)} embeddings for current batch")
+            if settings.EMBEDDING_MIN_INTERVAL_SECONDS > 0:
+                time.sleep(settings.EMBEDDING_MIN_INTERVAL_SECONDS)
 
         return {"embeddings_created": embeddings_created}
 
-    def _embed_with_retry(self, texts: List[str]) -> List[List[float]]:
+    def _embed_with_retry(self, texts: List[str], batch_num: int = 1, total_batches: int = 1) -> List[List[float]]:
         """
         Embeds a list of texts with bounded exponential backoff for transient errors.
+        Handles rate limits (429) using Retry-After, and backs off on 5xx and timeouts.
         """
+        import random
+        from app.services.embedding.exceptions import (
+            EmbeddingProviderRateLimitError,
+            EmbeddingProviderTimeoutError,
+            EmbeddingProviderConnectionError,
+            EmbeddingProviderServerError
+        )
+
         attempt = 0
+        max_attempts = 1 + self.max_retries
+        base_delay = 2.0
+
         while True:
+            attempt += 1
             try:
-                attempt += 1
                 return self.provider.embed(texts)
-            except EmbeddingError as e:
-                # Basic transient error detection: we only retry if it feels transient.
-                # Since EmbeddingError wrappers provider-specific errors, we look for clues
-                # like 429, 500, 503, "timeout", "rate limit"
-                err_msg = str(e).lower()
-                is_transient = any(keyword in err_msg for keyword in ["429", "500", "502", "503", "504", "timeout", "rate limit", "temporarily", "unavailable"])
+            except Exception as e:
+                is_transient = isinstance(e, (
+                    EmbeddingProviderRateLimitError,
+                    EmbeddingProviderTimeoutError,
+                    EmbeddingProviderConnectionError,
+                    EmbeddingProviderServerError
+                ))
                 
-                if not is_transient or attempt > self.max_retries:
-                    logger.error(f"Embedding provider failed permanently or max retries exceeded: {str(e)}")
+                if not is_transient or attempt >= max_attempts:
+                    logger.error(
+                        f"Embedding provider failed on batch {batch_num}/{total_batches} "
+                        f"(attempt {attempt}/{max_attempts}, transient: {is_transient}): {e.__class__.__name__} - {str(e)}"
+                    )
                     raise
-                    
-                backoff_time = 2 ** attempt
-                logger.warning(f"Transient embedding error (attempt {attempt}/{self.max_retries}). Retrying in {backoff_time}s: {str(e)}")
-                time.sleep(backoff_time)
+
+                # Determine backoff
+                delay = base_delay * (2 ** (attempt - 1))
+                if isinstance(e, EmbeddingProviderRateLimitError):
+                    # Provider rate limits (e.g. Gemini 60s quota windows) need longer backoff
+                    delay = max(delay, 12.0 * attempt)
+                    if e.retry_after is not None:
+                        delay = max(delay, e.retry_after)
+
+                # Add jitter
+                delay = min(delay, 60.0)
+                jitter = delay * random.uniform(0.1, 0.3)
+                final_delay = delay + jitter
+
+                logger.warning(
+                    f"Transient error on batch {batch_num}/{total_batches} (attempt {attempt}/{max_attempts}). "
+                    f"Retrying in {final_delay:.1f}s. Exception: {e.__class__.__name__} - {str(e)}"
+                )
+                time.sleep(final_delay)
 
     def embed_query(self, text: str) -> List[float]:
         """

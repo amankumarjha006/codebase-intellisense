@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from app.schemas.repository import (
     RepositoryCreate,
     RepositoryOut,
+    RepositoryListItemOut,
     RepositoryListOut,
     RepositoryVersionSummary,
     RepositoryDetailOut,
@@ -231,7 +232,7 @@ class TestRepositoryDetailOut:
 
 class TestRepositoryListOut:
     def _item(self):
-        return RepositoryOut(
+        return RepositoryListItemOut(
             id=uuid4(), owner="o", name="r", is_private=False, created_at=datetime.now(timezone.utc)
         )
 
@@ -241,6 +242,20 @@ class TestRepositoryListOut:
         assert schema.page == 1
         assert schema.limit == 50
         assert schema.has_more is False
+
+    def test_item_does_not_expose_failure_message(self):
+        item = RepositoryListItemOut(
+            id=uuid4(),
+            owner="o",
+            name="r",
+            is_private=False,
+            created_at=datetime.now(timezone.utc),
+            latest_job_status="FAILED",
+            latest_job_failure_code="CLONE_FAILED",
+        )
+
+        assert item.latest_job_failure_code == "CLONE_FAILED"
+        assert "latest_job_failure_message" not in item.model_dump()
 
     def test_empty_items(self):
         schema = RepositoryListOut(items=[], total=0, page=1, limit=50, has_more=False)
@@ -355,11 +370,12 @@ class TestIndexJobOut:
             status="INDEXING",
             started_at=None,
             completed_at=None,
-            error_message=None,
+            failure_code=None,
         )
         assert schema.started_at is None
         assert schema.completed_at is None
-        assert schema.error_message is None
+        assert schema.failure_code is None
+        assert schema.failure_message is None
 
     def test_with_timestamps(self):
         now = datetime.now(timezone.utc)

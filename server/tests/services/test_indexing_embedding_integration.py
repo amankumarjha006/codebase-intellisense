@@ -11,31 +11,34 @@ from app.repositories.knowledge import KnowledgeRepository
 from app.services.indexing import IndexingService, EmbeddingError
 from app.services.embedding.service import EmbeddingService
 from app.services.embedding.provider import EmbeddingProvider
+from app.services.embedding.exceptions import EmbeddingProviderRateLimitError
 
-engine = create_engine(settings.DATABASE_URL)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+pytestmark = [pytest.mark.integration]
 
 class FakeEmbeddingProvider(EmbeddingProvider):
     def __init__(self, dimension: int = 768):
         self.dimension = dimension
         self.calls = []
-        self.should_fail = False
+        self.should_fail_with = None
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         self.calls.append(texts)
-        if self.should_fail:
-            raise EmbeddingError("Fake transient error")
+        if self.should_fail_with:
+            raise self.should_fail_with
         return [[float(len(text))] * self.dimension for text in texts]
 
 
 @pytest.fixture
 def db_session():
-    session = TestingSessionLocal()
+    engine = create_engine(settings.DATABASE_URL)
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session = testing_session_local()
     try:
         yield session
     finally:
         session.rollback()
         session.close()
+        engine.dispose()
 
 
 def create_mock_repo(tmp_path) -> str:
@@ -188,7 +191,7 @@ def test_embedding_failure_rolls_back(db_session, tmp_path, monkeypatch):
     monkeypatch.setattr("app.services.indexing.clone_repository", fake_clone)
 
     provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
-    provider.should_fail = True
+    provider.should_fail_with = Exception("Transient error")
     knowledge_repo = KnowledgeRepository(db_session)
     embedding_service = EmbeddingService(knowledge_repo, provider)
 
@@ -197,8 +200,36 @@ def test_embedding_failure_rolls_back(db_session, tmp_path, monkeypatch):
     # Monkeypatch db.rollback to ensure it gets called
     # Wait, does the indexing service rollback? It doesn't explicitly call rollback.
     # We just want to ensure the error propagates and job fails.
-    with pytest.raises(EmbeddingError):
+    with pytest.raises(Exception, match="Transient error"):
         # We need to catch it inside a savepoint or something?
         # Actually, if we just expect the error, we check if the job failed.
         # However, due to SQLAlchemy session, we should just let it fail.
         indexing_service.run_indexing(job)
+
+
+def test_rate_limited_embedding_sets_failure_code(db_session, tmp_path, monkeypatch):
+    _, _, version, job = setup_db_for_indexing(db_session)
+    repo_root = create_mock_repo(tmp_path)
+
+    def fake_clone(clone_url, target_dir, branch, github_token=None):
+        import shutil
+        shutil.copytree(repo_root, target_dir, dirs_exist_ok=True)
+        return "abc1234"
+
+    monkeypatch.setattr("app.services.indexing.clone_repository", fake_clone)
+
+    provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
+    provider.should_fail_with = EmbeddingProviderRateLimitError("rate limited")
+    knowledge_repo = KnowledgeRepository(db_session)
+    embedding_service = EmbeddingService(knowledge_repo, provider)
+    embedding_service.max_retries = 0
+    indexing_service = IndexingService(db_session, embedding_service=embedding_service)
+
+    with pytest.raises(EmbeddingError):
+        indexing_service.run_indexing(job)
+
+    db_session.refresh(job)
+    db_session.refresh(version)
+    assert job.status == "FAILED"
+    assert job.failure_code == "EMBEDDING_PROVIDER_RATE_LIMITED"
+    assert version.index_status == "FAILED"

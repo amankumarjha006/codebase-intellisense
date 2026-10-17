@@ -1,4 +1,6 @@
 import logging
+import os
+from pathlib import Path
 from typing import List
 from uuid import UUID
 
@@ -55,14 +57,22 @@ class ChunkBuilderService:
             symbols_by_file.setdefault(s.file_id, []).append(s)
             
         # 3. Process each file
-        import os
-        from pathlib import Path
-        
         new_chunks = []
         
         for file in files:
             try:
                 abs_path = os.path.join(self.repo_path, file.file_path)
+
+                # Containment check: resolved path must stay inside repo_path.
+                repo_real = os.path.realpath(self.repo_path)
+                abs_real = os.path.realpath(abs_path)
+                if not (abs_real == repo_real or abs_real.startswith(repo_real + os.sep)):
+                    logger.error(
+                        f"Path traversal detected for file {file.file_path!r}; skipping."
+                    )
+                    stats["files_skipped"] += 1
+                    continue
+
                 if not os.path.exists(abs_path):
                     stats["files_skipped"] += 1
                     continue
@@ -85,9 +95,6 @@ class ChunkBuilderService:
                     new_chunks.append(CodeChunk(
                         file_id=c_data.file_id,
                         symbol_id=c_data.symbol_id,
-                        # CodeChunk model doesn't have parent_symbol_id right now.
-                        # Wait, did the user tell me to add parent_symbol_id to ChunkData?
-                        # Yes, but not to the CodeChunk model. Let's omit it from the model for now if it's not defined, or maybe I should check CodeChunk model again.
                         content=c_data.content,
                         start_line=c_data.start_line,
                         end_line=c_data.end_line,

@@ -14,9 +14,22 @@ class MessageRepository:
         self.db = db
 
     def create(self, message: Message) -> Message:
+        from sqlalchemy.orm.attributes import set_committed_value
+
         self.db.add(message)
+        self.db.flush()
+
+        # Capture relations if needed or set empty to prevent lazy-load after expunge
+        if "citations" not in message.__dict__:
+            set_committed_value(message, "citations", [])
+
+        self.db.expunge(message)
+        if getattr(message, "citations", None):
+            for citation in message.citations:
+                if citation in self.db:
+                    self.db.expunge(citation)
+
         self.db.commit()
-        self.db.refresh(message)
         return message
 
     def get_by_id(self, message_id: UUID) -> Message | None:

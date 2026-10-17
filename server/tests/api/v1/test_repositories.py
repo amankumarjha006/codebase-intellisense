@@ -9,6 +9,7 @@ from app.main import app
 from app.core.config import settings
 from app.models.user import User, GithubAccount
 from app.models.repository import Repository, RepositoryVersion
+from app.repositories.repository import RepositoryListRow
 from app.services.repository import InvalidRepositoryUrlError, RepositoryNotAccessibleError
 from app.services.github import GithubAuthError
 from app.core.encryption import TokenEncryptionError
@@ -71,17 +72,28 @@ def mock_auth_no_github(mocker, mock_redis, mock_db):
 async def test_list_repositories_authenticated(async_client, mock_auth, mock_db, mocker):
     async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
     
-    repo = Repository(id=uuid4(), owner="owner", name="repo", is_private=False, created_at=datetime.now(timezone.utc))
+    row = RepositoryListRow(
+        id=uuid4(), owner="owner", name="repo", is_private=False,
+        created_at=datetime.now(timezone.utc),
+        latest_job_status="FAILED", latest_job_failure_code="CLONE_FAILED",
+        active_version_short_sha="abcdef0", last_indexed_at=datetime.now(timezone.utc),
+    )
     
     mock_repo_repo = mocker.patch("app.api.v1.endpoints.repositories.RepositoryRepository")
     mock_repo_repo_instance = mock_repo_repo.return_value
-    mock_repo_repo_instance.list_for_user.return_value = ([repo], 1)
+    mock_repo_repo_instance.list_for_user.return_value = ([row], 1)
     
     response = await async_client.get(f"{settings.API_V1_STR}/repositories")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
     assert data["items"][0]["owner"] == "owner"
+    item = data["items"][0]
+    assert item["latest_job_status"] == "FAILED"
+    assert item["latest_job_failure_code"] == "CLONE_FAILED"
+    assert item["active_version_short_sha"] == "abcdef0"
+    assert item["last_indexed_at"] is not None
+    assert "latest_job_failure_message" not in item
     assert data["page"] == 1
     assert data["limit"] == 50
     assert data["has_more"] is False

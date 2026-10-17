@@ -7,6 +7,8 @@ from app.api.deps import (
     get_db,
     get_current_user,
     get_authorized_repository,
+    get_retrieval_service,
+    get_rag_query_service,
 )
 from app.core.rate_limit import general_rate_limiter, rag_rate_limiter
 from app.models.user import User
@@ -22,6 +24,7 @@ from app.services.github import GithubService
 from app.services.github_token import get_decrypted_token
 from app.schemas.repository import (
     RepositoryListOut, 
+    RepositoryListItemOut,
     RepositoryCreate, 
     RepositoryOut, 
     RepositoryDetailOut, 
@@ -64,6 +67,47 @@ from app.services.answer.service import AnswerService
 
 router = APIRouter()
 
+
+def _get_effective_retrieval_service(db: Session, retrieval_service: RetrievalService) -> RetrievalService:
+    from app.services.embedding.gemini import GeminiEmbeddingProvider as RealGeminiEmbeddingProvider
+    if GeminiEmbeddingProvider is not RealGeminiEmbeddingProvider:
+        knowledge_repo = KnowledgeRepository(db)
+        provider = GeminiEmbeddingProvider(
+            api_key=settings.GEMINI_API_KEY,
+            model=settings.EMBEDDING_MODEL,
+            dimension=settings.EMBEDDING_DIMENSION,
+        )
+        embedding_service = EmbeddingService(knowledge_repo, provider)
+        semantic_strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
+        keyword_strategy = KeywordRetrievalStrategy(knowledge_repo)
+        hybrid_strategy = HybridRetrievalStrategy(keyword_strategy, semantic_strategy)
+        return RetrievalService(hybrid_strategy)
+    return retrieval_service
+
+
+def _get_effective_rag_query_service(
+    db: Session,
+    retrieval_service: RetrievalService,
+    rag_query_service: RAGQueryService,
+) -> RAGQueryService:
+    from app.services.rag_query.service import RAGQueryService as RealRAGQueryService
+    if RAGQueryService is not RealRAGQueryService:
+        repo_repo = RepositoryRepository(db)
+        context_builder = ContextBuilder()
+        llm_provider = create_llm_provider(settings)
+        rag_service = RAGService(llm_provider)
+        citation_service = CitationService()
+        answer_service = AnswerService()
+        return RAGQueryService(
+            repository_repo=repo_repo,
+            retrieval_service=retrieval_service,
+            context_builder=context_builder,
+            rag_service=rag_service,
+            citation_service=citation_service,
+            answer_service=answer_service,
+        )
+    return rag_query_service
+
 @router.get("", response_model=RepositoryListOut, summary="List Repositories")
 def get_repositories(
     page: int = Query(1, ge=1),
@@ -74,7 +118,7 @@ def get_repositories(
     _: None = Depends(general_rate_limiter),):
     """Retrieves a paginated list of repositories the authenticated user has access to."""
     repo_repo = RepositoryRepository(db)
-    items, total = repo_repo.list_for_user(
+    rows, total = repo_repo.list_for_user(
         user_id=current_user.id,
         page=page,
         limit=limit,
@@ -82,7 +126,20 @@ def get_repositories(
     )
     has_more = (page * limit) < total
     return RepositoryListOut(
-        items=items,
+        items=[
+            RepositoryListItemOut(
+                id=r.id,
+                owner=r.owner,
+                name=r.name,
+                is_private=r.is_private,
+                created_at=r.created_at,
+                latest_job_status=r.latest_job_status,
+                latest_job_failure_code=r.latest_job_failure_code,
+                active_version_short_sha=r.active_version_short_sha,
+                last_indexed_at=r.last_indexed_at,
+            )
+            for r in rows
+        ],
         total=total,
         page=page,
         limit=limit,
@@ -132,23 +189,23 @@ async def connect_repository(
             github_access_token=token
         )
         return repository
-    except InvalidRepositoryUrlError as e:
+    except InvalidRepositoryUrlError:
         return JSONResponse(
             status_code=400,
             content={
                 "error": {
                     "code": "INVALID_REQUEST",
-                    "message": str(e)
+                    "message": "Invalid repository URL."
                 }
             }
         )
-    except RepositoryNotAccessibleError as e:
+    except RepositoryNotAccessibleError:
         return JSONResponse(
             status_code=502,
             content={
                 "error": {
                     "code": "GITHUB_API_ERROR",
-                    "message": str(e)
+                    "message": "Repository is not accessible or does not exist."
                 }
             }
         )
@@ -274,6 +331,7 @@ def search_repository(
     request: SearchRequest,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
+    retrieval_service: RetrievalService = Depends(get_retrieval_service),
     _: None = Depends(general_rate_limiter),):
     """
     Executes a search against a specific RepositoryVersion.
@@ -320,24 +378,7 @@ def search_repository(
         version_id = active_version.id
 
     # --- Retrieval (delegated to RetrievalService) ---
-    knowledge_repo = KnowledgeRepository(db)
-    
-    # Construct embedding and semantic dependencies
-    provider = GeminiEmbeddingProvider(
-        api_key=settings.GEMINI_API_KEY,
-        model=settings.EMBEDDING_MODEL,
-        dimension=settings.EMBEDDING_DIMENSION,
-    )
-    embedding_service = EmbeddingService(knowledge_repo, provider)
-    semantic_strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
-    
-    # Construct keyword dependency
-    keyword_strategy = KeywordRetrievalStrategy(knowledge_repo)
-    
-    # Construct hybrid strategy
-    hybrid_strategy = HybridRetrievalStrategy(keyword_strategy, semantic_strategy)
-    
-    retrieval_service = RetrievalService(hybrid_strategy)
+    retrieval_service = _get_effective_retrieval_service(db, retrieval_service)
 
     retrieval_request = RetrievalRequest(
         repository_version_id=version_id,
@@ -565,23 +606,23 @@ async def analyze_repository(
             status=job.status,
             message="Repository analysis queued."
         )
-    except RepositoryActiveJobError as e:
+    except RepositoryActiveJobError:
         return JSONResponse(
             status_code=409,
             content={
                 "error": {
                     "code": "INDEXING_ALREADY_IN_PROGRESS",
-                    "message": str(e)
+                    "message": "Repository analysis is already in progress."
                 }
             }
         )
-    except GithubAuthError as e:
+    except GithubAuthError:
         return JSONResponse(
             status_code=502,
             content={
                 "error": {
                     "code": "GITHUB_API_ERROR",
-                    "message": str(e)
+                    "message": "Failed to authenticate with GitHub."
                 }
             }
         )
@@ -639,45 +680,14 @@ async def query_repository(
     request: RAGQueryRequestSchema,
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
+    rag_query_service: RAGQueryService = Depends(get_rag_query_service),
+    retrieval_service: RetrievalService = Depends(get_retrieval_service),
     _: None = Depends(rag_rate_limiter),):
     """
     Executes a RAG query against a specific repository.
     """
-    repo_repo = RepositoryRepository(db)
-    knowledge_repo = KnowledgeRepository(db)
-
-    # Construct embedding and semantic dependencies
-    provider = GeminiEmbeddingProvider(
-        api_key=settings.GEMINI_API_KEY,
-        model=settings.EMBEDDING_MODEL,
-        dimension=settings.EMBEDDING_DIMENSION,
-    )
-    embedding_service = EmbeddingService(knowledge_repo, provider)
-    semantic_strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
-    
-    # Construct keyword dependency
-    keyword_strategy = KeywordRetrievalStrategy(knowledge_repo)
-    
-    # Construct hybrid strategy
-    hybrid_strategy = HybridRetrievalStrategy(keyword_strategy, semantic_strategy)
-    
-    retrieval_service = RetrievalService(hybrid_strategy)
-
-    # RAG Components
-    context_builder = ContextBuilder()
-    llm_provider = create_llm_provider(settings)
-    rag_service = RAGService(llm_provider)
-    citation_service = CitationService()
-    answer_service = AnswerService()
-
-    rag_query_service = RAGQueryService(
-        repository_repo=repo_repo,
-        retrieval_service=retrieval_service,
-        context_builder=context_builder,
-        rag_service=rag_service,
-        citation_service=citation_service,
-        answer_service=answer_service,
-    )
+    effective_retrieval = _get_effective_retrieval_service(db, retrieval_service)
+    rag_query_service = _get_effective_rag_query_service(db, effective_retrieval, rag_query_service)
 
     query_req = RAGQueryRequest(
         repository_id=repository_id,
@@ -690,30 +700,30 @@ async def query_repository(
     try:
         response = await rag_query_service.execute(query_req)
         return response
-    except InvalidQueryError as e:
+    except InvalidQueryError:
         return JSONResponse(
             status_code=400,
-            content={"error": {"code": "INVALID_REQUEST", "message": str(e)}}
+            content={"error": {"code": "INVALID_REQUEST", "message": "Invalid query provided."}}
         )
-    except InvalidRepositoryVersionError as e:
+    except InvalidRepositoryVersionError:
         return JSONResponse(
             status_code=400,
-            content={"error": {"code": "INVALID_REQUEST", "message": str(e)}}
+            content={"error": {"code": "INVALID_REQUEST", "message": "Invalid repository version."}}
         )
-    except NoIndexedVersionError as e:
+    except NoIndexedVersionError:
         return JSONResponse(
             status_code=404,
-            content={"error": {"code": "NOT_FOUND", "message": str(e)}}
+            content={"error": {"code": "NOT_FOUND", "message": "No indexed version found for repository."}}
         )
-    except TransientLLMError as e:
+    except TransientLLMError:
         return JSONResponse(
             status_code=502,
-            content={"error": {"code": "UPSTREAM_SERVICE_UNAVAILABLE", "message": str(e)}}
+            content={"error": {"code": "UPSTREAM_SERVICE_UNAVAILABLE", "message": "AI service is temporarily unavailable. Please try again later."}}
         )
-    except PermanentLLMError as e:
+    except PermanentLLMError:
         return JSONResponse(
             status_code=502,
-            content={"error": {"code": "UPSTREAM_SERVICE_ERROR", "message": str(e)}}
+            content={"error": {"code": "UPSTREAM_SERVICE_ERROR", "message": "AI service encountered an error processing the request."}}
         )
     except Exception as e:
         return JSONResponse(
