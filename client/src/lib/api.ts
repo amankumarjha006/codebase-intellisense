@@ -14,6 +14,7 @@ import type {
   Conversation,
   ChatMessage,
   Citation,
+  IndexHistoryEntry,
 } from './types';
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -89,6 +90,9 @@ export interface RepositoryDetailOut {
   name: string;
   is_private: boolean;
   active_version: RepositoryVersionSummary | null;
+  lines_of_code?: number;
+  ast_nodes?: number;
+  primary_language?: string;
 }
 
 export interface AnalyzeRepositoryOut {
@@ -411,6 +415,40 @@ export const realApi = {
   getRepository: async (id: string, options: RequestInit = {}): Promise<Repository> => {
     const detail = await realApi.getRepositoryDetail(id, options);
     const shortSha = detail.active_version?.commit_sha ? detail.active_version.commit_sha.slice(0, 7) : null;
+
+    let versions: RepositoryVersionSummary[] = [];
+    try {
+      versions = await realApi.getRepositoryVersions(id, options);
+    } catch {
+      versions = [];
+    }
+
+    const linesOfCode = detail.lines_of_code ?? 0;
+    const astNodes = detail.ast_nodes ?? 0;
+    const language = detail.primary_language || 'TypeScript';
+
+    const index_history: IndexHistoryEntry[] = versions.length > 0
+      ? versions.map((v, idx) => ({
+          sha: v.commit_sha,
+          status: (v.status === 'SUCCESS' ? 'READY' : v.status === 'PENDING' ? 'INDEXING' : 'FAILED') as JobStatus,
+          label: idx === 0 ? 'Active' : null,
+          timestamp: v.indexed_at || detail.active_version?.indexed_at || new Date().toISOString(),
+          commit_message: `Commit ${v.commit_sha.slice(0, 7)} (${v.branch})`,
+          symbols_indexed: idx === 0 ? (astNodes || null) : null,
+        }))
+      : detail.active_version
+      ? [
+          {
+            sha: detail.active_version.commit_sha,
+            status: (detail.active_version.status === 'SUCCESS' ? 'READY' : detail.active_version.status === 'PENDING' ? 'INDEXING' : 'FAILED') as JobStatus,
+            label: 'Active',
+            timestamp: detail.active_version.indexed_at || new Date().toISOString(),
+            commit_message: `Commit ${detail.active_version.commit_sha.slice(0, 7)} (${detail.active_version.branch})`,
+            symbols_indexed: astNodes || null,
+          },
+        ]
+      : [];
+
     return {
       id: detail.id,
       name: detail.name,
@@ -418,22 +456,22 @@ export const realApi = {
       full_name: `${detail.owner}/${detail.name}`,
       description: '',
       is_private: detail.is_private,
-      language: 'TypeScript',
+      language,
       default_branch: detail.active_version?.branch || 'main',
       latest_job_status: (detail.active_version?.status as JobStatus) || null,
       latest_job_failure_code: null,
       active_version_short_sha: shortSha,
       indexed_commit: detail.active_version?.commit_sha || null,
       last_indexed_at: detail.active_version?.indexed_at || null,
-      lines_of_code: 0,
-      ast_nodes: 0,
+      lines_of_code: linesOfCode,
+      ast_nodes: astNodes,
       codebase_volume: {
-        lines_of_code: 0,
-        ast_nodes: 0,
-        language: 'TypeScript',
+        lines_of_code: linesOfCode,
+        ast_nodes: astNodes,
+        language,
       },
       verification_scope: 'Full repository',
-      index_history: [],
+      index_history,
     };
   },
 

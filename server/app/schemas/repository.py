@@ -71,6 +71,9 @@ class RepositoryDetailOut(BaseModel):
     name: str
     is_private: bool
     active_version: RepositoryVersionSummary | None
+    lines_of_code: int = 0
+    ast_nodes: int = 0
+    primary_language: str = "TypeScript"
     
     model_config = ConfigDict(from_attributes=True)
 

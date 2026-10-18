@@ -109,6 +109,18 @@ class KnowledgeRepository:
             .where(File.repository_version_id == repository_version_id)
         ).scalar_one()
 
+    def count_lines_for_version(self, repository_version_id: UUID) -> int:
+        """Count total lines of code across files for a given repository version."""
+        sub = (
+            select(func.max(CodeChunk.end_line).label("max_line"))
+            .join(File, File.id == CodeChunk.file_id)
+            .where(File.repository_version_id == repository_version_id)
+            .group_by(CodeChunk.file_id)
+            .subquery()
+        )
+        result = self.db.execute(select(func.coalesce(func.sum(sub.c.max_line), 0))).scalar_one()
+        return int(result)
+
     def get_files_for_version(
         self,
         repository_version_id: UUID,

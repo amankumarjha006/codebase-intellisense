@@ -265,15 +265,33 @@ def get_repository(
     version = repo_repo.get_latest_version(repository.id)
     
     active_version = None
+    lines_of_code = 0
+    ast_nodes = 0
+    primary_language = "TypeScript"
+
     if version:
         active_version = RepositoryVersionSummary.from_orm_version(version)
-        
+        try:
+            knowledge_repo = KnowledgeRepository(db)
+            ast_nodes = knowledge_repo.count_symbols_for_version(version.id)
+            lines_of_code = knowledge_repo.count_lines_for_version(version.id)
+            lang_stats = knowledge_repo.get_language_stats_for_version(version.id)
+            if lang_stats:
+                sorted_langs = sorted(lang_stats, key=lambda x: x[1], reverse=True)
+                if sorted_langs and sorted_langs[0][0]:
+                    primary_language = sorted_langs[0][0].capitalize()
+        except Exception:
+            pass
+
     return RepositoryDetailOut(
         id=repository.id,
         owner=repository.owner,
         name=repository.name,
         is_private=repository.is_private,
-        active_version=active_version
+        active_version=active_version,
+        lines_of_code=lines_of_code,
+        ast_nodes=ast_nodes,
+        primary_language=primary_language,
     )
 
 @router.delete("/{repository_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Archive Repository")
