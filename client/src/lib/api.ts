@@ -293,6 +293,12 @@ export const realApi = {
   getRepositoryDetail: (id: string, options: RequestInit = {}) =>
     fetchWrapper<RepositoryDetailOut>(`/repositories/${id}`, options),
 
+  deleteRepository: (id: string, options: RequestInit = {}) =>
+    fetchWrapper<void>(`/repositories/${id}`, {
+      method: 'DELETE',
+      ...options,
+    }),
+
   getRepositoryVersions: (id: string, options: RequestInit = {}) =>
     fetchWrapper<RepositoryVersionSummary[]>(`/repositories/${id}/versions`, options),
 
@@ -647,7 +653,7 @@ export const realApi = {
       onToken: (token: string) => void;
       onCitation: (citation: Citation) => void;
       onComplete: (message: ChatMessage) => void;
-      onError?: (err: Error) => void;
+      onError?: (err: { error_type: string; message: string; retry_after?: number }) => void;
     }
   ): Promise<void> => {
     const url = `${API_URL}/conversations/${convId}/messages/stream`;
@@ -672,20 +678,21 @@ export const realApi = {
       const decoder = new TextDecoder();
       let fullText = '';
       const citations: Citation[] = [];
+      let buffer = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const events = parseSSEEvents(chunk);
-
+      const processEvents = (raw: string): boolean => {
+        const events = parseSSEEvents(raw);
         for (const ev of events) {
-          const data = ev.data as Record<string, unknown>;
-          if (data?.type === 'token' && typeof data.text === 'string') {
-            fullText += data.text;
-            callbacks.onToken(data.text);
-          } else if (data?.type === 'citation') {
+          const data = (ev.data || {}) as Record<string, unknown>;
+          const eventType = ev.event || (typeof data.type === 'string' ? data.type : '');
+
+          if (eventType === 'token') {
+            const tokenText = typeof data.text === 'string' ? data.text : (typeof ev.data === 'string' ? ev.data : '');
+            if (tokenText) {
+              fullText += tokenText;
+              callbacks.onToken(tokenText);
+            }
+          } else if (eventType === 'citation') {
             const rawCitation = (data.citation || data) as Record<string, unknown>;
             const filePath = String(rawCitation.file_path || rawCitation.path || '');
             const citation: Citation = {
@@ -697,7 +704,7 @@ export const realApi = {
             };
             citations.push(citation);
             callbacks.onCitation(citation);
-          } else if (data?.type === 'message_complete') {
+          } else if (eventType === 'message_complete') {
             callbacks.onComplete({
               id: (data.message_id as string) || `msg_${Date.now()}`,
               conversation_id: convId,
@@ -706,12 +713,39 @@ export const realApi = {
               citations,
               created_at: new Date().toISOString(),
             });
-            return;
-          } else if (data?.type === 'error') {
-            callbacks.onError?.(new Error((data.message as string) || 'Stream error'));
-            return;
+            return true;
+          } else if (eventType === 'error') {
+            callbacks.onError?.({
+              error_type: String(data.code || 'STREAM_ERROR'),
+              message: String(data.message || 'Stream error'),
+              retry_after: typeof data.retry_after === 'number' ? data.retry_after : undefined,
+            });
+            return true;
           }
         }
+        return false;
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lastBoundary = Math.max(
+          buffer.lastIndexOf('\n\n') !== -1 ? buffer.lastIndexOf('\n\n') + 2 : -1,
+          buffer.lastIndexOf('\r\n\r\n') !== -1 ? buffer.lastIndexOf('\r\n\r\n') + 4 : -1
+        );
+        if (lastBoundary !== -1) {
+          const completeRaw = buffer.slice(0, lastBoundary);
+          buffer = buffer.slice(lastBoundary);
+          const finished = processEvents(completeRaw);
+          if (finished) return;
+        }
+      }
+
+      if (buffer.trim()) {
+        const finished = processEvents(buffer);
+        if (finished) return;
       }
 
       callbacks.onComplete({
@@ -723,7 +757,10 @@ export const realApi = {
         created_at: new Date().toISOString(),
       });
     } catch (err: unknown) {
-      callbacks.onError?.(err instanceof Error ? err : new Error(String(err)));
+      callbacks.onError?.({
+        error_type: 'NETWORK_ERROR',
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   },
 };

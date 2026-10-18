@@ -128,6 +128,8 @@ class RepositoryService:
                     clone_url=clone_url,
                     is_private=is_private,
                 )
+            else:
+                repository.is_archived = False
 
             # 4. Ensure user access
             if not self.repository_repo.user_has_access(

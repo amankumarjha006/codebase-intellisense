@@ -191,4 +191,49 @@ describe('Real API Adapters for Page Components', () => {
     expect(conv.updated_at).toBe('2026-10-17T12:00:00Z');
     expect(conv.message_count).toBe(0);
   });
+
+  it('streams tokens, citations, and completes from SSE response across chunk boundaries', async () => {
+    const encoder = new TextEncoder();
+    const chunks = [
+      encoder.encode('event: token\ndata: {"text": "Hel'),
+      encoder.encode('lo "}\n\nevent: token\ndata: {"text": "world!"}\n\n'),
+      encoder.encode('event: citation\ndata: {"file_path": "src/App.tsx", "start_line": 1, "end_line": 10}\n\n'),
+      encoder.encode('event: message_complete\ndata: {"message_id": "msg-123"}\n\n'),
+    ];
+
+    let chunkIdx = 0;
+    const stream = new ReadableStream({
+      pull(controller) {
+        if (chunkIdx < chunks.length) {
+          controller.enqueue(chunks[chunkIdx++]);
+        } else {
+          controller.close();
+        }
+      },
+    });
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      body: stream,
+    } as unknown as Response);
+
+    const tokens: string[] = [];
+    const citations: Array<{ path: string; start_line: number; end_line: number }> = [];
+    let completed: { id: string; content: string; citations: unknown[] } | null = null;
+
+    await api.streamMessage('conv-1', 'hi', {
+      onToken: (t) => tokens.push(t),
+      onCitation: (c) => citations.push(c),
+      onComplete: (m) => {
+        completed = m;
+      },
+    });
+
+    expect(tokens).toEqual(['Hello ', 'world!']);
+    expect(citations).toHaveLength(1);
+    expect(citations[0].path).toBe('src/App.tsx');
+    expect(completed).toBeDefined();
+    expect((completed as any)?.id).toBe('msg-123');
+    expect((completed as any)?.content).toBe('Hello world!');
+  });
 });

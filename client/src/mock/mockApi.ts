@@ -175,6 +175,17 @@ export const mockApi = {
     };
   },
 
+  /** Delete repository */
+  async deleteRepository(repoId: string): Promise<void> {
+    await sleep(150);
+    const idx = repositories.findIndex((r) => r.id === repoId);
+    if (idx !== -1) {
+      repositories.splice(idx, 1);
+    }
+    delete jobs[repoId];
+    delete conversations[repoId];
+  },
+
   /** Get index job for repository */
   async getIndexJob(repoId: string): Promise<IndexJob | null> {
     await sleep(100);

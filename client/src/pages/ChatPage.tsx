@@ -22,19 +22,119 @@ import {
   ChatMessage,
   Citation,
 } from '../lib/types';
-import { mockSuggestedQuestions } from '../mock/data';
-import { getStoredScenarios } from '../lib/scenarios';
 import { formatRelativeTime } from '../lib/utils';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
 import { SourcePanel } from '../components/chat/SourcePanel';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/input';
 
+interface RepoSuggestion {
+  question: string;
+  file_hint: string;
+}
+
+function buildRepoSuggestions(repoName: string, files: string[] = []): RepoSuggestion[] {
+  if (!files || files.length === 0) {
+    return [
+      {
+        question: `What is the architecture and folder structure of ${repoName}?`,
+        file_hint: `${repoName} structure`,
+      },
+      {
+        question: `What are the core features and capabilities in ${repoName}?`,
+        file_hint: `${repoName} features`,
+      },
+      {
+        question: `How does data and logic flow across this codebase?`,
+        file_hint: `Data flow`,
+      },
+      {
+        question: `What are the prerequisites and setup steps to run ${repoName}?`,
+        file_hint: `Setup & configuration`,
+      },
+    ];
+  }
+
+  const suggestions: RepoSuggestion[] = [];
+
+  // 1. Entry point / Application initialization
+  const entryFile = files.find((p) =>
+    /^(src\/)?(App|main|index)\.(jsx?|tsx?|vue|py|go|rs|js|ts)$/i.test(p) ||
+    /^(main\.py|app\.py|index\.html|server\.js|app\.js)$/i.test(p)
+  );
+  if (entryFile) {
+    const fileName = entryFile.split('/').pop()!;
+    suggestions.push({
+      question: `How does the application initialize and render in ${fileName}?`,
+      file_hint: entryFile,
+    });
+  } else {
+    suggestions.push({
+      question: `What is the entry point and primary architecture of ${repoName}?`,
+      file_hint: files[0] || `${repoName} entry`,
+    });
+  }
+
+  // 2. Pages / Routes / Views / Components
+  const routeOrComponent = files.find((p) =>
+    /(pages|routes|views|screens|components)\/.*\.(jsx?|tsx?|vue|py|html)$/i.test(p)
+  );
+  if (routeOrComponent) {
+    const targetName = routeOrComponent.split('/').pop()!;
+    suggestions.push({
+      question: `What are the main pages and navigation flows around ${targetName}?`,
+      file_hint: routeOrComponent,
+    });
+  } else {
+    suggestions.push({
+      question: `What are the core functional modules in ${repoName}?`,
+      file_hint: `${repoName} modules`,
+    });
+  }
+
+  // 3. Data / Models / State / API
+  const dataOrApi = files.find((p) =>
+    /(data|api|services|models|store|state|utils)\/.*\.(jsx?|tsx?|py|js|ts|json)$/i.test(p) &&
+    !p.includes('package')
+  );
+  if (dataOrApi) {
+    const dataName = dataOrApi.split('/').pop()!;
+    suggestions.push({
+      question: `How is data structured and managed in ${dataName}?`,
+      file_hint: dataOrApi,
+    });
+  } else {
+    suggestions.push({
+      question: `How is state and business logic handled across this project?`,
+      file_hint: `Logic & State`,
+    });
+  }
+
+  // 4. Dependencies / Configuration / Build
+  const configFile = files.find((p) =>
+    /^(package\.json|vite\.config\.[jt]s|requirements\.txt|pyproject\.toml|Cargo\.toml|go\.mod|webpack\.config\.js|tailwind\.config\.[jt]s)$/i.test(p)
+  );
+  if (configFile) {
+    suggestions.push({
+      question: `What packages, scripts, and build tools are defined in ${configFile}?`,
+      file_hint: configFile,
+    });
+  } else {
+    suggestions.push({
+      question: `How is this repository configured and built?`,
+      file_hint: `Configuration`,
+    });
+  }
+
+  return suggestions;
+}
+
 export function ChatPage() {
   const { id: repoId, conversationId } = useParams<{ id: string; conversationId?: string }>();
   const navigate = useNavigate();
 
   const [repository, setRepository] = React.useState<Repository | null>(null);
+  const [repoFiles, setRepoFiles] = React.useState<string[]>([]);
   const [conversations, setConversations] = React.useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = React.useState<string | null>(conversationId || null);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
@@ -48,9 +148,9 @@ export function ChatPage() {
   const [newerVersionDismissed, setNewerVersionDismissed] = React.useState(false);
 
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  const scenarios = getStoredScenarios();
+  const isStreamingRef = React.useRef(false);
 
-  // Load repo and conversations
+  // Load repo, files, and conversations
   const loadRepoAndConvs = React.useCallback(async () => {
     if (!repoId) return;
     try {
@@ -59,13 +159,21 @@ export function ChatPage() {
       const convList = await api.getConversations(repoId);
       setConversations(convList);
 
-      if (!activeConvId && convList.length > 0 && convList[0]) {
-        setActiveConvId(convList[0].id);
+      setActiveConvId((curr) => curr || (convList.length > 0 && convList[0] ? convList[0].id : null));
+
+      // Fetch repository files to generate repo-specific suggestions
+      try {
+        const fileListRes = await api.getRepositoryFiles(repoId, 100, 0);
+        if (fileListRes?.files) {
+          setRepoFiles(fileListRes.files.map((f: { path: string }) => f.path));
+        }
+      } catch {
+        // Fallback gracefully if repository files are pending
       }
     } catch {
       // Ignore
     }
-  }, [repoId, activeConvId]);
+  }, [repoId]);
 
   React.useEffect(() => {
     loadRepoAndConvs();
@@ -77,9 +185,13 @@ export function ChatPage() {
       setMessages([]);
       return;
     }
+    if (isStreamingRef.current) return;
+
     api.getMessages(activeConvId).then((msgs: ChatMessage[]) => {
-      setMessages(msgs);
-      scrollToBottom();
+      if (!isStreamingRef.current) {
+        setMessages(msgs);
+        scrollToBottom();
+      }
     });
   }, [activeConvId]);
 
@@ -136,26 +248,33 @@ export function ChatPage() {
     setErrorInfo(null);
     scrollToBottom();
 
-    await api.streamMessage(convId as string, text, {
-      onToken: (tok: string) => {
-        setStreamedText((prev) => prev + tok);
-        scrollToBottom();
-      },
-      onCitation: (cit: Citation) => {
-        setStreamedCitations((prev) => [...prev, cit]);
-      },
-      onError: (err: { error_type: string; message: string; retry_after?: number }) => {
-        setErrorInfo(err);
-        setStreaming(false);
-      },
-      onComplete: (completedMsg: ChatMessage) => {
-        setMessages((prev) => [...prev, completedMsg]);
-        setStreaming(false);
-        setStreamedText('');
-        setStreamedCitations([]);
-        scrollToBottom();
-      },
-    });
+    isStreamingRef.current = true;
+    try {
+      await api.streamMessage(convId as string, text, {
+        onToken: (tok: string) => {
+          setStreamedText((prev) => prev + tok);
+          scrollToBottom();
+        },
+        onCitation: (cit: Citation) => {
+          setStreamedCitations((prev) => [...prev, cit]);
+        },
+        onError: (err: { error_type: string; message: string; retry_after?: number }) => {
+          isStreamingRef.current = false;
+          setErrorInfo(err);
+          setStreaming(false);
+        },
+        onComplete: (completedMsg: ChatMessage) => {
+          isStreamingRef.current = false;
+          setMessages((prev) => [...prev, completedMsg]);
+          setStreaming(false);
+          setStreamedText('');
+          setStreamedCitations([]);
+          scrollToBottom();
+        },
+      });
+    } finally {
+      isStreamingRef.current = false;
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -171,7 +290,7 @@ export function ChatPage() {
 
   const isIndexing = repository.latest_job_status === 'INDEXING';
   const showNewerVersionBanner =
-    !newerVersionDismissed && (scenarios.chat === 'newer_version' || repository.latest_job_status === 'FAILED');
+    !newerVersionDismissed && repository.latest_job_status === 'FAILED';
 
   return (
     <div className="flex flex-col h-full bg-[var(--color-page)]">
@@ -248,7 +367,7 @@ export function ChatPage() {
                   <div className="min-w-0 flex-1">
                     <div className="font-medium truncate">{conv.title}</div>
                     <div className="text-[10px] text-[var(--color-muted)] font-mono mt-0.5">
-                      {formatRelativeTime(conv.updated_at)} • {conv.pinned_sha}
+                      {formatRelativeTime(conv.updated_at)}
                     </div>
                   </div>
                 </button>
@@ -276,13 +395,13 @@ export function ChatPage() {
                     Ask anything about {repository.name}
                   </h2>
                   <p className="text-xs text-[var(--color-text-secondary)] mt-1 max-w-md mx-auto">
-                    Every answer is synthesized against Tree-sitter AST nodes and cited to verifiable line ranges in commit <span className="font-mono text-[var(--color-text)]">{repository.active_version_short_sha || '3a8f1c2'}</span>.
+                    Ask questions to explore the codebase, understand component flows, and verify implementation details with exact citations.
                   </p>
                 </div>
 
                 {/* Suggested Questions Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-2">
-                  {mockSuggestedQuestions.map((sq, i) => (
+                  {buildRepoSuggestions(repository.name, repoFiles).map((sq, i) => (
                     <button
                       key={i}
                       onClick={() => handleSendMessage(sq.question)}
@@ -291,9 +410,11 @@ export function ChatPage() {
                       <div className="font-medium text-[var(--color-text)] group-hover:text-[var(--color-accent)] transition-colors">
                         {sq.question}
                       </div>
-                      <div className="text-[11px] font-mono text-[var(--color-muted)] truncate">
-                        {sq.file_hint}
-                      </div>
+                      {sq.file_hint && (
+                        <div className="text-[11px] font-mono text-[var(--color-muted)] truncate">
+                          {sq.file_hint}
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -438,11 +559,8 @@ export function ChatPage() {
                 placeholder="Ask about this repository's functions, architecture, or flow... (Enter to send, Shift+Enter for newline)"
                 className="min-h-[72px] max-h-36 border-0 bg-transparent resize-none p-3 text-xs sm:text-sm focus-visible:ring-0"
               />
-              <div className="flex items-center justify-between p-2 pt-0 text-[11px] text-[var(--color-muted)]">
-                <span className="font-mono hidden sm:inline">
-                  Pinned commit: {repository.active_version_short_sha || '3a8f1c2'}
-                </span>
-                <div className="flex items-center gap-2 ml-auto">
+              <div className="flex items-center justify-end p-2 pt-0 text-[11px] text-[var(--color-muted)]">
+                <div className="flex items-center gap-2">
                   {streaming ? (
                     <Button
                       size="sm"

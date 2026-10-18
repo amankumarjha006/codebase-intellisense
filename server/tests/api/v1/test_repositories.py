@@ -1082,3 +1082,36 @@ async def test_get_repository_file_content_unauthorized(async_client, mock_auth,
     response = await async_client.get(f"{settings.API_V1_STR}/repositories/{repo_id}/files/{file_id}")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "REPOSITORY_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_delete_repository_success(async_client, mock_auth, mock_db, mocker):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    repo_id = str(uuid4())
+
+    from app.models.repository import Repository
+    repo = Repository(id=UUID(repo_id), name="test-repo", clone_url="https://github.com/test/test", is_private=False)
+
+    mock_auth_dep = mocker.patch("app.api.deps.RepositoryRepository")
+    mock_auth_dep_instance = mock_auth_dep.return_value
+    mock_auth_dep_instance.get_for_user.return_value = repo
+
+    response = await async_client.delete(f"{settings.API_V1_STR}/repositories/{repo_id}")
+    assert response.status_code == 204
+    assert repo.is_archived is True
+    mock_db.commit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_delete_repository_not_found(async_client, mock_auth, mock_db, mocker):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    repo_id = str(uuid4())
+
+    mock_auth_dep = mocker.patch("app.api.deps.RepositoryRepository")
+    mock_auth_dep_instance = mock_auth_dep.return_value
+    mock_auth_dep_instance.get_for_user.return_value = None
+
+    response = await async_client.delete(f"{settings.API_V1_STR}/repositories/{repo_id}")
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "REPOSITORY_NOT_FOUND"
+

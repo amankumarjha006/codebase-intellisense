@@ -20,6 +20,7 @@ export interface UseRepositoryPollingResult {
   error: ApiError | Error | null;
   refetch: () => Promise<void>;
   triggerIndex: (repositoryId: string, branch?: string) => Promise<void>;
+  deleteRepository: (repositoryId: string) => Promise<void>;
 }
 
 export function useRepositoryPolling({
@@ -269,6 +270,16 @@ export function useRepositoryPolling({
     [fetchRepositories, scheduleNextPoll]
   );
 
+  // Delete a repository and update local state
+  const deleteRepository = React.useCallback(
+    async (repositoryId: string) => {
+      await realApi.deleteRepository(repositoryId);
+      setRepositories((prev) => prev.filter((r) => r.id !== repositoryId));
+      setTotal((prev) => Math.max(0, prev - 1));
+    },
+    []
+  );
+
   return {
     repositories,
     total,
@@ -280,5 +291,6 @@ export function useRepositoryPolling({
     error,
     refetch,
     triggerIndex,
+    deleteRepository,
   };
 }

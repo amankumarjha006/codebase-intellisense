@@ -12,11 +12,12 @@ import {
   WifiOff,
   Copy,
   Check,
-  ChevronLeft,
-  ChevronRight,
   Terminal,
+  Trash2,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
-import { ApiError } from '../lib/api';
+import { ApiError, RepositoryListItemOut } from '../lib/api';
 import { formatRelativeTime } from '../lib/utils';
 import { RepositoryStatusCell } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -29,21 +30,29 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../components/ui/dialog';
 import { useRepositoryPolling } from '../lib/useRepositoryPolling';
 
 export function DashboardPage() {
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
-  const [page, setPage] = React.useState(1);
   const [connectOpen, setConnectOpen] = React.useState(false);
   const [copiedRequestId, setCopiedRequestId] = React.useState(false);
+  const [repoToDelete, setRepoToDelete] = React.useState<RepositoryListItemOut | null>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
   // Debounce search input by 300ms
   React.useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchInput.trim());
-      setPage(1);
     }, 300);
     return () => clearTimeout(handler);
   }, [searchInput]);
@@ -51,15 +60,15 @@ export function DashboardPage() {
   const {
     repositories,
     total,
-    limit,
     loading,
     isPolling,
     error,
     refetch,
     triggerIndex,
+    deleteRepository,
   } = useRepositoryPolling({
-    page,
-    limit: 20,
+    page: 1,
+    limit: 100,
     search: debouncedSearch,
     onSessionExpired: () => navigate('/status/session-expired', { replace: true }),
   });
@@ -78,10 +87,6 @@ export function DashboardPage() {
   const alertCount = repositories.filter(
     (r) => r.latest_job_status === 'FAILED'
   ).length;
-
-  const totalPages = Math.max(1, Math.ceil(total / limit));
-  const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
-  const endItem = Math.min(page * limit, total);
 
   const handleCopyRequestId = (reqId: string) => {
     navigator.clipboard.writeText(reqId);
@@ -312,10 +317,10 @@ export function DashboardPage() {
       {!loading && !error && repositories.length > 0 && (
         <div className="space-y-4">
           <div className="rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[calc(100vh-280px)] overflow-y-auto">
               <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-[var(--color-border)] bg-[var(--color-raised)]/40 text-[var(--color-muted)] font-medium">
+                <thead className="sticky top-0 bg-[var(--color-surface)] z-10 border-b border-[var(--color-border)] shadow-xs">
+                  <tr className="bg-[var(--color-raised)] text-[var(--color-muted)] font-medium">
                     <th className="py-3 px-4">REPOSITORY</th>
                     <th className="py-3 px-4">BRANCH & COMMIT</th>
                     <th className="py-3 px-4">VERIFICATION STATUS</th>
@@ -401,25 +406,25 @@ export function DashboardPage() {
 
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon-sm">
+                              <Button variant="ghost" size="icon-sm" title="Repository actions">
                                 <MoreVertical size={14} />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => navigate(`/repositories/${repo.id}`)}>
-                                Overview
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem
+                                onClick={() => triggerIndex(repo.id)}
+                                className="cursor-pointer gap-2 text-xs"
+                              >
+                                <RefreshCw size={13} className="text-[var(--color-accent)]" />
+                                <span>Re-index repo</span>
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate(`/repositories/${repo.id}/chat`)}>
-                                Start Chat
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate(`/repositories/${repo.id}/architecture`)}>
-                                Architecture
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate(`/repositories/${repo.id}/search`)}>
-                                Search Code
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate(`/repositories/${repo.id}/files`)}>
-                                Browse Files
+                              <DropdownMenuItem
+                                onClick={() => setRepoToDelete(repo)}
+                                destructive
+                                className="cursor-pointer gap-2 text-xs text-[var(--color-error)] focus:text-[var(--color-error)]"
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -432,39 +437,6 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {/* Pagination Footer */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[var(--color-muted)]">
-            <div>
-              Showing <span className="font-semibold text-[var(--color-text)]">{startItem}–{endItem}</span> of{' '}
-              <span className="font-semibold text-[var(--color-text)]">{total}</span> repositories
-            </div>
-
-            <div className="flex items-center gap-1">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-              >
-                <ChevronLeft size={13} />
-                <span>Previous</span>
-              </Button>
-
-              <span className="px-2 py-1 font-mono text-[11px] text-[var(--color-text)]">
-                {page} / {totalPages}
-              </span>
-
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-              >
-                <span>Next</span>
-                <ChevronRight size={13} />
-              </Button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -474,6 +446,65 @@ export function DashboardPage() {
         onOpenChange={setConnectOpen}
         onConnected={refetch}
       />
+
+      {/* Delete Repository Confirmation Dialog */}
+      <Dialog open={!!repoToDelete} onOpenChange={(open) => !open && !isDeleting && setRepoToDelete(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[var(--color-error)]">
+              <AlertTriangle size={18} />
+              <span>Delete repository?</span>
+            </DialogTitle>
+            <DialogDescription className="pt-1.5 text-xs text-[var(--color-text-secondary)] leading-relaxed">
+              Are you sure you want to delete{' '}
+              <span className="font-semibold text-[var(--color-text)] font-mono">
+                {repoToDelete?.owner}/{repoToDelete?.name}
+              </span>
+              ? This will remove the repository from your dashboard and hide its indexed data.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setRepoToDelete(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={isDeleting}
+              onClick={async () => {
+                if (!repoToDelete) return;
+                try {
+                  setIsDeleting(true);
+                  await deleteRepository(repoToDelete.id);
+                  setRepoToDelete(null);
+                } catch {
+                  // Handled by polling error or boundary
+                } finally {
+                  setIsDeleting(false);
+                }
+              }}
+              className="gap-1.5"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 size={13} />
+                  <span>Delete repository</span>
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

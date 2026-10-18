@@ -33,7 +33,7 @@ export function Badge({ className, variant, ...props }: BadgeProps) {
 }
 
 export interface StatusChipProps {
-  status: JobStatus | 'NOT_INDEXED' | 'QUEUED' | null;
+  status: JobStatus | 'NOT_INDEXED' | 'QUEUED' | 'SUCCESS' | 'INDEXED' | string | null;
   className?: string;
   size?: 'sm' | 'md';
 }
@@ -44,6 +44,8 @@ export function StatusChip({ status, className, size = 'sm' }: StatusChipProps) 
 
   switch (status) {
     case 'READY':
+    case 'SUCCESS':
+    case 'INDEXED':
       return (
         <span
           className={cn(

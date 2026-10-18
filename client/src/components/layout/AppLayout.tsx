@@ -20,11 +20,9 @@ import {
   CommandShortcut,
 } from '../ui/command';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
-import { ScenarioSwitcher } from '../ui/ScenarioSwitcher';
-import { mockRepositories } from '../../mock/data';
 import { Button } from '../ui/button';
 import { Drawer, DrawerContent } from '../ui/drawer';
-
+import { realApi, RepositoryListItemOut } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 
 export function AppLayout() {
@@ -37,12 +35,17 @@ export function AppLayout() {
   const [connectOpen, setConnectOpen] = React.useState(false);
   const [commandOpen, setCommandOpen] = React.useState(false);
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
+  const [repositories, setRepositories] = React.useState<RepositoryListItemOut[]>([]);
 
   React.useEffect(() => {
     if (!loading && !user) {
       navigate('/status/session-expired', { replace: true });
     }
   }, [loading, user, navigate]);
+
+  React.useEffect(() => {
+    realApi.listRepositories(1, 30).then((res) => setRepositories(res.items || [])).catch(() => {});
+  }, [location.pathname]);
 
   // Global keyboard shortcuts
   React.useEffect(() => {
@@ -76,7 +79,7 @@ export function AppLayout() {
   const repoMatch = location.pathname.match(/\/repositories\/([^/]+)/);
   const currentRepoId = repoMatch ? repoMatch[1] : null;
   const currentRepo = currentRepoId
-    ? mockRepositories.find((r) => r.id === currentRepoId)
+    ? repositories.find((r) => r.id === currentRepoId) || null
     : null;
 
   if (loading) {
@@ -202,21 +205,23 @@ export function AppLayout() {
           <CommandInput placeholder="Type a command or search repositories..." />
           <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
-            <CommandGroup heading="Repositories">
-              {mockRepositories.map((repo) => (
-                <CommandItem
-                  key={repo.id}
-                  onSelect={() => {
-                    navigate(`/repositories/${repo.id}`);
-                    setCommandOpen(false);
-                  }}
-                >
-                  <GitBranch className="mr-2 h-4 w-4 text-[var(--color-accent)]" />
-                  <span>{repo.owner}/{repo.name}</span>
-                  <CommandShortcut>{repo.language}</CommandShortcut>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {repositories.length > 0 && (
+              <CommandGroup heading="Repositories">
+                {repositories.map((repo) => (
+                  <CommandItem
+                    key={repo.id}
+                    onSelect={() => {
+                      navigate(`/repositories/${repo.id}`);
+                      setCommandOpen(false);
+                    }}
+                  >
+                    <GitBranch className="mr-2 h-4 w-4 text-[var(--color-accent)]" />
+                    <span>{repo.owner}/{repo.name}</span>
+                    <CommandShortcut>{repo.active_version_short_sha || 'main'}</CommandShortcut>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
             <CommandGroup heading="Navigation">
               <CommandItem
                 onSelect={() => {
@@ -234,11 +239,11 @@ export function AppLayout() {
               >
                 <span>Connect New Repository</span>
               </CommandItem>
-              {currentRepo && (
+              {currentRepoId && (
                 <>
                   <CommandItem
                     onSelect={() => {
-                      navigate(`/repositories/${currentRepo.id}/chat`);
+                      navigate(`/repositories/${currentRepoId}/chat`);
                       setCommandOpen(false);
                     }}
                   >
@@ -246,7 +251,7 @@ export function AppLayout() {
                   </CommandItem>
                   <CommandItem
                     onSelect={() => {
-                      navigate(`/repositories/${currentRepo.id}/architecture`);
+                      navigate(`/repositories/${currentRepoId}/architecture`);
                       setCommandOpen(false);
                     }}
                   >
@@ -254,7 +259,7 @@ export function AppLayout() {
                   </CommandItem>
                   <CommandItem
                     onSelect={() => {
-                      navigate(`/repositories/${currentRepo.id}/search`);
+                      navigate(`/repositories/${currentRepoId}/search`);
                       setCommandOpen(false);
                     }}
                   >
@@ -262,7 +267,7 @@ export function AppLayout() {
                   </CommandItem>
                   <CommandItem
                     onSelect={() => {
-                      navigate(`/repositories/${currentRepo.id}/files`);
+                      navigate(`/repositories/${currentRepoId}/files`);
                       setCommandOpen(false);
                     }}
                   >
@@ -321,9 +326,6 @@ export function AppLayout() {
             </div>
           </DialogContent>
         </Dialog>
-
-        {/* Prototype Scenario Switcher Pill */}
-        <ScenarioSwitcher />
       </div>
     </MotionConfig>
   );

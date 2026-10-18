@@ -116,7 +116,8 @@ def get_repositories(
     search: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _: None = Depends(general_rate_limiter),):
+    _: None = Depends(general_rate_limiter),
+):
     """Retrieves a paginated list of repositories the authenticated user has access to."""
     repo_repo = RepositoryRepository(db)
     rows, total = repo_repo.list_for_user(
@@ -274,6 +275,18 @@ def get_repository(
         is_private=repository.is_private,
         active_version=active_version
     )
+
+@router.delete("/{repository_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Archive Repository")
+def delete_repository(
+    repository_id: UUID,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+    _: None = Depends(general_rate_limiter),
+):
+    """Archives a repository so it is hidden from the user interface without deleting its data."""
+    repository.is_archived = True
+    db.commit()
+    return None
 
 @router.get("/{repository_id}/versions", response_model=list[RepositoryVersionSummary], summary="List Repository Versions")
 def get_repository_versions(

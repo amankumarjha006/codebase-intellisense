@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { GithubIcon } from '../ui/GithubIcon';
 import { cn } from '../../lib/utils';
-import { mockRepositories } from '../../mock/data';
+import { realApi, RepositoryListItemOut } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { deriveUserDisplay } from '../../lib/user';
 import {
@@ -46,6 +46,15 @@ export function Sidebar({
   const location = useLocation();
   const { user, logout } = useAuth();
   const userDisplay = deriveUserDisplay(user);
+  const [repositories, setRepositories] = React.useState<RepositoryListItemOut[]>([]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    realApi.listRepositories(1, 100).then((res) => {
+      if (isMounted) setRepositories(res.items || []);
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [location.pathname]);
 
   return (
     <aside
@@ -114,53 +123,59 @@ export function Sidebar({
           </button>
         </div>
 
-        {/* Recent Repositories */}
-        <div>
-          {!collapsed && (
-            <div className="px-2.5 mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
-              <span>Repositories</span>
-              <span className="font-mono text-[9px]">{mockRepositories.length}</span>
-            </div>
-          )}
+        {/* Repositories */}
+        {repositories.length > 0 && (
+          <div>
+            {!collapsed && (
+              <div className="px-2.5 mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+                <span>Repositories</span>
+                <span className="font-mono text-[9px]">{repositories.length}</span>
+              </div>
+            )}
 
-          <div className="space-y-0.5">
-            {mockRepositories.map((repo) => {
-              const isSelected = location.pathname.startsWith(`/repositories/${repo.id}`);
-              return (
-                <NavLink
-                  key={repo.id}
-                  to={`/repositories/${repo.id}`}
-                  className={cn(
-                    'group flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
-                    isSelected
-                      ? 'bg-[var(--color-raised)] text-[var(--color-text)] border border-[var(--color-border-strong)]'
-                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
-                  )}
-                  title={collapsed ? `${repo.owner}/${repo.name}` : undefined}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <GitBranch size={14} className="shrink-0 text-[var(--color-muted)] group-hover:text-[var(--color-text)]" />
-                    {!collapsed && <span className="truncate">{repo.name}</span>}
-                  </div>
+            <div className="space-y-0.5">
+              {repositories.map((repo) => {
+                const isSelected = location.pathname.startsWith(`/repositories/${repo.id}`);
+                const isReady = repo.latest_job_status === 'READY' || repo.latest_job_status === 'SUCCESS' || repo.latest_job_status === 'INDEXED' || (repo.active_version_short_sha && !repo.latest_job_status);
+                const isIndexing = repo.latest_job_status === 'INDEXING' || repo.latest_job_status === 'FETCHING' || repo.latest_job_status === 'QUEUED';
+                const isFailed = repo.latest_job_status === 'FAILED';
 
-                  {!collapsed && (
-                    <div className="shrink-0">
-                      {repo.latest_job_status === 'READY' && (
-                        <CheckCircle2 size={12} className="text-[var(--color-accent)]" />
-                      )}
-                      {repo.latest_job_status === 'INDEXING' && (
-                        <Loader2 size={12} className="animate-spin text-[var(--color-warning)]" />
-                      )}
-                      {repo.latest_job_status === 'FAILED' && (
-                        <AlertCircle size={12} className="text-[var(--color-error)]" />
-                      )}
+                return (
+                  <NavLink
+                    key={repo.id}
+                    to={`/repositories/${repo.id}`}
+                    className={cn(
+                      'group flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
+                      isSelected
+                        ? 'bg-[var(--color-raised)] text-[var(--color-text)] border border-[var(--color-border-strong)]'
+                        : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
+                    )}
+                    title={collapsed ? `${repo.owner}/${repo.name}` : undefined}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <GitBranch size={14} className="shrink-0 text-[var(--color-muted)] group-hover:text-[var(--color-text)]" />
+                      {!collapsed && <span className="truncate">{repo.name}</span>}
                     </div>
-                  )}
-                </NavLink>
-              );
-            })}
+
+                    {!collapsed && (
+                      <div className="shrink-0">
+                        {isReady && (
+                          <CheckCircle2 size={12} className="text-[var(--color-accent)]" />
+                        )}
+                        {isIndexing && (
+                          <Loader2 size={12} className="animate-spin text-[var(--color-warning)]" />
+                        )}
+                        {isFailed && (
+                          <AlertCircle size={12} className="text-[var(--color-error)]" />
+                        )}
+                      </div>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Resources & Docs */}
         <div>

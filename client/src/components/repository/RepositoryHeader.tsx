@@ -90,7 +90,13 @@ export function RepositoryHeader({ repository, onRefresh }: RepositoryHeaderProp
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--color-text)] flex items-center gap-2">
               <span>{repository.owner}/{repository.name}</span>
             </h1>
-            <StatusChip status={repository.latest_job_status} size="md" />
+            <StatusChip
+              status={
+                repository.latest_job_status ||
+                (repository.indexed_commit || repository.active_version_short_sha ? 'READY' : 'NOT_INDEXED')
+              }
+              size="md"
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-muted)] font-mono">

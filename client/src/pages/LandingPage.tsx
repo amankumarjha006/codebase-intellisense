@@ -20,7 +20,6 @@ import { SpotlightCard } from '../components/ui/SpotlightCard';
 import { Dither } from '../components/ui/Dither';
 import { Button } from '../components/ui/button';
 import { Drawer, DrawerContent } from '../components/ui/drawer';
-import { ScenarioSwitcher } from '../components/ui/ScenarioSwitcher';
 import { API_URL } from '../lib/api';
 import { LANDING_ERROR_COPY } from '../lib/errors';
 import { useAuth } from '../lib/AuthContext';
@@ -98,14 +97,6 @@ export function LandingPage() {
           </nav>
 
           <div className="flex items-center gap-2.5">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => navigate('/dashboard')}
-              className="hidden sm:inline-flex"
-            >
-              Live Demo
-            </Button>
             <Button size="sm" variant="primary" onClick={handleSignIn}>
               <GithubIcon size={14} />
               <span>Sign in with GitHub</span>
@@ -205,14 +196,6 @@ export function LandingPage() {
               <GithubIcon size={16} />
               <span>Connect with GitHub</span>
               <ArrowRight size={15} />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => navigate('/repositories/repo_codebase_intellisense')}
-              className="w-full sm:w-auto"
-            >
-              Explore Sample Repo
             </Button>
           </div>
         </div>
@@ -499,8 +482,6 @@ export function LandingPage() {
         </div>
       </footer>
 
-      {/* Scenario switcher for quick prototype toggling */}
-      <ScenarioSwitcher />
     </div>
   );
 }
