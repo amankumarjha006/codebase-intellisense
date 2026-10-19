@@ -4,19 +4,23 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
   Layers,
-  Sparkles,
   FileCode,
   CheckCircle2,
   ArrowRight,
   StopCircle,
+  Cpu,
+  Workflow,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { Repository, ArchitectureDocument, ArchitectureSection, Citation } from '../lib/types';
 import { shortSha, formatRelativeTime, sleep } from '../lib/utils';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
+import { RepositoryNavDock } from '../components/repository/RepositoryNavDock';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
 import { SourcePanel } from '../components/chat/SourcePanel';
+import { AnimatedPage } from '../components/ui/AnimatedPage';
+import { LiveRegion } from '../components/ui/A11y';
 
 export function ArchitecturePage() {
   const { id: repoId } = useParams<{ id: string }>();
@@ -27,6 +31,7 @@ export function ArchitecturePage() {
   const [generating, setGenerating] = React.useState(false);
   const [activeSectionId, setActiveSectionId] = React.useState<string | null>(null);
   const [selectedCitation, setSelectedCitation] = React.useState<Citation | null>(null);
+  const [a11yStatus, setA11yStatus] = React.useState('');
 
   const loadDoc = React.useCallback(async () => {
     if (!repoId) return;
@@ -50,29 +55,43 @@ export function ArchitecturePage() {
 
   const handleStartGeneration = async () => {
     setGenerating(true);
+    setA11yStatus('Synthesizing system architecture from Tree-sitter AST nodes...');
     await sleep(1200);
     const archDoc = await api.getArchitectureDocument(repoId || '');
     setDoc(archDoc);
     setGenerating(false);
+    setA11yStatus('Architecture synthesis complete.');
     if (archDoc.sections.length > 0 && archDoc.sections[0]) {
       setActiveSectionId(archDoc.sections[0].id);
     }
   };
 
   if (!repository || loading) {
-    return <div className="p-8 text-center text-xs text-[var(--color-muted)]">Loading repository...</div>;
+    return (
+      <div
+        role="status"
+        aria-label="Loading repository"
+        className="p-8 text-center text-xs text-[var(--color-muted)]"
+      >
+        Loading repository architecture...
+      </div>
+    );
   }
 
   const isEmpty = !doc || doc.sections.length === 0;
 
   return (
-    <div className="flex flex-col h-full bg-[var(--color-page)]">
+    <AnimatedPage className="flex flex-col h-full bg-[var(--color-page)]">
+      <LiveRegion message={a11yStatus} />
       <RepositoryHeader repository={repository} />
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left: Table of Contents / Outline Sidebar */}
         {!isEmpty && (
-          <div className="w-64 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col shrink-0 overflow-y-auto p-3 no-scrollbar hidden md:block">
+          <nav
+            aria-label="Document outline"
+            className="w-64 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col shrink-0 overflow-y-auto p-3 no-scrollbar hidden md:block"
+          >
             <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
               Document Outline
             </div>
@@ -88,6 +107,7 @@ export function ArchitecturePage() {
                   key={sec.id}
                   href={`#${sec.id}`}
                   onClick={() => setActiveSectionId(sec.id)}
+                  aria-current={activeSectionId === sec.id ? 'true' : undefined}
                   className={`block px-2.5 py-1.5 rounded text-xs transition ${
                     activeSectionId === sec.id
                       ? 'bg-[var(--color-raised)] text-[var(--color-text)] font-semibold border-l-2 border-[var(--color-accent)]'
@@ -99,15 +119,22 @@ export function ArchitecturePage() {
                 </a>
               ))}
             </div>
-          </div>
+          </nav>
         )}
 
         {/* Center: Main Architecture Document */}
-        <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-10">
+        <main
+          id="main-content"
+          aria-label="Architecture document content"
+          className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-10"
+        >
           {/* Empty State */}
           {isEmpty && !generating && (
             <div className="py-20 text-center space-y-5 max-w-lg mx-auto">
-              <div className="h-14 w-14 rounded-2xl bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)] mx-auto">
+              <div
+                className="h-14 w-14 rounded-2xl bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)] mx-auto"
+                aria-hidden="true"
+              >
                 <Layers size={26} />
               </div>
               <div className="space-y-1.5">
@@ -118,8 +145,8 @@ export function ArchitecturePage() {
                   Analyze {repository.name}'s symbol graphs, import hierarchies, and data pipelines to produce a comprehensive topological architecture document.
                 </p>
               </div>
-              <Button onClick={handleStartGeneration} className="gap-2">
-                <Sparkles size={15} />
+              <Button onClick={handleStartGeneration} className="gap-2" aria-label="Synthesize Architecture Document">
+                <Workflow size={15} aria-hidden="true" />
                 <span>Synthesize Architecture Document</span>
               </Button>
             </div>
@@ -127,10 +154,14 @@ export function ArchitecturePage() {
 
           {/* Generating State */}
           {generating && (
-            <div className="p-8 rounded-[var(--radius-panel)] border border-[rgba(251,191,36,0.3)] bg-[var(--color-warning-tint)] space-y-6">
+            <div
+              role="status"
+              aria-live="polite"
+              className="p-8 rounded-[var(--radius-panel)] border border-[rgba(251,191,36,0.3)] bg-[var(--color-warning-tint)] space-y-6"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-warning)]">
-                  <Sparkles size={16} className="animate-spin" />
+                  <Cpu size={16} className="animate-pulse text-[var(--color-warning)]" aria-hidden="true" />
                   <span>Synthesizing system architecture from Tree-sitter AST nodes...</span>
                 </div>
                 <Button
@@ -138,8 +169,9 @@ export function ArchitecturePage() {
                   variant="secondary"
                   onClick={() => setGenerating(false)}
                   className="h-7 text-xs"
+                  aria-label="Stop synthesis"
                 >
-                  <StopCircle size={13} />
+                  <StopCircle size={13} aria-hidden="true" />
                   <span>Stop</span>
                 </Button>
               </div>
@@ -154,28 +186,28 @@ export function ArchitecturePage() {
 
           {/* Populated Architecture Document */}
           {!isEmpty && (
-            <div className="space-y-10">
+            <article className="space-y-10">
               {/* Document Header */}
-              <div className="space-y-2 border-b border-[var(--color-border)] pb-6">
+              <header className="space-y-2 border-b border-[var(--color-border)] pb-6">
                 <div className="flex items-center gap-2 text-xs font-mono text-[var(--color-muted)]">
-                  <span className="text-[var(--color-accent)]">Verified Architecture Synthesis</span>
-                  <span>•</span>
+                  <span className="text-[var(--color-accent)] font-semibold">Verified Architecture Synthesis</span>
+                  <span aria-hidden="true">•</span>
                   <span>Commit {shortSha(doc.sha)}</span>
-                  <span>•</span>
+                  <span aria-hidden="true">•</span>
                   <span>{formatRelativeTime(doc.generated_at)}</span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--color-text)]">
                   System Architecture & Execution Pipeline
                 </h1>
-                <p className="text-xs sm:text-sm text-[var(--color-text-secondary)]">
+                <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] leading-relaxed">
                   Derived from concrete syntax trees, symbol relationships, and citation-anchored source modules.
                 </p>
-              </div>
+              </header>
 
               {/* Topological Pipeline Diagram */}
               {doc.pipeline_diagram && (
-                <div id="pipeline-diagram" className="space-y-3">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+                <section id="pipeline-diagram" aria-labelledby="pipeline-heading" className="space-y-3">
+                  <h2 id="pipeline-heading" className="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
                     Topological Data Flow
                   </h2>
                   <div className="p-4 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] overflow-x-auto">
@@ -191,13 +223,13 @@ export function ArchitecturePage() {
                             </div>
                           </div>
                           {index < (doc.pipeline_diagram?.length ?? 0) - 1 && (
-                            <ArrowRight size={14} className="text-[var(--color-accent)] shrink-0" />
+                            <ArrowRight size={14} className="text-[var(--color-accent)] shrink-0" aria-hidden="true" />
                           )}
                         </React.Fragment>
                       ))}
                     </div>
                   </div>
-                </div>
+                </section>
               )}
 
               {/* Verified Sections */}
@@ -206,17 +238,18 @@ export function ArchitecturePage() {
                   <section
                     key={sec.id}
                     id={sec.id}
+                    aria-labelledby={`sec-heading-${sec.id}`}
                     className="p-6 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] space-y-4"
                   >
                     <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-                      <h3 className="text-base font-semibold text-[var(--color-text)] flex items-center gap-2">
+                      <h3 id={`sec-heading-${sec.id}`} className="text-base font-semibold text-[var(--color-text)] flex items-center gap-2">
                         <span className="font-mono text-xs text-[var(--color-accent)]">
                           Section {sec.number}
                         </span>
                         <span>{sec.title}</span>
                       </h3>
                       <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] bg-[var(--color-accent-tint)] text-[var(--color-accent)] font-medium">
-                        <CheckCircle2 size={12} />
+                        <CheckCircle2 size={12} aria-hidden="true" />
                         <span>AST Verified</span>
                       </div>
                     </div>
@@ -227,7 +260,10 @@ export function ArchitecturePage() {
 
                     {/* Citations */}
                     {sec.citations && sec.citations.length > 0 && (
-                      <div className="pt-3 border-t border-[var(--color-border)]/60 flex flex-wrap items-center gap-2">
+                      <div
+                        aria-label="Evidence citations"
+                        className="pt-3 border-t border-[var(--color-border)]/60 flex flex-wrap items-center gap-2"
+                      >
                         <span className="text-[11px] text-[var(--color-muted)] font-medium">
                           Evidence citations:
                         </span>
@@ -235,9 +271,10 @@ export function ArchitecturePage() {
                           <button
                             key={idx}
                             onClick={() => setSelectedCitation(c)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)] text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 transition"
+                            aria-label={`View citation in ${c.path.split('/').pop()} lines ${c.start_line} to ${c.end_line}`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)] text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 transition cursor-pointer"
                           >
-                            <FileCode size={12} />
+                            <FileCode size={12} aria-hidden="true" />
                             <span>
                               {c.path.split('/').pop()}:{c.start_line}–{c.end_line}
                             </span>
@@ -248,9 +285,9 @@ export function ArchitecturePage() {
                   </section>
                 ))}
               </div>
-            </div>
+            </article>
           )}
-        </div>
+        </main>
 
         {/* Source panel on citation click */}
         {selectedCitation && (
@@ -260,7 +297,15 @@ export function ArchitecturePage() {
             onClose={() => setSelectedCitation(null)}
           />
         )}
+
+        {/* Floating Vertical Navigation Dock (Desktop lg+) */}
+        <aside
+          aria-label="Repository navigation dock"
+          className="hidden lg:block p-4 shrink-0 z-10"
+        >
+          <RepositoryNavDock repoId={repository.id} orientation="vertical" />
+        </aside>
       </div>
-    </div>
+    </AnimatedPage>
   );
 }

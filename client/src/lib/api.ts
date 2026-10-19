@@ -803,9 +803,12 @@ export const realApi = {
   },
 };
 
-// Mock layer detection: enabled only in dev when VITE_USE_MOCKS=true
+// Mock layer detection: enabled only in dev when VITE_USE_MOCKS=true and not in test runner
 export const isMockEnabled = Boolean(
-  import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true'
+  import.meta.env.DEV &&
+  import.meta.env.MODE !== 'test' &&
+  (typeof process === 'undefined' || !process?.env?.VITEST) &&
+  import.meta.env.VITE_USE_MOCKS === 'true'
 );
 
 type MockApiType = typeof import('../mock/mockApi').mockApi;

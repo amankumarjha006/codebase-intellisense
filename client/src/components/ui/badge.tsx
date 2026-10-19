@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { CheckCircle2, AlertCircle, Loader2, CircleSlash, Sparkles, Clock, RotateCcw } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, CircleSlash, Cpu, Clock, RotateCcw } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { JobStatus } from '../../lib/types';
 import { deriveRowStatus, getFailureMessage } from '../../lib/status';
@@ -83,7 +83,7 @@ export function StatusChip({ status, className, size = 'sm' }: StatusChipProps) 
             className
           )}
         >
-          <Sparkles size={iconSize} className="shrink-0 animate-pulse text-[var(--color-warning)]" />
+          <Cpu size={iconSize} className="shrink-0 animate-pulse text-[var(--color-warning)]" />
           <span className="capitalize">{status.toLowerCase()}</span>
         </span>
       );

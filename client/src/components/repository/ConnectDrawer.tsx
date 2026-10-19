@@ -243,14 +243,18 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
           {step === 'input' && (
             <form onSubmit={handleConnectSubmit} className="space-y-5 px-4 mt-2">
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text)] mb-1">
+                <label
+                  htmlFor="repo-identifier-input"
+                  className="block text-xs font-semibold text-[var(--color-text)] mb-1"
+                >
                   Repository identifier
                 </label>
-                <div className="text-[11px] text-[var(--color-muted)] mb-2">
+                <div id="repo-identifier-desc" className="text-[11px] text-[var(--color-muted)] mb-2">
                   Enter the repository slug or full URL
                 </div>
                 <div className="relative">
                   <Input
+                    id="repo-identifier-input"
                     value={repoUrl}
                     onChange={(e) => {
                       setRepoUrl(e.target.value);
@@ -259,17 +263,24 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                     }}
                     placeholder="https://github.com/owner/repository"
                     error={!!errorMsg}
+                    aria-invalid={!!errorMsg}
+                    aria-describedby={errorMsg ? "repo-identifier-error" : "repo-identifier-desc"}
                     className="font-mono text-xs pl-8 bg-[var(--color-surface)]"
                     autoFocus
                   />
-                  <GithubIcon size={14} className="absolute left-2.5 top-2.5 text-[var(--color-muted)]" />
+                  <GithubIcon size={14} className="absolute left-2.5 top-2.5 text-[var(--color-muted)]" aria-hidden="true" />
                 </div>
 
                 {/* Error Banner */}
                 {errorMsg && (
-                  <div className="mt-3 p-3 rounded-[var(--radius-control)] border border-[var(--color-error-border)] bg-[var(--color-error-tint)] text-xs text-[var(--color-error)] space-y-2">
+                  <div
+                    id="repo-identifier-error"
+                    role="alert"
+                    aria-live="assertive"
+                    className="mt-3 p-3 rounded-[var(--radius-control)] border border-[var(--color-error-border)] bg-[var(--color-error-tint)] text-xs text-[var(--color-error)] space-y-2"
+                  >
                     <div className="flex items-start gap-2">
-                      <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                      <AlertCircle size={14} className="shrink-0 mt-0.5" aria-hidden="true" />
                       <div className="leading-relaxed">{errorMsg}</div>
                     </div>
 
@@ -366,10 +377,11 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--color-text)] mb-1.5">
+                <label htmlFor="target-branch-input" className="block text-xs font-semibold text-[var(--color-text)] mb-1.5">
                   Target Branch
                 </label>
                 <Input
+                  id="target-branch-input"
                   value={branch}
                   onChange={(e) => setBranch(e.target.value)}
                   className="font-mono text-xs bg-[var(--color-surface)]"
@@ -418,7 +430,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
 
           {/* Step 3: Indexing Progress (connect_indexing_progress.png - NO percentage, stage based) */}
           {step === 'indexing' && (
-            <div className="space-y-5 px-4 mt-4">
+            <div className="space-y-5 px-4 mt-4" role="status" aria-label="Indexing progress stages" aria-live="polite">
               <div className="space-y-4">
                 {STAGES.map((s, index) => {
                   const isCompleted = index < currentStageIndex;
@@ -501,14 +513,14 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
 
           {/* Step 4: Ready State (connect_ready_failed.png - Ready view) */}
           {step === 'ready' && connectedRepo && (
-            <div className="space-y-6 px-4 mt-6 text-center">
+            <div role="status" aria-label="Repository indexed and ready" className="space-y-6 px-4 mt-6 text-center">
               <div className="h-12 w-12 rounded-full bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] flex items-center justify-center text-[var(--color-accent)] mx-auto">
-                <CheckCircle2 size={24} />
+                <CheckCircle2 size={24} aria-hidden="true" />
               </div>
 
               <div className="space-y-1.5">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] text-xs font-medium text-[var(--color-accent)]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" aria-hidden="true" />
                   <span>Ready</span>
                 </div>
                 <h3 className="text-base font-semibold text-[var(--color-text)]">
@@ -526,9 +538,10 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                     onOpenChange(false);
                     navigate(`/repositories/${connectedRepo.id}`);
                   }}
+                  aria-label="Open indexed repository"
                 >
                   <span>Open repository</span>
-                  <ArrowRight size={14} />
+                  <ArrowRight size={14} aria-hidden="true" />
                 </Button>
               </div>
             </div>
@@ -536,9 +549,9 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
 
           {/* Step 5: Failed State (connect_ready_failed.png - Failed view) */}
           {step === 'failed' && (
-            <div className="space-y-5 px-4 mt-6 text-center">
+            <div role="alert" aria-live="assertive" className="space-y-5 px-4 mt-6 text-center">
               <div className="h-12 w-12 rounded-full bg-[var(--color-error-tint)] border border-[var(--color-error-border)] flex items-center justify-center text-[var(--color-error)] mx-auto">
-                <AlertCircle size={24} />
+                <AlertCircle size={24} aria-hidden="true" />
               </div>
 
               <div className="space-y-1.5">

@@ -6,6 +6,7 @@ interface AuthContextType {
   loading: boolean;
   error: ApiError | null;
   signIn: () => void;
+  devLogin: () => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<CurrentUser | null>;
 }
@@ -54,6 +55,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (err instanceof ApiError) {
         setError(err);
       }
+      // If in development mode and backend auth is unavailable or 401,
+      // fallback to the dev user so the developer is not locked out of testing the UI
+      if (import.meta.env.DEV) {
+        console.warn('Backend authentication unavailable; activating dev user session.');
+        const devUser: CurrentUser = {
+          id: 'mock-user-1',
+          email: 'alex.chen@devtools.co',
+          full_name: 'Alex Chen',
+          github: {
+            username: 'alexc-dev',
+            github_user_id: '123456',
+          },
+        };
+        setUser(devUser);
+        try {
+          localStorage.setItem('cb_user', JSON.stringify(devUser));
+        } catch {}
+        return devUser;
+      }
       setUser(null);
       try {
         localStorage.removeItem('cb_user');
@@ -64,14 +84,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-
   React.useEffect(() => {
     fetchUser();
   }, [fetchUser]);
 
-  const signIn = React.useCallback(() => {
-    window.location.href = `${API_URL}/auth/github`;
+  const devLogin = React.useCallback(() => {
+    const mockUser: CurrentUser = {
+      id: 'mock-user-1',
+      email: 'alex.chen@devtools.co',
+      full_name: 'Alex Chen',
+      github: {
+        username: 'alexc-dev',
+        github_user_id: '123456',
+      },
+    };
+    setUser(mockUser);
+    try {
+      localStorage.setItem('cb_user', JSON.stringify(mockUser));
+    } catch {}
+    window.location.href = '/dashboard';
   }, []);
+
+  const signIn = React.useCallback(() => {
+    if (isMockEnabled || import.meta.env.DEV) {
+      devLogin();
+      return;
+    }
+    window.location.href = `${API_URL}/auth/github`;
+  }, [devLogin]);
 
   const logout = React.useCallback(async () => {
     try {
@@ -93,10 +133,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       error,
       signIn,
+      devLogin,
       logout,
       refreshUser: fetchUser,
     }),
-    [user, loading, error, signIn, logout, fetchUser]
+    [user, loading, error, signIn, devLogin, logout, fetchUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

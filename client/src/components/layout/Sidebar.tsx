@@ -88,13 +88,15 @@ export function Sidebar({
           onClick={onToggleCollapse}
           className="p-1 rounded-[var(--radius-control)] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)] transition hidden md:flex items-center justify-center"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+          {collapsed ? <ChevronRight size={15} aria-hidden="true" /> : <ChevronLeft size={15} aria-hidden="true" />}
         </button>
       </div>
 
       {/* Main Navigation */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-5 no-scrollbar">
+      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-5 no-scrollbar" aria-label="Main navigation">
         {/* Primary Links */}
         <div className="space-y-0.5">
           <NavLink
@@ -109,8 +111,8 @@ export function Sidebar({
             }
             title={collapsed ? 'Dashboard' : undefined}
           >
-            <LayoutDashboard size={16} className="shrink-0" />
-            {!collapsed && <span>Dashboard</span>}
+            <LayoutDashboard size={16} className="shrink-0" aria-hidden="true" />
+            {!collapsed ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
           </NavLink>
 
           <button
@@ -118,14 +120,14 @@ export function Sidebar({
             className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors text-left"
             title={collapsed ? 'Connect repository' : undefined}
           >
-            <Plus size={16} className="shrink-0 text-[var(--color-accent)]" />
-            {!collapsed && <span>Connect repository</span>}
+            <Plus size={16} className="shrink-0 text-[var(--color-accent)]" aria-hidden="true" />
+            {!collapsed ? <span>Connect repository</span> : <span className="sr-only">Connect repository</span>}
           </button>
         </div>
 
         {/* Repositories */}
         {repositories.length > 0 && (
-          <div>
+          <div role="list" aria-label="Connected repositories">
             {!collapsed && (
               <div className="px-2.5 mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
                 <span>Repositories</span>
@@ -153,8 +155,8 @@ export function Sidebar({
                     title={collapsed ? `${repo.owner}/${repo.name}` : undefined}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <GitBranch size={14} className="shrink-0 text-[var(--color-muted)] group-hover:text-[var(--color-text)]" />
-                      {!collapsed && <span className="truncate">{repo.name}</span>}
+                      <GitBranch size={14} className="shrink-0 text-[var(--color-muted)] group-hover:text-[var(--color-text)]" aria-hidden="true" />
+                      {!collapsed ? <span className="truncate">{repo.name}</span> : <span className="sr-only">{repo.owner}/{repo.name}</span>}
                     </div>
 
                     {!collapsed && (
@@ -212,7 +214,7 @@ export function Sidebar({
             </button>
           </div>
         </div>
-      </div>
+      </nav>
 
       {/* User Menu Footer */}
       <div className="p-2 border-t border-[var(--color-border)]">
