@@ -416,7 +416,7 @@ export const realApi = {
     const detail = await realApi.getRepositoryDetail(id, options);
     const shortSha = detail.active_version?.commit_sha ? detail.active_version.commit_sha.slice(0, 7) : null;
 
-    let versions: RepositoryVersionSummary[] = [];
+    let versions: RepositoryVersionSummary[];
     try {
       versions = await realApi.getRepositoryVersions(id, options);
     } catch {
@@ -804,10 +804,14 @@ export const realApi = {
 };
 
 // Mock layer detection: enabled only in dev when VITE_USE_MOCKS=true and not in test runner
+const isVitest =
+  typeof globalThis !== 'undefined' &&
+  Boolean((globalThis as unknown as { process?: { env?: Record<string, string> } }).process?.env?.VITEST);
+
 export const isMockEnabled = Boolean(
   import.meta.env.DEV &&
   import.meta.env.MODE !== 'test' &&
-  (typeof process === 'undefined' || !process?.env?.VITEST) &&
+  !isVitest &&
   import.meta.env.VITE_USE_MOCKS === 'true'
 );
 

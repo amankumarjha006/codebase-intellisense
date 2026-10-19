@@ -244,7 +244,7 @@ export function useRepositoryPolling({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [scheduleNextPoll, clearTimer]);
+  }, [refetch, clearTimer]);
 
   // Cleanup on unmount
   React.useEffect(() => {

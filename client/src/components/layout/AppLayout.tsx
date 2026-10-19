@@ -25,12 +25,13 @@ import { Drawer, DrawerContent } from '../ui/drawer';
 import { SkipToContent } from '../ui/A11y';
 import { realApi, RepositoryListItemOut } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
+import { classifyAuthError } from '../../lib/auth';
 import { spring } from '../../lib/motion';
 
 export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, error, markSessionExpired } = useAuth();
 
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -42,14 +43,26 @@ export function AppLayout() {
   const mainRef = React.useRef<HTMLElement>(null);
 
   React.useEffect(() => {
-    if (!loading && !user) {
-      navigate('/status/session-expired', { replace: true });
+    if (loading) return;
+    if (error) {
+      navigate('/status/server-unreachable', { replace: true });
+      return;
     }
-  }, [loading, user, navigate]);
+    if (!user) {
+      markSessionExpired();
+    }
+  }, [loading, user, error, navigate, markSessionExpired]);
 
   React.useEffect(() => {
-    realApi.listRepositories(1, 30).then((res) => setRepositories(res.items || [])).catch(() => {});
-  }, [location.pathname]);
+    realApi
+      .listRepositories(1, 30)
+      .then((res) => setRepositories(res.items || []))
+      .catch((err: unknown) => {
+        if (classifyAuthError(err) === 'unauthenticated') {
+          markSessionExpired();
+        }
+      });
+  }, [location.pathname, markSessionExpired]);
 
   // Focus main content on route change for screen readers
   React.useEffect(() => {
@@ -104,7 +117,7 @@ export function AppLayout() {
     );
   }
 
-  if (!user) {
+  if (!user || error) {
     return null;
   }
 

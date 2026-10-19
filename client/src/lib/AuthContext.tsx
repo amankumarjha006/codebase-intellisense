@@ -1,83 +1,52 @@
 import * as React from 'react';
-import { realApi, API_URL, ApiError, isMockEnabled, type CurrentUser } from './api';
+import { useNavigate } from 'react-router-dom';
+import { realApi, API_URL, ApiError, type CurrentUser } from './api';
+import { classifyAuthError, buildSignInUrl } from './auth';
+
+// On startup, delete any legacy cached user
+try {
+  localStorage.removeItem('cb_user');
+} catch (e) {
+  void e;
+}
 
 interface AuthContextType {
   user: CurrentUser | null;
   loading: boolean;
-  error: ApiError | null;
+  error: ApiError | Error | null;
   signIn: () => void;
-  devLogin: () => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<CurrentUser | null>;
+  markSessionExpired: () => void;
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = React.useState<CurrentUser | null>(() => {
-    try {
-      const cached = localStorage.getItem('cb_user');
-      return cached ? JSON.parse(cached) : null;
-    } catch {
-      return null;
-    }
-  });
+  const navigate = useNavigate();
+  const [user, setUser] = React.useState<CurrentUser | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<ApiError | null>(null);
+  const [error, setError] = React.useState<ApiError | Error | null>(null);
 
   const fetchUser = React.useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      if (isMockEnabled) {
-        const mockUser: CurrentUser = {
-          id: 'mock-user-1',
-          email: 'alex.chen@devtools.co',
-          full_name: 'Alex Chen',
-          github: {
-            username: 'alexc-dev',
-            github_user_id: '123456',
-          },
-        };
-        setUser(mockUser);
-        try {
-          localStorage.setItem('cb_user', JSON.stringify(mockUser));
-        } catch {}
-        return mockUser;
-      }
+
       const data = await realApi.getCurrentUser();
       setUser(data);
-      try {
-        localStorage.setItem('cb_user', JSON.stringify(data));
-      } catch {}
       return data;
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err);
+    } catch (err: unknown) {
+      const errorKind = classifyAuthError(err);
+      if (errorKind === 'unauthenticated') {
+        // 401 means not signed in
+        setUser(null);
+        setError(null);
+      } else {
+        // Network errors, 5xx, or unreachable backend kept in error state
+        setUser(null);
+        setError(err instanceof ApiError || err instanceof Error ? err : new Error('Network error'));
       }
-      // If in development mode and backend auth is unavailable or 401,
-      // fallback to the dev user so the developer is not locked out of testing the UI
-      if (import.meta.env.DEV) {
-        console.warn('Backend authentication unavailable; activating dev user session.');
-        const devUser: CurrentUser = {
-          id: 'mock-user-1',
-          email: 'alex.chen@devtools.co',
-          full_name: 'Alex Chen',
-          github: {
-            username: 'alexc-dev',
-            github_user_id: '123456',
-          },
-        };
-        setUser(devUser);
-        try {
-          localStorage.setItem('cb_user', JSON.stringify(devUser));
-        } catch {}
-        return devUser;
-      }
-      setUser(null);
-      try {
-        localStorage.removeItem('cb_user');
-      } catch {}
       return null;
     } finally {
       setLoading(false);
@@ -88,30 +57,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchUser();
   }, [fetchUser]);
 
-  const devLogin = React.useCallback(() => {
-    const mockUser: CurrentUser = {
-      id: 'mock-user-1',
-      email: 'alex.chen@devtools.co',
-      full_name: 'Alex Chen',
-      github: {
-        username: 'alexc-dev',
-        github_user_id: '123456',
-      },
-    };
-    setUser(mockUser);
-    try {
-      localStorage.setItem('cb_user', JSON.stringify(mockUser));
-    } catch {}
-    window.location.href = '/dashboard';
-  }, []);
+  const markSessionExpired = React.useCallback(() => {
+    setUser(null);
+    navigate('/', { replace: true });
+  }, [navigate]);
 
   const signIn = React.useCallback(() => {
-    if (isMockEnabled || import.meta.env.DEV) {
-      devLogin();
-      return;
-    }
-    window.location.href = `${API_URL}/auth/github`;
-  }, [devLogin]);
+    window.location.href = buildSignInUrl(API_URL);
+  }, []);
 
   const logout = React.useCallback(async () => {
     try {
@@ -120,9 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn('Logout request failed:', err);
     } finally {
       setUser(null);
-      try {
-        localStorage.removeItem('cb_user');
-      } catch {}
+      setError(null);
       window.location.href = '/';
     }
   }, []);
@@ -133,11 +84,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       error,
       signIn,
-      devLogin,
       logout,
       refreshUser: fetchUser,
+      markSessionExpired,
     }),
-    [user, loading, error, signIn, devLogin, logout, fetchUser]
+    [user, loading, error, signIn, logout, fetchUser, markSessionExpired]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

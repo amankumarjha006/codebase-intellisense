@@ -43,9 +43,11 @@ import {
 import { useRepositoryPolling } from '../lib/useRepositoryPolling';
 import { AnimatedPage } from '../components/ui/AnimatedPage';
 import { LiveRegion } from '../components/ui/A11y';
+import { useAuth } from '../lib/AuthContext';
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { markSessionExpired } = useAuth();
   const [searchInput, setSearchInput] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [connectOpen, setConnectOpen] = React.useState(false);
@@ -75,7 +77,7 @@ export function DashboardPage() {
     page: 1,
     limit: 100,
     search: debouncedSearch,
-    onSessionExpired: () => navigate('/status/session-expired', { replace: true }),
+    onSessionExpired: markSessionExpired,
   });
 
   // Calculate metrics counts

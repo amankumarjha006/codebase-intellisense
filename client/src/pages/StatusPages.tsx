@@ -137,7 +137,7 @@ export function SigningInStatusPage() {
 
 export function SignInFailedStatusPage() {
   const navigate = useNavigate();
-  const { signIn, devLogin } = useAuth();
+  const { signIn } = useAuth();
 
   return (
     <AnimatedPage className="min-h-screen bg-[var(--color-page)] flex items-center justify-center p-6 text-center">
@@ -164,17 +164,6 @@ export function SignInFailedStatusPage() {
             <GithubIcon size={15} aria-hidden="true" />
             <span>Try Again</span>
           </Button>
-
-          {import.meta.env.DEV && (
-            <Button
-              variant="outline"
-              onClick={devLogin}
-              className="gap-2 w-full sm:w-auto text-xs border-[var(--color-accent-border)] text-[var(--color-accent)] hover:bg-[var(--color-accent-tint)]"
-              aria-label="Dev Quick Login"
-            >
-              <span>Dev Quick Login</span>
-            </Button>
-          )}
 
           <Button
             variant="ghost"
@@ -226,7 +215,13 @@ export function AccessDeniedStatusPage() {
 
 export function SessionExpiredStatusPage() {
   const navigate = useNavigate();
-  const { signIn, devLogin } = useAuth();
+  const { user, signIn } = useAuth();
+
+  React.useEffect(() => {
+    if (user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   return (
     <AnimatedPage className="min-h-screen bg-[var(--color-page)] flex items-center justify-center p-6 text-center">
@@ -253,17 +248,6 @@ export function SessionExpiredStatusPage() {
             <GithubIcon size={15} aria-hidden="true" />
             <span>Sign in with GitHub</span>
           </Button>
-
-          {import.meta.env.DEV && (
-            <Button
-              variant="outline"
-              onClick={devLogin}
-              className="gap-2 w-full sm:w-auto text-xs border-[var(--color-accent-border)] text-[var(--color-accent)] hover:bg-[var(--color-accent-tint)]"
-              aria-label="Dev Quick Login"
-            >
-              <span>Dev Quick Login</span>
-            </Button>
-          )}
 
           <Button
             variant="ghost"

@@ -22,14 +22,13 @@ import { Button } from '../components/ui/button';
 import { Drawer, DrawerContent } from '../components/ui/drawer';
 import { FadeUp, StaggerChildren, ScrollReveal } from '../components/ui/ScrollMotion';
 import { SkipToContent } from '../components/ui/A11y';
-import { API_URL } from '../lib/api';
 import { LANDING_ERROR_COPY } from '../lib/errors';
 import { useAuth } from '../lib/AuthContext';
 import { ease } from '../lib/motion';
 
 export function LandingPage() {
   const navigate = useNavigate();
-  const { user, signIn } = useAuth();
+  const { user, loading, signIn } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -37,10 +36,10 @@ export function LandingPage() {
 
   // If user is already logged in, redirect directly to dashboard
   React.useEffect(() => {
-    if (user) {
+    if (!loading && user) {
       navigate('/dashboard', { replace: true });
     }
-  }, [user, navigate]);
+  }, [loading, user, navigate]);
 
   const errorParam = searchParams.get('error');
   const errorCopy = errorParam ? LANDING_ERROR_COPY[errorParam] || null : null;
@@ -58,7 +57,7 @@ export function LandingPage() {
   };
 
   // Prevent flash of landing page content while redirecting
-  if (user) {
+  if (!loading && user) {
     return null;
   }
 

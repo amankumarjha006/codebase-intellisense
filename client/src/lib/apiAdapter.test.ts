@@ -232,8 +232,12 @@ describe('Real API Adapters for Page Components', () => {
     expect(tokens).toEqual(['Hello ', 'world!']);
     expect(citations).toHaveLength(1);
     expect(citations[0].path).toBe('src/App.tsx');
-    expect(completed).toBeDefined();
-    expect((completed as any)?.id).toBe('msg-123');
-    expect((completed as any)?.content).toBe('Hello world!');
+    interface CompletedMessage {
+      id: string;
+      content: string;
+      citations: unknown[];
+    }
+    expect((completed as CompletedMessage | null)?.id).toBe('msg-123');
+    expect((completed as CompletedMessage | null)?.content).toBe('Hello world!');
   });
 });
