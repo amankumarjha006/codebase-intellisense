@@ -9,11 +9,15 @@ import {
   ChatScenario,
   ArchitectureScenario,
 } from '../../lib/scenarios';
-import { Button } from './button';
+import { isMockEnabled } from '../../lib/api';
 
 export function ScenarioSwitcher() {
   const [open, setOpen] = React.useState(false);
   const [scenarios, setScenarios] = React.useState<PrototypeScenarios>(getStoredScenarios);
+
+  if (!isMockEnabled) {
+    return null;
+  }
 
   const updateScenario = <K extends keyof PrototypeScenarios>(
     key: K,

@@ -43,6 +43,52 @@ async def login_github(request: Request, redis_client: redis.Redis = Depends(get
         logger.exception("login_github_failed", extra={"request_id": req_id, "error_detail": str(e)})
         return RedirectResponse(url=_build_frontend_redirect_url("login_failed"), status_code=302)
 
+@router.get("/dev-login", summary="Dev Environment Auto-Login")
+async def dev_login(
+    response: Response,
+    db: Session = Depends(get_db),
+    redis_client: redis.Redis = Depends(get_redis)
+):
+    """Provisions or loads a development user and sets a real session cookie."""
+    if settings.ENVIRONMENT != "development":
+        return JSONResponse(status_code=403, content={"error": "Dev login only available in development"})
+
+    try:
+        auth_service = AuthService(db)
+        user = auth_service.provision_user_and_installation(
+            github_user_data={
+                "github_user_id": "123456",
+                "username": "alexc-dev",
+                "email": "alex.chen@devtools.co",
+                "full_name": "Alex Chen",
+            },
+            access_token="dev-mock-access-token",
+            verified_installation=None,
+            installation_id=None,
+        )
+
+        session_id = secrets.token_urlsafe(32)
+        await redis_client.setex(
+            f"session:{session_id}",
+            settings.SESSION_EXPIRE_SECONDS,
+            str(user.id),
+        )
+
+        redirect_url = settings.FRONTEND_URL
+        redirect_response = RedirectResponse(url=redirect_url, status_code=302)
+        redirect_response.set_cookie(
+            key=settings.SESSION_COOKIE_NAME,
+            value=session_id,
+            max_age=settings.SESSION_EXPIRE_SECONDS,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+        )
+        return redirect_response
+    except Exception as e:
+        logger.exception("dev_login_failed", extra={"error_detail": str(e)})
+        return JSONResponse(status_code=500, content={"error": "Failed to create dev session", "detail": str(e)})
+
 @router.get("/github/callback", summary="GitHub Auth Callback")
 async def github_callback(
     request: Request,

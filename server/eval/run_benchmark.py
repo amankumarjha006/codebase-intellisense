@@ -1,7 +1,8 @@
 import argparse
 import json
 import sys
-from typing import Dict, List, Set, Any
+from pathlib import Path
+from typing import Dict, List, Set, Any, Union
 from uuid import UUID
 
 from sqlalchemy import create_engine
@@ -22,20 +23,30 @@ from app.services.embedding.gemini import GeminiEmbeddingProvider
 from eval.cached_embedding_provider import CachedEmbeddingProvider
 from eval.metrics import recall_at_k, mrr_at_k, ndcg_at_k
 
+DEFAULT_DATASET_PATH = Path(__file__).resolve().parent / "dataset.jsonl"
 K_VALUES = [5, 10, 20]
 
-def load_dataset(dataset_path: str) -> List[dict]:
+def load_dataset(dataset_path: Union[str, Path]) -> List[dict]:
+    path = Path(dataset_path)
+    if not path.exists():
+        fallback = Path(__file__).resolve().parent / path.name
+        if fallback.exists():
+            path = fallback
+        else:
+            print(f"Error: Dataset {dataset_path} not found.")
+            sys.exit(1)
+
     try:
         queries = []
-        with open(dataset_path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
                     continue
                 queries.append(json.loads(line))
         return queries
-    except FileNotFoundError:
-        print(f"Error: Dataset {dataset_path} not found.")
+    except Exception as e:
+        print(f"Error: Failed to read dataset {path}: {e}")
         sys.exit(1)
 
 def resolve_repository_version(db: Session, owner: str, name: str, commit_sha: str) -> RepositoryVersion:
@@ -200,7 +211,12 @@ def run_evaluation(dataset_path: str, verbose: bool):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run retrieval evaluation benchmark.")
-    parser.add_argument("--dataset", type=str, default="server/eval/dataset.jsonl", help="Path to dataset JSONL")
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default=str(DEFAULT_DATASET_PATH),
+        help="Path to dataset JSONL (default: server/eval/dataset.jsonl resolved dynamically)",
+    )
     parser.add_argument("--verbose", action="store_true", help="Print per-query diagnostics")
     args = parser.parse_args()
     

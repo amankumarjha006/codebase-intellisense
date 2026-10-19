@@ -1,16 +1,18 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { motion } from 'motion/react';
 import {
   Terminal,
   ArrowRight,
   ShieldCheck,
-  CheckCircle2,
   Code2,
-  Sparkles,
-  Layers,
-  FileCode,
   Menu,
   ExternalLink,
+  AlertTriangle,
+  X,
+  Link2,
+  Fingerprint,
+  Hash,
 } from 'lucide-react';
 import { GithubIcon } from '../components/ui/GithubIcon';
 import { BlurText } from '../components/ui/BlurText';
@@ -18,13 +20,29 @@ import { SpotlightCard } from '../components/ui/SpotlightCard';
 import { Dither } from '../components/ui/Dither';
 import { Button } from '../components/ui/button';
 import { Drawer, DrawerContent } from '../components/ui/drawer';
-import { ScenarioSwitcher } from '../components/ui/ScenarioSwitcher';
+import { FadeUp, StaggerChildren, ScrollReveal } from '../components/ui/ScrollMotion';
+import { SkipToContent } from '../components/ui/A11y';
+import { LANDING_ERROR_COPY } from '../lib/errors';
+import { useAuth } from '../lib/AuthContext';
+import { ease } from '../lib/motion';
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const { user, loading, signIn } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [activeCitation, setActiveCitation] = React.useState(false);
+
+  // If user is already logged in, redirect directly to dashboard
+  React.useEffect(() => {
+    if (!loading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [loading, user, navigate]);
+
+  const errorParam = searchParams.get('error');
+  const errorCopy = errorParam ? LANDING_ERROR_COPY[errorParam] || null : null;
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -35,22 +53,31 @@ export function LandingPage() {
   }, []);
 
   const handleSignIn = () => {
-    navigate('/status/signing-in');
+    signIn();
   };
+
+  // Prevent flash of landing page content while redirecting
+  if (!loading && user) {
+    return null;
+  }
+
 
   return (
     <div className="min-h-screen bg-[var(--color-page)] text-[var(--color-text)] font-sans antialiased selection:bg-[var(--color-accent-tint)] selection:text-[var(--color-accent)]">
+      <SkipToContent targetId="landing-main" />
+
       {/* Sticky Navigation */}
       <header
-        className={`fixed top-0 inset-x-0 z-40 transition-all duration-200 border-b ${
+        className={`fixed top-0 inset-x-0 z-40 transition-all duration-300 border-b ${
           scrolled
             ? 'bg-[var(--color-page)]/90 backdrop-blur-md border-[var(--color-border)] py-3'
             : 'bg-transparent border-transparent py-4'
         }`}
+        role="banner"
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-accent)]">
+            <div className="h-8 w-8 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-accent)]" aria-hidden="true">
               <Terminal size={17} />
             </div>
             <span className="text-sm font-bold tracking-tight text-[var(--color-text)]">
@@ -58,7 +85,7 @@ export function LandingPage() {
             </span>
           </div>
 
-          <nav className="hidden md:flex items-center gap-6 text-xs text-[var(--color-text-secondary)] font-medium">
+          <nav className="hidden md:flex items-center gap-6 text-xs text-[var(--color-text-secondary)] font-medium" aria-label="Landing page navigation">
             <a href="#how-it-works" className="hover:text-[var(--color-text)] transition">
               How it works
             </a>
@@ -70,19 +97,11 @@ export function LandingPage() {
             </a>
             <a href="https://github.com" target="_blank" rel="noreferrer" className="hover:text-[var(--color-text)] transition flex items-center gap-1">
               <span>GitHub</span>
-              <ExternalLink size={10} />
+              <ExternalLink size={10} aria-hidden="true" />
             </a>
           </nav>
 
           <div className="flex items-center gap-2.5">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => navigate('/dashboard')}
-              className="hidden sm:inline-flex"
-            >
-              Live Demo
-            </Button>
             <Button size="sm" variant="primary" onClick={handleSignIn}>
               <GithubIcon size={14} />
               <span>Sign in with GitHub</span>
@@ -90,6 +109,7 @@ export function LandingPage() {
             <button
               onClick={() => setMobileMenuOpen(true)}
               className="p-1.5 rounded-[var(--radius-control)] text-[var(--color-muted)] hover:text-[var(--color-text)] md:hidden"
+              aria-label="Open mobile menu"
             >
               <Menu size={18} />
             </button>
@@ -99,7 +119,7 @@ export function LandingPage() {
 
       {/* Mobile Menu Drawer */}
       <Drawer open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <DrawerContent side="right" className="p-6">
+        <DrawerContent side="right" className="p-6" aria-label="Mobile navigation">
           <div className="flex flex-col space-y-5 pt-8">
             <a
               href="#how-it-works"
@@ -132,328 +152,342 @@ export function LandingPage() {
         </DrawerContent>
       </Drawer>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 relative overflow-hidden">
-        <div className="max-w-4xl mx-auto text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)] text-[var(--color-accent)] text-xs font-medium">
-            <Sparkles size={12} />
-            <span>Grounded Code Intelligence — Zero Hallucination</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--color-text)] leading-[1.1]">
-            <BlurText
-              text="Ask your codebase anything. Verify every line."
-              animateBy="words"
-              direction="top"
-              className="justify-center"
-            />
-          </h1>
-
-          <p className="text-sm sm:text-base text-[var(--color-text-secondary)] max-w-2xl mx-auto leading-relaxed">
-            Query complex GitHub repositories with natural language. Every answer is synthesized with Tree-sitter AST awareness and strictly grounded with citations to exact files and line ranges.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <Button size="lg" variant="primary" onClick={handleSignIn} className="w-full sm:w-auto">
-              <GithubIcon size={16} />
-              <span>Connect with GitHub</span>
-              <ArrowRight size={15} />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => navigate('/repositories/repo_codebase_intellisense')}
-              className="w-full sm:w-auto"
-            >
-              Explore Sample Repo
-            </Button>
-          </div>
-        </div>
-
-        {/* Interactive Demo Window */}
-        <div className="max-w-4xl mx-auto mt-14 rounded-[var(--radius-panel)] border border-[var(--color-border-strong)] bg-[var(--color-surface)] shadow-2xl overflow-hidden">
-          {/* Window Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-raised)] border-b border-[var(--color-border)]">
+      {/* Allowlisted Auth Error Banner */}
+      {errorCopy && (
+        <div className="max-w-4xl mx-auto pt-24 px-4 sm:px-6" role="alert">
+          <div className="rounded-[var(--radius-control)] border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 px-4 py-3 text-xs text-[var(--color-danger)] flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-[#EF4444]/70" />
-              <span className="h-3 w-3 rounded-full bg-[#F59E0B]/70" />
-              <span className="h-3 w-3 rounded-full bg-[#10B981]/70" />
+              <AlertTriangle size={15} className="shrink-0" aria-hidden="true" />
+              <span className="font-medium">{errorCopy}</span>
             </div>
-            <div className="font-mono text-xs text-[var(--color-muted)] flex items-center gap-1.5">
-              <span>repo: amankumarjha006/codebase-intellisense</span>
-              <span className="text-[var(--color-accent)]">@ 3a8f1c2</span>
-            </div>
-            <div className="text-[11px] text-[var(--color-muted)] font-mono hidden sm:block">
-              ast-verified
-            </div>
+            <button
+              onClick={() => {
+                const next = new URLSearchParams(searchParams);
+                next.delete('error');
+                setSearchParams(next, { replace: true });
+              }}
+              className="text-[var(--color-muted)] hover:text-[var(--color-text)] p-0.5 rounded transition"
+              aria-label="Dismiss error"
+            >
+              <X size={14} />
+            </button>
           </div>
+        </div>
+      )}
 
-          {/* Window Body */}
-          <div className="p-6 space-y-5 text-left text-xs sm:text-sm">
-            {/* User message */}
-            <div className="flex items-start gap-3 bg-[var(--color-page)] p-3.5 rounded-[var(--radius-control)] border border-[var(--color-border)]">
-              <div className="h-6 w-6 rounded-full bg-[var(--color-raised)] flex items-center justify-center text-[10px] font-bold text-[var(--color-text)] shrink-0">
-                U
-              </div>
-              <div>
-                <p className="text-[var(--color-text)] font-medium">
-                  How does the indexing pipeline handle AST node chunking and preserve the parent-child hierarchy?
-                </p>
-              </div>
-            </div>
+      <main id="landing-main">
+        {/* Hero Section */}
+        <section className={`${errorCopy ? 'pt-10' : 'pt-32'} pb-20 px-4 sm:px-6 relative overflow-hidden`} aria-labelledby="hero-heading">
 
-            {/* AI Assistant Answer */}
-            <div className="space-y-3.5 pl-1 sm:pl-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-accent)]">
-                <Sparkles size={14} />
-                <span>Grounded Answer</span>
+          <div className="max-w-4xl mx-auto text-center space-y-6">
+            <FadeUp delay={0}>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)] text-[var(--color-accent)] text-xs font-medium">
+                <Terminal size={12} aria-hidden="true" />
+                <span>AST Verification Engine v2.4.0</span>
               </div>
+            </FadeUp>
 
-              <p className="text-[var(--color-text-secondary)] leading-relaxed">
-                The indexing pipeline uses <span className="text-[var(--color-text)] font-mono text-xs">Tree-sitter</span> to extract semantic boundaries. Instead of splitting text arbitrarily, chunks strictly observe function and class definitions while attaching enclosing context breadcrumbs.
+            <h1 id="hero-heading" className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--color-text)] leading-[1.1]">
+              <BlurText
+                text="Answers that point to the line."
+                animateBy="words"
+                direction="top"
+                className="justify-center"
+              />
+            </h1>
+
+            <FadeUp delay={0.2}>
+              <p className="text-sm sm:text-base text-[var(--color-text-secondary)] max-w-2xl mx-auto leading-relaxed">
+                Deep codebase intelligence for distributed systems. Every architectural explanation, latency postmortem, and refactor plan strictly cited with absolute source references.
               </p>
+            </FadeUp>
 
-              {/* Code Preview Block */}
-              <div className="rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-page)] overflow-hidden font-mono text-xs">
-                <div className="flex items-center justify-between px-3 py-1.5 bg-[var(--color-raised)] border-b border-[var(--color-border)] text-[11px] text-[var(--color-muted)]">
-                  <span>server/app/services/indexing/ast_chunker.py</span>
-                  <span className="text-[var(--color-accent)]">lines 42–52</span>
-                </div>
-                <div className="p-3 text-[var(--color-text-secondary)] overflow-x-auto leading-relaxed">
-                  <div className="text-[var(--color-muted)]"># Preserving class scope in child chunks</div>
-                  <div><span className="text-[var(--color-accent)]">def</span> <span className="text-[var(--color-text)]">extract_hierarchical_chunks</span>(tree, source_bytes, file_path):</div>
-                  <div className="pl-4">chunks = []</div>
-                  <div className="pl-4">scope_stack = []</div>
-                  <div className="pl-4"><span className="text-[var(--color-accent)]">for</span> node <span className="text-[var(--color-accent)]">in</span> traverse_ast(tree.root_node):</div>
-                  <div className="pl-8">chunk = build_scoped_chunk(node, source_bytes, scope_stack)</div>
-                  <div className="pl-8">chunks.append(chunk)</div>
-                  <div className="pl-4"><span className="text-[var(--color-accent)]">return</span> chunks</div>
-                </div>
+            <FadeUp delay={0.3}>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <Button size="lg" variant="primary" onClick={handleSignIn} className="w-full sm:w-auto">
+                  <GithubIcon size={16} />
+                  <span>Connect with GitHub</span>
+                  <ArrowRight size={15} aria-hidden="true" />
+                </Button>
+                <Button size="lg" variant="secondary" asChild className="w-full sm:w-auto">
+                  <a href="#how-it-works">
+                    View inspection traces
+                  </a>
+                </Button>
               </div>
 
-              {/* Citation Chip */}
-              <div className="pt-1 flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-[var(--color-muted)]">Citations:</span>
-                <button
-                  onClick={() => setActiveCitation(!activeCitation)}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono transition border ${
-                    activeCitation
-                      ? 'bg-[var(--color-accent)] text-[var(--color-page)] border-[var(--color-accent)] font-semibold'
-                      : 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] border-[var(--color-accent-border)] hover:bg-[var(--color-accent)]/20'
-                  }`}
-                >
-                  <FileCode size={12} />
-                  <span>ast_chunker.py:42-88</span>
-                </button>
-                <span className="text-[11px] text-[var(--color-muted)]">
-                  (Click citation to simulate opening Source Panel)
+              <div className="flex items-center justify-center gap-4 pt-3 text-[11px] text-[var(--color-muted)] font-mono">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" aria-hidden="true" />
+                  Indexed in-memory
                 </span>
+                <span>Status: <strong className="text-[var(--color-text-secondary)]">Synchronized</strong></span>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stepper: How It Works */}
-      <section id="how-it-works" className="py-20 px-4 sm:px-6 border-t border-[var(--color-border)] bg-[var(--color-surface)]/40">
-        <div className="max-w-4xl mx-auto space-y-12">
-          <div className="text-center space-y-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-accent)]">
-              Architecture & Pipeline
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text)]">
-              From git clone to verified answers
-            </h2>
-            <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] max-w-xl mx-auto">
-              Every step is engineered to prevent hallucination by grounding code embeddings directly in concrete syntax trees.
-            </p>
+            </FadeUp>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
-              <div className="h-7 w-7 rounded-lg bg-[var(--color-raised)] flex items-center justify-center text-xs font-bold text-[var(--color-accent)]">
-                01
+          {/* Interactive Demo Window */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4, ease: ease.out }}
+            className="max-w-4xl mx-auto mt-14 rounded-[var(--radius-panel)] border border-[var(--color-border-strong)] bg-[var(--color-surface)] shadow-2xl overflow-hidden"
+            role="img"
+            aria-label="Interactive demo showing a code query with verified citations"
+          >
+            {/* Window Header */}
+            <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-raised)] border-b border-[var(--color-border)]">
+              <div className="flex items-center gap-2" aria-hidden="true">
+                <span className="h-3 w-3 rounded-full bg-[#EF4444]/70" />
+                <span className="h-3 w-3 rounded-full bg-[#F59E0B]/70" />
+                <span className="h-3 w-3 rounded-full bg-[#10B981]/70" />
               </div>
-              <h3 className="text-sm font-semibold text-[var(--color-text)]">Clone & Ingest</h3>
-              <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
-                Connect your repository via GitHub OAuth. Commits are fetched asynchronously and pinned to immutable SHAs.
-              </p>
+              <div className="font-mono text-xs text-[var(--color-muted)] flex items-center gap-1.5">
+                <span>workspace: /services/billing-ledger</span>
+              </div>
+              <div className="text-[11px] text-[var(--color-accent)] font-mono hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" />
+                Live Verification
+              </div>
             </div>
 
-            <div className="p-4 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
-              <div className="h-7 w-7 rounded-lg bg-[var(--color-raised)] flex items-center justify-center text-xs font-bold text-[var(--color-accent)]">
-                02
-              </div>
-              <h3 className="text-sm font-semibold text-[var(--color-text)]">Tree-sitter AST</h3>
-              <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
-                Source files are parsed into language syntax trees. Classes, methods, and functions form hierarchical symbol graphs.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
-              <div className="h-7 w-7 rounded-lg bg-[var(--color-raised)] flex items-center justify-center text-xs font-bold text-[var(--color-accent)]">
-                03
-              </div>
-              <h3 className="text-sm font-semibold text-[var(--color-text)]">pgvector + RRF</h3>
-              <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
-                Combines dense vector embeddings with full-text keyword searches using Reciprocal Rank Fusion.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] space-y-2">
-              <div className="h-7 w-7 rounded-lg bg-[var(--color-raised)] flex items-center justify-center text-xs font-bold text-[var(--color-accent)]">
-                04
-              </div>
-              <h3 className="text-sm font-semibold text-[var(--color-text)]">Exact Citations</h3>
-              <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
-                The Gemini model synthesizes answers while generating verifiable citations linking directly to exact lines in code.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Feature Blocks with SpotlightCard */}
-      <section id="features" className="py-20 px-4 sm:px-6 border-t border-[var(--color-border)]">
-        <div className="max-w-4xl mx-auto space-y-12">
-          <div className="text-center space-y-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-accent)]">
-              Engineered For Developers
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text)]">
-              Precision over guesswork
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <SpotlightCard>
-              <div className="space-y-3">
-                <div className="h-9 w-9 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)]">
-                  <Code2 size={18} />
+            {/* Window Body — Two-Column Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+              {/* Left: Query + Answer */}
+              <div className="p-5 space-y-4 text-xs sm:text-sm border-r border-[var(--color-border)]">
+                {/* Query Section */}
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)] mb-2">Query Analysis</div>
+                  <p className="text-[var(--color-text)] font-medium leading-snug">
+                    "Where does the ledger handle network partition retries without double-charging?"
+                  </p>
                 </div>
-                <h3 className="text-base font-semibold text-[var(--color-text)]">
-                  Syntax-Aware Chunking
-                </h3>
-                <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
-                  Never slice a function in half. Tree-sitter guarantees that every chunk aligns with syntactic boundaries and retains enclosing class context.
+
+                {/* Verified Answer */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-[var(--color-accent)] text-xs font-semibold">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" />
+                    Guaranteed Atomic via ID
+                  </div>
+                  <p className="text-[var(--color-text-secondary)] text-xs leading-relaxed">
+                    The transaction uses an idempotent hash lock acquired prior to DB insertion.
+                  </p>
+                </div>
+
+                {/* Citation Chip */}
+                <div className="pt-1">
+                  <button
+                    onClick={() => setActiveCitation(!activeCitation)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-mono transition border ${
+                      activeCitation
+                        ? 'bg-[var(--color-accent)] text-[var(--color-page)] border-[var(--color-accent)] font-semibold'
+                        : 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] border-[var(--color-accent-border)] hover:bg-[var(--color-accent)]/20'
+                    }`}
+                    aria-pressed={activeCitation}
+                    aria-label="Toggle source citation view"
+                  >
+                    <Link2 size={12} aria-hidden="true" />
+                    <span>src/payments/idempotency.ts:42-58</span>
+                  </button>
+                </div>
+
+                {/* AST Path */}
+                <div className="text-[10px] font-mono text-[var(--color-muted)] pt-2 flex items-center justify-between border-t border-[var(--color-border)] mt-2">
+                  <span>AST Path: LedgerEngine → 100% lockTx</span>
+                  <span className="text-[var(--color-text-secondary)]">verified</span>
+                </div>
+              </div>
+
+              {/* Right: Code Preview */}
+              <div className="bg-[var(--color-page)]">
+                <div className="flex items-center justify-between px-4 py-2 text-[11px] font-mono text-[var(--color-muted)] border-b border-[var(--color-border)]">
+                  <span>src/payments/idempotency.ts</span>
+                  <span className="text-[var(--color-text-secondary)]">TypeScript</span>
+                </div>
+                <div className="p-4 font-mono text-[11px] leading-relaxed text-[var(--color-text-secondary)] overflow-x-auto">
+                  <div className="flex"><span className="text-[var(--color-muted)] w-7 shrink-0 text-right mr-3">40</span><span className="text-[var(--color-accent)]">export async function</span> <span className="text-[var(--color-text)]">handleCharge</span>(ctx) {'{'}</div>
+                  <div className="flex"><span className="text-[var(--color-muted)] w-7 shrink-0 text-right mr-3">41</span>  const key = ctx.headers['x-idempotency-key'];</div>
+                  <div className="flex bg-[var(--color-accent-tint)] -mx-4 px-4 border-l-2 border-[var(--color-accent)]"><span className="text-[var(--color-muted)] w-7 shrink-0 text-right mr-3">42</span>  <span className="text-[var(--color-accent)]">const</span> claim = <span className="text-[var(--color-accent)]">await</span> redis.set(key, 'PENDING',</div>
+                  <div className="flex bg-[var(--color-accent-tint)] -mx-4 px-4 border-l-2 border-[var(--color-accent)]"><span className="text-[var(--color-muted)] w-7 shrink-0 text-right mr-3"></span>    'NX', 'EX', 120);</div>
+                  <div className="flex bg-[var(--color-accent-tint)] -mx-4 px-4 border-l-2 border-[var(--color-accent)]"><span className="text-[var(--color-muted)] w-7 shrink-0 text-right mr-3">43</span>  <span className="text-[var(--color-accent)]">if</span> (!claim) <span className="text-[var(--color-accent)]">return</span> fetchCachedResult(key);</div>
+                  <div className="flex"><span className="text-[var(--color-muted)] w-7 shrink-0 text-right mr-3">44</span>  <span className="text-[var(--color-accent)]">return</span> executeLedgerTx(ctx);</div>
+                  <div className="flex"><span className="text-[var(--color-muted)] w-7 shrink-0 text-right mr-3">45</span>{'}'}</div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </section>
+
+        {/* Stepper: How It Works */}
+        <section id="how-it-works" className="py-20 px-4 sm:px-6 border-t border-[var(--color-border)] bg-[var(--color-surface)]/40" aria-labelledby="how-heading">
+          <div className="max-w-4xl mx-auto space-y-12">
+            <FadeUp>
+              <div className="space-y-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+                  Verification Pipeline
+                </span>
+                <h2 id="how-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text)]">
+                  Engineered for forensic codebase verification.
+                </h2>
+                <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] max-w-xl leading-relaxed">
+                  Zero hallucinated file paths. Every semantic query maps to validated compiler-resolved AST nodes and commit snapshots.
                 </p>
               </div>
-            </SpotlightCard>
+            </FadeUp>
 
-            <SpotlightCard>
-              <div className="space-y-3">
-                <div className="h-9 w-9 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)]">
-                  <Layers size={18} />
+            <StaggerChildren className="grid grid-cols-1 md:grid-cols-3 gap-5" staggerDelay={0.08}>
+              <SpotlightCard className="space-y-3 p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">Step 01</span>
+                  <span className="h-2 w-2 rounded-full bg-[var(--color-accent)]" aria-hidden="true" />
                 </div>
-                <h3 className="text-base font-semibold text-[var(--color-text)]">
-                  Architecture Diagrams
-                </h3>
+                <h3 className="text-sm font-bold text-[var(--color-text)]">Abstract Syntax Graph Ingestion</h3>
                 <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
-                  Generate holistic system architecture diagrams and verified modules derived from actual symbol call-graphs and dependencies.
+                  Repositories are resolved through strict language server protocols (LSP) and Tree-sitter parsers into a deterministic semantic graph.
+                </p>
+                <div className="rounded-[var(--radius-control)] bg-[var(--color-page)] border border-[var(--color-border)] p-2.5 font-mono text-[11px] text-[var(--color-text-secondary)] space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <span>{'>'} Parsing symbol definitions...</span>
+                    <span className="text-[var(--color-accent)] font-semibold">AST verified</span>
+                  </div>
+                  <div className="text-[var(--color-muted)]">Found 4,812 interfaces · 0 broken links</div>
+                </div>
+              </SpotlightCard>
+
+              <SpotlightCard className="space-y-3 p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">Step 02</span>
+                  <span className="h-2 w-2 rounded-full bg-[var(--color-muted)]" aria-hidden="true" />
+                </div>
+                <h3 className="text-sm font-bold text-[var(--color-text)]">Symbol & Flow Tracing</h3>
+                <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+                  Traces method execution across RPC boundaries, async queues, and database schemas with explicit call-graph validation.
+                </p>
+                <div className="rounded-[var(--radius-control)] bg-[var(--color-page)] border border-[var(--color-border)] p-2.5 font-mono text-[11px] text-[var(--color-text-secondary)] space-y-0.5">
+                  <div>Edge: POST /checkout → Queue → Kafka</div>
+                  <div className="text-[var(--color-muted)]">Cross-repo reference: auth-serviceVerify</div>
+                </div>
+              </SpotlightCard>
+
+              <SpotlightCard className="space-y-3 p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">Step 03</span>
+                  <span className="h-2 w-2 rounded-full bg-[var(--color-muted)]" aria-hidden="true" />
+                </div>
+                <h3 className="text-sm font-bold text-[var(--color-text)]">Citations on Every Answer</h3>
+                <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+                  Responses never present naked claims. Every architectural assertion is linked to an exact line range in the commit SHA.
+                </p>
+                <div className="rounded-[var(--radius-control)] bg-[var(--color-page)] border border-[var(--color-border)] p-2.5 font-mono text-[11px] flex items-center justify-between">
+                  <span className="text-[var(--color-muted)]">commit 9d42f8a</span>
+                  <span className="px-2 py-0.5 rounded border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)] text-[var(--color-accent)]">app.go:88-104</span>
+                </div>
+              </SpotlightCard>
+            </StaggerChildren>
+          </div>
+        </section>
+
+        {/* Guarantees Section */}
+        <section id="guarantees" className="py-20 px-4 sm:px-6 border-t border-[var(--color-border)]" aria-labelledby="guarantees-heading">
+          <div className="max-w-4xl mx-auto space-y-10">
+            <FadeUp>
+              <div className="space-y-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+                  Core Architectural Guarantees
+                </span>
+                <h2 id="guarantees-heading" className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text)]">
+                  Grounded by design.
+                </h2>
+              </div>
+            </FadeUp>
+
+            <StaggerChildren className="grid grid-cols-1 sm:grid-cols-3 gap-5" staggerDelay={0.06}>
+              <div className="p-5 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <Fingerprint size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
+                  <span className="text-xs font-mono text-[var(--color-muted)]">01</span>
+                </div>
+                <h4 className="text-sm font-bold text-[var(--color-text)]">Zero Synthetic Hallucinations</h4>
+                <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+                  If a symbol is absent from the parsed AST, the system explicitly returns non-resolution rather than extrapolating speculative logic.
                 </p>
               </div>
-            </SpotlightCard>
 
-            <SpotlightCard>
-              <div className="space-y-3">
-                <div className="h-9 w-9 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)]">
-                  <ShieldCheck size={18} />
+              <div className="p-5 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <ShieldCheck size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
+                  <span className="text-xs font-mono text-[var(--color-muted)]">02</span>
                 </div>
-                <h3 className="text-base font-semibold text-[var(--color-text)]">
-                  Verifiable Source Panel
-                </h3>
+                <h4 className="text-sm font-bold text-[var(--color-text)]">Air-Gapped Indexing</h4>
                 <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
-                  Inspect cited lines side-by-side with your answer. Verify syntax highlighting, symbol definitions, and commit provenance instantly.
+                  Code vectors are indexed in transient memory bounds. No model retraining, customer code telemetry, or weights fine-tuning.
                 </p>
               </div>
-            </SpotlightCard>
+
+              <div className="p-5 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <Hash size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
+                  <span className="text-xs font-mono text-[var(--color-muted)]">03</span>
+                </div>
+                <h4 className="text-sm font-bold text-[var(--color-text)]">Branch Delta Diffs</h4>
+                <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+                  Every query evaluates differences between main and your feature branches in real-time, surfacing silent contract regressions.
+                </p>
+              </div>
+            </StaggerChildren>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Guarantees Section */}
-      <section id="guarantees" className="py-20 px-4 sm:px-6 border-t border-[var(--color-border)] bg-[var(--color-surface)]/30">
-        <div className="max-w-4xl mx-auto space-y-10">
-          <div className="text-center space-y-3">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text)]">
-              Grounded by design
-            </h2>
-            <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] max-w-xl mx-auto">
-              Built specifically for engineering teams that cannot tolerate hallucinated APIs or invented signatures.
-            </p>
+        {/* Final CTA with Dither background */}
+        <section className="py-24 px-4 sm:px-6 relative border-t border-[var(--color-border)] overflow-hidden" aria-labelledby="cta-heading">
+          <Dither />
+          <div className="max-w-3xl mx-auto relative z-10 space-y-6">
+            <ScrollReveal>
+              <div className="space-y-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)] text-[var(--color-accent)] text-xs font-medium">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" aria-hidden="true" />
+                  Zero Configuration Required
+                </div>
+                <h2 id="cta-heading" className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--color-text)]">
+                  Connect your first repository in seconds.
+                </h2>
+                <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] max-w-lg leading-relaxed">
+                  Sync your private GitHub repositories with read-only tokens. AST builds initiate immediately without local container overhead.
+                </p>
+                <div className="flex flex-col sm:flex-row items-start gap-3 pt-2">
+                  <Button size="lg" variant="primary" onClick={handleSignIn}>
+                    <Code2 size={16} aria-hidden="true" />
+                    <span>Continue with GitHub</span>
+                  </Button>
+                  <span className="text-[11px] text-[var(--color-muted)] font-mono self-center">
+                    SOC2 Type II certified · Read-only permissions
+                  </span>
+                </div>
+              </div>
+            </ScrollReveal>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-page)] space-y-2">
-              <CheckCircle2 size={18} className="text-[var(--color-accent)]" />
-              <h4 className="text-sm font-semibold text-[var(--color-text)]">No Unreferenced Claims</h4>
-              <p className="text-xs text-[var(--color-text-secondary)]">
-                If an assertion cannot be mapped to a specific line in the repository, the model explicitly declares it unverified.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-page)] space-y-2">
-              <CheckCircle2 size={18} className="text-[var(--color-accent)]" />
-              <h4 className="text-sm font-semibold text-[var(--color-text)]">Pinned Git SHAs</h4>
-              <p className="text-xs text-[var(--color-text-secondary)]">
-                Every conversation records the exact commit hash evaluated, guaranteeing reproducibility even as master evolves.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-page)] space-y-2">
-              <CheckCircle2 size={18} className="text-[var(--color-accent)]" />
-              <h4 className="text-sm font-semibold text-[var(--color-text)]">Zero Training Retention</h4>
-              <p className="text-xs text-[var(--color-text-secondary)]">
-                Your private source code and AST chunks are processed securely and never retained to train foundation models.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA with Dither background */}
-      <section className="py-24 px-4 sm:px-6 relative border-t border-[var(--color-border)] overflow-hidden">
-        <Dither />
-        <div className="max-w-3xl mx-auto text-center relative z-10 space-y-6">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--color-text)]">
-            Ready to query your codebase with confidence?
-          </h2>
-          <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] max-w-lg mx-auto">
-            Connect your GitHub account and start interrogating complex codebases in minutes.
-          </p>
-          <div className="pt-2">
-            <Button size="lg" variant="primary" onClick={handleSignIn}>
-              <GithubIcon size={16} />
-              <span>Get Started with GitHub</span>
-              <ArrowRight size={15} />
-            </Button>
-          </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       {/* Footer */}
-      <footer className="py-8 px-4 sm:px-6 border-t border-[var(--color-border)] bg-[var(--color-page)] text-xs text-[var(--color-muted)]">
+      <footer className="py-8 px-4 sm:px-6 border-t border-[var(--color-border)] bg-[var(--color-page)] text-xs text-[var(--color-muted)]" role="contentinfo">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Terminal size={14} className="text-[var(--color-accent)]" />
-            <span>Codebase Intellisense © 2026</span>
+            <Terminal size={14} className="text-[var(--color-accent)]" aria-hidden="true" />
+            <span>Codebase Intellisense © 2026. All rights reserved.</span>
           </div>
-          <div className="flex items-center gap-6">
+          <nav className="flex items-center gap-6" aria-label="Footer navigation">
             <button onClick={() => navigate('/dashboard')} className="hover:text-[var(--color-text)] transition">
-              Dashboard
+              Repository
             </button>
-            <button onClick={() => navigate('/status/signing-in')} className="hover:text-[var(--color-text)] transition">
-              Sign In
-            </button>
-            <button onClick={() => navigate('/503')} className="hover:text-[var(--color-text)] transition">
-              Status
-            </button>
-          </div>
+            <a href="#" className="hover:text-[var(--color-text)] transition">Status</a>
+            <a href="#" className="hover:text-[var(--color-text)] transition">Documentation</a>
+            <a href="#" className="hover:text-[var(--color-text)] transition">Security</a>
+            <a href="#" className="hover:text-[var(--color-text)] transition">Terms</a>
+          </nav>
         </div>
       </footer>
 
-      {/* Scenario switcher for quick prototype toggling */}
-      <ScenarioSwitcher />
     </div>
   );
 }

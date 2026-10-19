@@ -88,6 +88,7 @@ class RepositoryRepository:
         *,
         user_id: UUID,
         repository_id: UUID,
+        include_archived: bool = False,
     ) -> Repository | None:
         stmt = (
             select(Repository)
@@ -97,6 +98,8 @@ class RepositoryRepository:
                 Repository.id == repository_id
             )
         )
+        if not include_archived:
+            stmt = stmt.where(Repository.is_archived.is_(False))
         return self.db.execute(stmt).scalar_one_or_none()
 
     def list_for_user(
@@ -106,8 +109,17 @@ class RepositoryRepository:
         page: int,
         limit: int,
         search: str | None = None,
+        include_archived: bool = False,
     ) -> tuple[list[RepositoryListRow], int]:
-        base_stmt = select(Repository).join(UserRepository).where(UserRepository.user_id == user_id)
+        base_stmt = (
+            select(Repository)
+            .join(UserRepository)
+            .where(
+                UserRepository.user_id == user_id,
+            )
+        )
+        if not include_archived:
+            base_stmt = base_stmt.where(Repository.is_archived.is_(False))
         
         if search:
             search_term = f"%{search}%"

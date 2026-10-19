@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Settings,
   Keyboard,
   CheckCircle2,
   Loader2,
@@ -18,7 +17,9 @@ import {
 } from 'lucide-react';
 import { GithubIcon } from '../ui/GithubIcon';
 import { cn } from '../../lib/utils';
-import { mockRepositories, mockCurrentUser } from '../../mock/data';
+import { realApi, RepositoryListItemOut } from '../../lib/api';
+import { useAuth } from '../../lib/AuthContext';
+import { deriveUserDisplay } from '../../lib/user';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +44,17 @@ export function Sidebar({
 }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
+  const userDisplay = deriveUserDisplay(user);
+  const [repositories, setRepositories] = React.useState<RepositoryListItemOut[]>([]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    realApi.listRepositories(1, 100).then((res) => {
+      if (isMounted) setRepositories(res.items || []);
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [location.pathname]);
 
   return (
     <aside
@@ -76,13 +88,15 @@ export function Sidebar({
           onClick={onToggleCollapse}
           className="p-1 rounded-[var(--radius-control)] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)] transition hidden md:flex items-center justify-center"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+          {collapsed ? <ChevronRight size={15} aria-hidden="true" /> : <ChevronLeft size={15} aria-hidden="true" />}
         </button>
       </div>
 
       {/* Main Navigation */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-5 no-scrollbar">
+      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-5 no-scrollbar" aria-label="Main navigation">
         {/* Primary Links */}
         <div className="space-y-0.5">
           <NavLink
@@ -97,8 +111,8 @@ export function Sidebar({
             }
             title={collapsed ? 'Dashboard' : undefined}
           >
-            <LayoutDashboard size={16} className="shrink-0" />
-            {!collapsed && <span>Dashboard</span>}
+            <LayoutDashboard size={16} className="shrink-0" aria-hidden="true" />
+            {!collapsed ? <span>Dashboard</span> : <span className="sr-only">Dashboard</span>}
           </NavLink>
 
           <button
@@ -106,58 +120,64 @@ export function Sidebar({
             className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors text-left"
             title={collapsed ? 'Connect repository' : undefined}
           >
-            <Plus size={16} className="shrink-0 text-[var(--color-accent)]" />
-            {!collapsed && <span>Connect repository</span>}
+            <Plus size={16} className="shrink-0 text-[var(--color-accent)]" aria-hidden="true" />
+            {!collapsed ? <span>Connect repository</span> : <span className="sr-only">Connect repository</span>}
           </button>
         </div>
 
-        {/* Recent Repositories */}
-        <div>
-          {!collapsed && (
-            <div className="px-2.5 mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
-              <span>Repositories</span>
-              <span className="font-mono text-[9px]">{mockRepositories.length}</span>
-            </div>
-          )}
+        {/* Repositories */}
+        {repositories.length > 0 && (
+          <div role="list" aria-label="Connected repositories">
+            {!collapsed && (
+              <div className="px-2.5 mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+                <span>Repositories</span>
+                <span className="font-mono text-[9px]">{repositories.length}</span>
+              </div>
+            )}
 
-          <div className="space-y-0.5">
-            {mockRepositories.map((repo) => {
-              const isSelected = location.pathname.startsWith(`/repositories/${repo.id}`);
-              return (
-                <NavLink
-                  key={repo.id}
-                  to={`/repositories/${repo.id}`}
-                  className={cn(
-                    'group flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
-                    isSelected
-                      ? 'bg-[var(--color-raised)] text-[var(--color-text)] border border-[var(--color-border-strong)]'
-                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
-                  )}
-                  title={collapsed ? `${repo.owner}/${repo.name}` : undefined}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <GitBranch size={14} className="shrink-0 text-[var(--color-muted)] group-hover:text-[var(--color-text)]" />
-                    {!collapsed && <span className="truncate">{repo.name}</span>}
-                  </div>
+            <div className="space-y-0.5">
+              {repositories.map((repo) => {
+                const isSelected = location.pathname.startsWith(`/repositories/${repo.id}`);
+                const isReady = repo.latest_job_status === 'READY' || repo.latest_job_status === 'SUCCESS' || repo.latest_job_status === 'INDEXED' || (repo.active_version_short_sha && !repo.latest_job_status);
+                const isIndexing = repo.latest_job_status === 'INDEXING' || repo.latest_job_status === 'FETCHING' || repo.latest_job_status === 'QUEUED';
+                const isFailed = repo.latest_job_status === 'FAILED';
 
-                  {!collapsed && (
-                    <div className="shrink-0">
-                      {repo.latest_job_status === 'READY' && (
-                        <CheckCircle2 size={12} className="text-[var(--color-accent)]" />
-                      )}
-                      {repo.latest_job_status === 'INDEXING' && (
-                        <Loader2 size={12} className="animate-spin text-[var(--color-warning)]" />
-                      )}
-                      {repo.latest_job_status === 'FAILED' && (
-                        <AlertCircle size={12} className="text-[var(--color-error)]" />
-                      )}
+                return (
+                  <NavLink
+                    key={repo.id}
+                    to={`/repositories/${repo.id}`}
+                    className={cn(
+                      'group flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
+                      isSelected
+                        ? 'bg-[var(--color-raised)] text-[var(--color-text)] border border-[var(--color-border-strong)]'
+                        : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
+                    )}
+                    title={collapsed ? `${repo.owner}/${repo.name}` : undefined}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <GitBranch size={14} className="shrink-0 text-[var(--color-muted)] group-hover:text-[var(--color-text)]" aria-hidden="true" />
+                      {!collapsed ? <span className="truncate">{repo.name}</span> : <span className="sr-only">{repo.owner}/{repo.name}</span>}
                     </div>
-                  )}
-                </NavLink>
-              );
-            })}
+
+                    {!collapsed && (
+                      <div className="shrink-0">
+                        {isReady && (
+                          <CheckCircle2 size={12} className="text-[var(--color-accent)]" />
+                        )}
+                        {isIndexing && (
+                          <Loader2 size={12} className="animate-spin text-[var(--color-warning)]" />
+                        )}
+                        {isFailed && (
+                          <AlertCircle size={12} className="text-[var(--color-error)]" />
+                        )}
+                      </div>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Resources & Docs */}
         <div>
@@ -194,7 +214,7 @@ export function Sidebar({
             </button>
           </div>
         </div>
-      </div>
+      </nav>
 
       {/* User Menu Footer */}
       <div className="p-2 border-t border-[var(--color-border)]">
@@ -208,15 +228,15 @@ export function Sidebar({
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div className="h-7 w-7 rounded-full bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-xs font-semibold text-[var(--color-text)] shrink-0">
-                  {mockCurrentUser.initials}
+                  {userDisplay.initials}
                 </div>
                 {!collapsed && (
                   <div className="flex flex-col min-w-0">
                     <span className="text-xs font-medium text-[var(--color-text)] truncate">
-                      {mockCurrentUser.name}
+                      {userDisplay.name}
                     </span>
                     <span className="text-[10px] text-[var(--color-muted)] truncate">
-                      @{mockCurrentUser.github_login}
+                      @{userDisplay.username}
                     </span>
                   </div>
                 )}
@@ -228,10 +248,10 @@ export function Sidebar({
             <DropdownMenuLabel>
               <div className="flex flex-col">
                 <span className="font-semibold text-xs text-[var(--color-text)]">
-                  {mockCurrentUser.name}
+                  {userDisplay.name}
                 </span>
                 <span className="text-[11px] font-normal text-[var(--color-muted)]">
-                  {mockCurrentUser.email}
+                  {userDisplay.email}
                 </span>
               </div>
             </DropdownMenuLabel>
@@ -244,14 +264,14 @@ export function Sidebar({
               <Keyboard className="mr-2 h-4 w-4" />
               <span>Keyboard Shortcuts</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.open(`https://github.com/${mockCurrentUser.github_login}`, '_blank')}>
+            <DropdownMenuItem onClick={() => window.open(`https://github.com/${userDisplay.username}`, '_blank')}>
               <GithubIcon className="mr-2 h-4 w-4" />
               <span>GitHub Profile</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               destructive
-              onClick={() => navigate('/status/session-expired')}
+              onClick={() => logout()}
             >
               <LogOut className="mr-2 h-4 w-4" />
               <span>Sign out</span>

@@ -8,6 +8,7 @@ from datetime import datetime
 
 class RepositoryCreate(BaseModel):
     url: str
+    account_id: UUID | None = None
 
     @field_validator("url")
     @classmethod
@@ -70,6 +71,9 @@ class RepositoryDetailOut(BaseModel):
     name: str
     is_private: bool
     active_version: RepositoryVersionSummary | None
+    lines_of_code: int = 0
+    ast_nodes: int = 0
+    primary_language: str = "TypeScript"
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -148,6 +152,7 @@ class FileDetailOut(BaseModel):
 
 class FileListOut(BaseModel):
     files: list[FileOut]
+    total: int | None = None
 
 class SearchRequest(BaseModel):
     query: str

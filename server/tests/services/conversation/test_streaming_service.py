@@ -9,6 +9,8 @@ from app.services.rag_query.models import RAGQueryResponse
 from app.services.citation.models import CitationResponse, Citation as DomainCitation
 from app.services.answer.models import AnswerResponse
 from app.services.conversation.query_rewriter import RewrittenQueryResponse
+from app.services.llm.exceptions import TransientLLMError, PermanentLLMError
+
 
 @pytest.fixture
 def mocks():
@@ -161,3 +163,55 @@ async def test_stream_message_cancellation(service, mocks):
     
     # Assert lock was released via eval (since it was shielded)
     mocks["redis_client"].eval.assert_called_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("exception_cls,error_code", [
+    (Exception, "INTERNAL_ERROR"),
+    (TransientLLMError, "UPSTREAM_SERVICE_UNAVAILABLE"),
+    (PermanentLLMError, "UPSTREAM_SERVICE_ERROR"),
+])
+async def test_stream_error_never_contains_exception_text(service, mocks, exception_cls, error_code):
+    """Prove that no stream error event leaks raw exception text or secrets."""
+    from app.services.llm.exceptions import TransientLLMError, PermanentLLMError
+
+    fake_secret = "SUPER_SECRET_TOKEN_DO_NOT_LEAK_482910"
+    user_id = uuid4()
+    conv_id = uuid4()
+    req = ConversationMessageRequest(content="hello secret")
+
+    mocks["redis_client"].set.return_value = True
+
+    mock_conv = Mock(spec=Conversation)
+    mock_conv.id = conv_id
+    mock_conv.repository_version_id = uuid4()
+    mocks["conversation_repo"].get_for_user.return_value = mock_conv
+
+    mock_version = Mock()
+    mock_version.index_status = "SUCCESS"
+    mocks["repository_repo"].get_version_by_id.return_value = mock_version
+
+    mock_msg = Mock(spec=Message)
+    mock_msg.id = uuid4()
+    mocks["message_repo"].create.return_value = mock_msg
+    mocks["message_repo"].list_for_conversation.return_value = ([], 0)
+
+    # Inject exception carrying the fake secret into query rewriter
+    mocks["query_rewriter"].rewrite.side_effect = exception_cls(f"DB failed with secret: {fake_secret}")
+
+    generator = service.stream_message(user_id, conv_id, req)
+    events = []
+    async for event in generator:
+        events.append(event)
+
+    # Verify at least one error event is emitted
+    error_events = [e for e in events if "event: error" in e]
+    assert len(error_events) == 1, f"Expected 1 error event, got: {events}"
+
+    # Verify fake secret is NEVER present in ANY event
+    for event in events:
+        assert fake_secret not in event, f"Secret leaked in stream event: {event}"
+
+    # Verify expected sanitized error code
+    assert error_code in error_events[0]
+

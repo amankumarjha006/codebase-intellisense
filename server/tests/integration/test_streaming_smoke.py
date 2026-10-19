@@ -211,3 +211,24 @@ class TestStreamingSmoke:
         # --- Assert: Lock was released ---
         lock_val = await redis_client.get(f"conv_lock:{conv.id}")
         assert lock_val is None, "Conversation lock was not released"
+
+        # --- Assert: Conversation reloaded via GET /conversations/{id}/messages returns the same citations ---
+        reload_resp = await app_client.get(
+            f"{settings.API_V1_STR}/conversations/{conv.id}/messages",
+            cookies={settings.SESSION_COOKIE_NAME: session_id},
+        )
+        assert reload_resp.status_code == 200
+        reload_data = reload_resp.json()
+        assert reload_data["total"] == 2
+        reloaded_user = reload_data["items"][0]
+        reloaded_asst = reload_data["items"][1]
+        assert reloaded_user["role"] == "user"
+        assert reloaded_user["citations"] == []
+        assert reloaded_asst["role"] == "assistant"
+        assert len(reloaded_asst["citations"]) == len(assistant_msg.citations)
+        for i, c in enumerate(assistant_msg.citations):
+            rc = reloaded_asst["citations"][i]
+            assert rc["file_path"] == c.file_path
+            assert rc["start_line"] == c.start_line
+            assert rc["end_line"] == c.end_line
+

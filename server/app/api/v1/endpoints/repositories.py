@@ -46,7 +46,8 @@ from app.services.repository import (
     RepositoryServiceError,
     InvalidRepositoryUrlError,
     RepositoryNotAccessibleError,
-    RepositoryActiveJobError
+    RepositoryActiveJobError,
+    parse_github_url,
 )
 from app.services.github import GithubAuthError
 from app.workers import enqueue_indexing_job
@@ -115,7 +116,8 @@ def get_repositories(
     search: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    _: None = Depends(general_rate_limiter),):
+    _: None = Depends(general_rate_limiter),
+):
     """Retrieves a paginated list of repositories the authenticated user has access to."""
     repo_repo = RepositoryRepository(db)
     rows, total = repo_repo.list_for_user(
@@ -153,9 +155,7 @@ async def connect_repository(
     db: Session = Depends(get_db),
     _: None = Depends(general_rate_limiter),):
     """Connects a GitHub repository for the authenticated user."""
-    github_account = current_user.github_accounts[0] if current_user.github_accounts else None
-    
-    if not github_account:
+    if not current_user.github_accounts:
         return JSONResponse(
             status_code=400,
             content={
@@ -165,6 +165,40 @@ async def connect_repository(
                 }
             }
         )
+
+    github_account = None
+
+    # 1. Match by explicit account_id if specified in the request
+    if request.account_id:
+        github_account = next(
+            (acc for acc in current_user.github_accounts if acc.id == request.account_id),
+            None
+        )
+        if not github_account:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "code": "INVALID_REQUEST",
+                        "message": f"GitHub account {request.account_id} not found for this user."
+                    }
+                }
+            )
+
+    # 2. Match by repository owner username
+    if not github_account:
+        try:
+            owner, _ = parse_github_url(request.url)
+            github_account = next(
+                (acc for acc in current_user.github_accounts if acc.username.lower() == owner.lower()),
+                None
+            )
+        except Exception:
+            pass
+
+    # 3. Fallback to first connected GitHub account
+    if not github_account:
+        github_account = current_user.github_accounts[0]
 
     try:
         token = get_decrypted_token(github_account)
@@ -231,16 +265,46 @@ def get_repository(
     version = repo_repo.get_latest_version(repository.id)
     
     active_version = None
+    lines_of_code = 0
+    ast_nodes = 0
+    primary_language = "TypeScript"
+
     if version:
         active_version = RepositoryVersionSummary.from_orm_version(version)
-        
+        try:
+            knowledge_repo = KnowledgeRepository(db)
+            ast_nodes = knowledge_repo.count_symbols_for_version(version.id)
+            lines_of_code = knowledge_repo.count_lines_for_version(version.id)
+            lang_stats = knowledge_repo.get_language_stats_for_version(version.id)
+            if lang_stats:
+                sorted_langs = sorted(lang_stats, key=lambda x: x[1], reverse=True)
+                if sorted_langs and sorted_langs[0][0]:
+                    primary_language = sorted_langs[0][0].capitalize()
+        except Exception:
+            pass
+
     return RepositoryDetailOut(
         id=repository.id,
         owner=repository.owner,
         name=repository.name,
         is_private=repository.is_private,
-        active_version=active_version
+        active_version=active_version,
+        lines_of_code=lines_of_code,
+        ast_nodes=ast_nodes,
+        primary_language=primary_language,
     )
+
+@router.delete("/{repository_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Archive Repository")
+def delete_repository(
+    repository_id: UUID,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+    _: None = Depends(general_rate_limiter),
+):
+    """Archives a repository so it is hidden from the user interface without deleting its data."""
+    repository.is_archived = True
+    db.commit()
+    return None
 
 @router.get("/{repository_id}/versions", response_model=list[RepositoryVersionSummary], summary="List Repository Versions")
 def get_repository_versions(
@@ -256,6 +320,9 @@ def get_repository_versions(
 @router.get("/{repository_id}/files", response_model=FileListOut, summary="List Files")
 def get_repository_files(
     repository_id: UUID,
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    q: str | None = Query(None),
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
     _: None = Depends(general_rate_limiter),):
@@ -275,9 +342,26 @@ def get_repository_files(
         )
         
     knowledge_repo = KnowledgeRepository(db)
-    files = knowledge_repo.get_files_for_version(active_version.id)
-    
-    return FileListOut(files=files)
+    try:
+        files = knowledge_repo.get_files_for_version(active_version.id, skip=offset, limit=limit, q=q)
+    except TypeError:
+        files = knowledge_repo.get_files_for_version(active_version.id)
+        
+    total = None
+    count_fn = getattr(knowledge_repo, "count_files_for_version", None)
+    if callable(count_fn):
+        try:
+            res = count_fn(active_version.id, q=q)
+            if isinstance(res, int):
+                total = res
+            else:
+                total = len(files)
+        except Exception:
+            total = len(files)
+    else:
+        total = len(files)
+        
+    return FileListOut(files=files, total=total)
 
 @router.get("/{repository_id}/files/{file_id}", response_model=FileDetailOut, summary="Get File Content")
 def get_repository_file_content(
@@ -506,6 +590,8 @@ def get_repository_technology_stack(
 @router.get("/{repository_id}/architecture", response_model=AnalysisResultOut, summary="Get Architecture")
 def get_repository_architecture(
     repository_id: UUID,
+    level: str | None = Query(None, description="Level filter, e.g. 'file'"),
+    max_nodes: int | None = Query(None, ge=1, le=2000, description="Max nodes to return (default 300 when level or max_nodes specified)"),
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
     _: None = Depends(general_rate_limiter),):
@@ -537,8 +623,54 @@ def get_repository_architecture(
                 }
             }
         )
+
+    payload = arch.payload or {}
+    nodes = list(payload.get("nodes", []))
+    relationships = list(payload.get("relationships", []))
+
+    if level == "file":
+        nodes = [n for n in nodes if n.get("type") == "file"]
+        file_ids = {n["id"] for n in nodes if "id" in n}
+        relationships = [
+            r for r in relationships
+            if r.get("source") in file_ids and r.get("target") in file_ids
+        ]
+
+    limit = max_nodes if max_nodes is not None else 300
+    total_nodes = len(nodes)
+    truncated = False
+
+    if total_nodes > limit:
+        truncated = True
+        from collections import Counter
+        degree = Counter()
+        for r in relationships:
+            degree[r.get("source")] += 1
+            degree[r.get("target")] += 1
         
-    return AnalysisResultOut.model_validate(arch)
+        # Keep the most connected nodes; tie-break deterministically by id
+        nodes = sorted(
+            nodes,
+            key=lambda n: (degree[n.get("id")], n.get("id", "")),
+            reverse=True
+        )[:limit]
+        retained_ids = {n["id"] for n in nodes if "id" in n}
+        relationships = [
+            r for r in relationships
+            if r.get("source") in retained_ids and r.get("target") in retained_ids
+        ]
+
+    filtered_payload = dict(payload)
+    filtered_payload["nodes"] = nodes
+    filtered_payload["relationships"] = relationships
+    filtered_payload["truncated"] = truncated
+    filtered_payload["total_nodes"] = total_nodes
+
+    return AnalysisResultOut(
+        analysis_type=arch.analysis_type,
+        repository_version_id=arch.repository_version_id,
+        payload=filtered_payload
+    )
 
 
 @router.post("/{repository_id}/analyze", response_model=AnalyzeRepositoryOut, status_code=status.HTTP_202_ACCEPTED, summary="Analyze Repository")

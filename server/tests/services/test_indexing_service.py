@@ -34,7 +34,7 @@ def test_index_repository_bulk_creates_files(mock_db, version):
 
     service = IndexingService(mock_db)
 
-    with patch("app.services.indexing.discover_files", return_value=mock_files), \
+    with patch("app.services.indexing.discover_files_with_stats", return_value=(mock_files, {})), \
          patch("app.services.indexing.read_file_content", return_value=("code", "hash123")), \
          patch("app.services.indexing.KnowledgeRepository") as mock_knowledge_repo_cls, \
          patch("app.services.symbol_extractor.SymbolExtractorService"), \
@@ -77,7 +77,7 @@ def test_embedding_generation_joins_file_table(mock_db, version):
     mock_embedding_service = MagicMock()
     service = IndexingService(mock_db, embedding_service=mock_embedding_service)
 
-    with patch("app.services.indexing.discover_files", return_value=mock_files), \
+    with patch("app.services.indexing.discover_files_with_stats", return_value=(mock_files, {})), \
          patch("app.services.indexing.read_file_content", return_value=("code", "hash123")), \
          patch("app.services.indexing.KnowledgeRepository") as mock_knowledge_repo_cls, \
          patch("app.services.symbol_extractor.SymbolExtractorService"), \
@@ -134,3 +134,24 @@ def test_index_file_backward_compatibility(mock_db, version):
         assert f.language == "python"
         mock_db.add.assert_called_once_with(f)
         mock_db.flush.assert_called_once()
+
+
+def test_index_repository_handles_bare_file_list(mock_db, version):
+    """Verify that _index_repository handles discover_files_with_stats returning just a list without stats."""
+    mock_files = [("src/main.py", "/fake/repo/src/main.py")]
+    service = IndexingService(mock_db)
+
+    with patch("app.services.indexing.discover_files_with_stats", return_value=mock_files), \
+         patch("app.services.indexing.read_file_content", return_value=("code", "hash123")), \
+         patch("app.services.indexing.KnowledgeRepository") as mock_knowledge_repo_cls, \
+         patch("app.services.symbol_extractor.SymbolExtractorService"), \
+         patch("app.services.chunking.ChunkBuilderService"):
+
+        mock_knowledge_repo = MagicMock()
+        mock_knowledge_repo.delete_files_for_version.return_value = 0
+        mock_knowledge_repo_cls.return_value = mock_knowledge_repo
+        mock_db.execute.return_value.scalars.return_value.all.return_value = []
+
+        service._index_repository("/fake/repo", version)
+        mock_knowledge_repo.bulk_create_files.assert_called_once()
+

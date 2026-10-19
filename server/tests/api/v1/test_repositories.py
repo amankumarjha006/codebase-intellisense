@@ -66,6 +66,22 @@ def mock_auth_no_github(mocker, mock_redis, mock_db):
     
     return mock_user
 
+@pytest.fixture
+def mock_auth_multi_account(mocker, mock_redis, mock_db):
+    user_id = str(uuid4())
+    mock_redis.get.return_value = user_id
+    
+    mock_user = User(id=uuid4(), email="multi@example.com", full_name="Multi User")
+    acc1 = GithubAccount(id=uuid4(), github_user_id="111", username="work_corp", access_token_encrypted="tok1")
+    acc2 = GithubAccount(id=uuid4(), github_user_id="222", username="personal_dev", access_token_encrypted="tok2")
+    mock_user.github_accounts = [acc1, acc2]
+    
+    mock_user_repo = mocker.patch("app.repositories.user.UserAccountRepository")
+    mock_user_repo_instance = mock_user_repo.return_value
+    mock_user_repo_instance.get_user_by_id.return_value = mock_user
+    
+    return mock_user
+
 
 # List Tests
 @pytest.mark.asyncio
@@ -223,6 +239,55 @@ async def test_connect_repository_token_decryption_failure(async_client, mock_au
     response = await async_client.post(
         f"{settings.API_V1_STR}/repositories",
         json={"url": "https://github.com/owner/repo"}
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_REQUEST"
+
+
+@pytest.mark.asyncio
+async def test_connect_repository_multi_account_matches_owner(async_client, mock_auth_multi_account, mocker):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    mock_decrypt = mocker.patch("app.api.v1.endpoints.repositories.get_decrypted_token", return_value="personal_token")
+    mock_repo_service = mocker.patch("app.api.v1.endpoints.repositories.RepositoryService")
+    mock_repo_service_instance = mock_repo_service.return_value
+    repo = Repository(id=uuid4(), owner="personal_dev", name="cool-repo", is_private=False, created_at=datetime.now(timezone.utc))
+    mock_repo_service_instance.connect_repository = AsyncMock(return_value=repo)
+
+    response = await async_client.post(
+        f"{settings.API_V1_STR}/repositories",
+        json={"url": "https://github.com/personal_dev/cool-repo"}
+    )
+    assert response.status_code == 201
+    # Crucial assertion: Must decrypt token for personal_dev (github_accounts[1]), NOT default to github_accounts[0]
+    expected_account = mock_auth_multi_account.github_accounts[1]
+    mock_decrypt.assert_called_once_with(expected_account)
+
+
+@pytest.mark.asyncio
+async def test_connect_repository_multi_account_explicit_account_id(async_client, mock_auth_multi_account, mocker):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    mock_decrypt = mocker.patch("app.api.v1.endpoints.repositories.get_decrypted_token", return_value="explicit_token")
+    mock_repo_service = mocker.patch("app.api.v1.endpoints.repositories.RepositoryService")
+    mock_repo_service_instance = mock_repo_service.return_value
+    repo = Repository(id=uuid4(), owner="third_party", name="shared-repo", is_private=False, created_at=datetime.now(timezone.utc))
+    mock_repo_service_instance.connect_repository = AsyncMock(return_value=repo)
+
+    target_account = mock_auth_multi_account.github_accounts[1]
+    response = await async_client.post(
+        f"{settings.API_V1_STR}/repositories",
+        json={"url": "https://github.com/third_party/shared-repo", "account_id": str(target_account.id)}
+    )
+    assert response.status_code == 201
+    mock_decrypt.assert_called_once_with(target_account)
+
+
+@pytest.mark.asyncio
+async def test_connect_repository_multi_account_invalid_account_id(async_client, mock_auth_multi_account):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    unknown_account_id = str(uuid4())
+    response = await async_client.post(
+        f"{settings.API_V1_STR}/repositories",
+        json={"url": "https://github.com/third_party/shared-repo", "account_id": unknown_account_id}
     )
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "INVALID_REQUEST"
@@ -628,6 +693,113 @@ async def test_get_repository_architecture_success(async_client, mock_auth, mock
     assert response.status_code == 200
     assert response.json()["payload"]["nodes"] == []
 
+
+@pytest.mark.asyncio
+async def test_get_repository_architecture_level_file_and_truncation(async_client, mock_auth, mock_db, mocker):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    repo_id = str(uuid4())
+    
+    from app.models.repository import Repository, RepositoryVersion
+    from app.models.knowledge import AnalysisResult
+    repo = Repository(id=UUID(repo_id), name="test-repo", clone_url="https://github.com/test/test", is_private=False)
+    
+    mock_auth_dep = mocker.patch("app.api.deps.RepositoryRepository")
+    mock_auth_dep_instance = mock_auth_dep.return_value
+    mock_auth_dep_instance.get_for_user.return_value = repo
+    
+    version_id = uuid4()
+    version = RepositoryVersion(id=version_id, repository_id=UUID(repo_id), commit_sha="abc", index_status="SUCCESS", branch="main", indexed_at=datetime(2026, 1, 2, tzinfo=timezone.utc))
+    
+    mock_repo_repo = mocker.patch("app.api.v1.endpoints.repositories.RepositoryRepository")
+    mock_repo_repo_instance = mock_repo_repo.return_value
+    mock_repo_repo_instance.get_active_version.return_value = version
+    
+    nodes = [
+        {"id": "file_1", "type": "file", "name": "a.py"},
+        {"id": "file_2", "type": "file", "name": "b.py"},
+        {"id": "file_3", "type": "file", "name": "c.py"},
+        {"id": "sym_1", "type": "symbol", "name": "my_func"},
+    ]
+    relationships = [
+        {"source": "file_1", "target": "file_2", "type": "IMPORTS"},
+        {"source": "file_2", "target": "file_3", "type": "IMPORTS"},
+        {"source": "file_2", "target": "sym_1", "type": "CONTAINS"},
+    ]
+    analysis_result = AnalysisResult(
+        repository_version_id=version_id,
+        analysis_type="ARCHITECTURE",
+        payload={"nodes": nodes, "relationships": relationships}
+    )
+    
+    mock_knowledge_repo = mocker.patch("app.api.v1.endpoints.repositories.KnowledgeRepository")
+    mock_knowledge_repo_instance = mock_knowledge_repo.return_value
+    mock_knowledge_repo_instance.get_analysis_result.return_value = analysis_result
+    
+    # 1. Level=file without truncation (max_nodes=3)
+    response = await async_client.get(f"{settings.API_V1_STR}/repositories/{repo_id}/architecture?level=file&max_nodes=3")
+    assert response.status_code == 200
+    p = response.json()["payload"]
+    assert len(p["nodes"]) == 3
+    assert all(n["type"] == "file" for n in p["nodes"])
+    assert p["truncated"] is False
+    assert p["total_nodes"] == 3
+    assert len(p["relationships"]) == 2
+    
+    # 2. Level=file with truncation (max_nodes=1)
+    # file_2 has degree 2 (connected to file_1 and file_3), file_1 and file_3 have degree 1
+    response_trunc = await async_client.get(f"{settings.API_V1_STR}/repositories/{repo_id}/architecture?level=file&max_nodes=1")
+    assert response_trunc.status_code == 200
+    p_trunc = response_trunc.json()["payload"]
+    assert len(p_trunc["nodes"]) == 1
+    assert p_trunc["nodes"][0]["id"] == "file_2"
+    assert p_trunc["truncated"] is True
+    assert p_trunc["total_nodes"] == 3
+    assert len(p_trunc["relationships"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_repository_architecture_default_bounds_to_300_nodes(async_client, mock_auth, mock_db, mocker):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    repo_id = str(uuid4())
+    
+    from app.models.repository import Repository, RepositoryVersion
+    from app.models.knowledge import AnalysisResult
+    repo = Repository(id=UUID(repo_id), name="test-repo", clone_url="https://github.com/test/test", is_private=False)
+    
+    mock_auth_dep = mocker.patch("app.api.deps.RepositoryRepository")
+    mock_auth_dep_instance = mock_auth_dep.return_value
+    mock_auth_dep_instance.get_for_user.return_value = repo
+    
+    version_id = uuid4()
+    version = RepositoryVersion(id=version_id, repository_id=UUID(repo_id), commit_sha="abc", index_status="SUCCESS", branch="main", indexed_at=datetime(2026, 1, 2, tzinfo=timezone.utc))
+    
+    mock_repo_repo = mocker.patch("app.api.v1.endpoints.repositories.RepositoryRepository")
+    mock_repo_repo_instance = mock_repo_repo.return_value
+    mock_repo_repo_instance.get_active_version.return_value = version
+    
+    # Generate 350 nodes
+    nodes = [{"id": f"node_{i}", "type": "file", "name": f"file_{i}.py"} for i in range(350)]
+    relationships = [{"source": "node_0", "target": f"node_{i}", "type": "IMPORTS"} for i in range(1, 350)]
+    
+    analysis_result = AnalysisResult(
+        repository_version_id=version_id,
+        analysis_type="ARCHITECTURE",
+        payload={"nodes": nodes, "relationships": relationships}
+    )
+    
+    mock_knowledge_repo = mocker.patch("app.api.v1.endpoints.repositories.KnowledgeRepository")
+    mock_knowledge_repo_instance = mock_knowledge_repo.return_value
+    mock_knowledge_repo_instance.get_analysis_result.return_value = analysis_result
+    
+    # Request without query parameters
+    response = await async_client.get(f"{settings.API_V1_STR}/repositories/{repo_id}/architecture")
+    assert response.status_code == 200
+    p = response.json()["payload"]
+    assert len(p["nodes"]) == 300
+    assert p["truncated"] is True
+    assert p["total_nodes"] == 350
+
+
 @pytest.mark.asyncio
 async def test_get_repository_architecture_no_active_version(async_client, mock_auth, mock_db, mocker):
     async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
@@ -734,6 +906,44 @@ async def test_get_repository_files_success(async_client, mock_auth, mock_db, mo
     assert f["language"] == "python"
     assert f["size"] == 1024
     assert f["sha256"] == "abcdef"
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_pagination_and_query(async_client, mock_auth, mock_db, mocker):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    repo_id = str(uuid4())
+    
+    from app.models.repository import Repository, RepositoryVersion
+    from app.models.knowledge import File
+    repo = Repository(id=UUID(repo_id), name="test-repo", clone_url="https://github.com/test/test", is_private=False)
+    
+    mock_auth_dep = mocker.patch("app.api.deps.RepositoryRepository")
+    mock_auth_dep_instance = mock_auth_dep.return_value
+    mock_auth_dep_instance.get_for_user.return_value = repo
+    
+    version_id = uuid4()
+    version = RepositoryVersion(id=version_id, repository_id=UUID(repo_id), commit_sha="abc", index_status="SUCCESS", branch="main", indexed_at=datetime(2026, 1, 2, tzinfo=timezone.utc))
+    
+    mock_repo_repo = mocker.patch("app.api.v1.endpoints.repositories.RepositoryRepository")
+    mock_repo_repo_instance = mock_repo_repo.return_value
+    mock_repo_repo_instance.get_active_version.return_value = version
+    
+    mock_knowledge_repo = mocker.patch("app.api.v1.endpoints.repositories.KnowledgeRepository")
+    mock_knowledge_repo_instance = mock_knowledge_repo.return_value
+    
+    file1 = File(id=uuid4(), repository_version_id=version_id, file_path="src/utils.py", file_name="utils.py", language="python", size_bytes=200, hash="111")
+    mock_knowledge_repo_instance.get_files_for_version.return_value = [file1]
+    mock_knowledge_repo_instance.count_files_for_version.return_value = 15
+    
+    response = await async_client.get(f"{settings.API_V1_STR}/repositories/{repo_id}/files?limit=10&offset=5&q=utils")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["files"]) == 1
+    assert data["files"][0]["path"] == "src/utils.py"
+    assert data["total"] == 15
+    mock_knowledge_repo_instance.get_files_for_version.assert_called_once_with(version_id, skip=5, limit=10, q="utils")
+    mock_knowledge_repo_instance.count_files_for_version.assert_called_once_with(version_id, q="utils")
+
 
 @pytest.mark.asyncio
 async def test_get_repository_files_no_active_version(async_client, mock_auth, mock_db, mocker):
@@ -872,3 +1082,36 @@ async def test_get_repository_file_content_unauthorized(async_client, mock_auth,
     response = await async_client.get(f"{settings.API_V1_STR}/repositories/{repo_id}/files/{file_id}")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "REPOSITORY_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_delete_repository_success(async_client, mock_auth, mock_db, mocker):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    repo_id = str(uuid4())
+
+    from app.models.repository import Repository
+    repo = Repository(id=UUID(repo_id), name="test-repo", clone_url="https://github.com/test/test", is_private=False)
+
+    mock_auth_dep = mocker.patch("app.api.deps.RepositoryRepository")
+    mock_auth_dep_instance = mock_auth_dep.return_value
+    mock_auth_dep_instance.get_for_user.return_value = repo
+
+    response = await async_client.delete(f"{settings.API_V1_STR}/repositories/{repo_id}")
+    assert response.status_code == 204
+    assert repo.is_archived is True
+    mock_db.commit.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_delete_repository_not_found(async_client, mock_auth, mock_db, mocker):
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+    repo_id = str(uuid4())
+
+    mock_auth_dep = mocker.patch("app.api.deps.RepositoryRepository")
+    mock_auth_dep_instance = mock_auth_dep.return_value
+    mock_auth_dep_instance.get_for_user.return_value = None
+
+    response = await async_client.delete(f"{settings.API_V1_STR}/repositories/{repo_id}")
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "REPOSITORY_NOT_FOUND"
+
