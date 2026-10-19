@@ -316,8 +316,46 @@ export const realApi = {
       ...options,
     }),
 
-  getIndexJob: (repoId: string, jobId: string, options: RequestInit = {}) =>
-    fetchWrapper<IndexJobOut>(`/repositories/${repoId}/jobs/${jobId}`, options),
+  getIndexJob: async (
+    repoId: string,
+    jobIdOrOptions?: string | RequestInit,
+    maybeOptions?: RequestInit
+  ): Promise<IndexJobOut & { progress?: IndexJob['progress'] }> => {
+    const jobId = typeof jobIdOrOptions === 'string' ? jobIdOrOptions : undefined;
+    const options = typeof jobIdOrOptions === 'object' ? jobIdOrOptions : (maybeOptions || {});
+
+    let out: IndexJobOut;
+    if (jobId) {
+      out = await fetchWrapper<IndexJobOut>(`/repositories/${repoId}/jobs/${jobId}`, options);
+    } else {
+      const list = await fetchWrapper<IndexJobOut[]>(`/repositories/${repoId}/jobs`, options);
+      if (!list || list.length === 0) {
+        throw new ApiError('No indexing jobs found for this repository.', 'NOT_FOUND', 404);
+      }
+      out = list[0];
+    }
+
+    return {
+      ...out,
+      progress: {
+        phase:
+          out.status === 'READY' || out.status === 'SUCCESS'
+            ? 'Complete'
+            : out.status === 'FAILED'
+            ? 'Failed'
+            : 'Processing repository',
+        percent:
+          out.status === 'READY' || out.status === 'SUCCESS'
+            ? 100
+            : out.status === 'FAILED'
+            ? 0
+            : 50,
+        files_processed: 0,
+        files_total: 100,
+        current_file: null,
+      },
+    };
+  },
 
   listRepositoryJobs: (repoId: string, options: RequestInit = {}) =>
     fetchWrapper<IndexJobOut[]>(`/repositories/${repoId}/jobs`, options),
@@ -803,52 +841,9 @@ export const realApi = {
   },
 };
 
-// Mock layer detection: enabled only in dev when VITE_USE_MOCKS=true and not in test runner
-const isVitest =
-  typeof globalThis !== 'undefined' &&
-  Boolean((globalThis as unknown as { process?: { env?: Record<string, string> } }).process?.env?.VITEST);
-
-export const isMockEnabled = Boolean(
-  import.meta.env.DEV &&
-  import.meta.env.MODE !== 'test' &&
-  !isVitest &&
-  import.meta.env.VITE_USE_MOCKS === 'true'
-);
+export const isMockEnabled = false;
 
 type MockApiType = typeof import('../mock/mockApi').mockApi;
 
-let mockApiCache: MockApiType | null = null;
+export const api = realApi as unknown as MockApiType & typeof realApi;
 
-async function getMockApi(): Promise<MockApiType> {
-  if (import.meta.env.DEV) {
-    if (!mockApiCache) {
-      const mod = await import('../mock/mockApi');
-      mockApiCache = mod.mockApi;
-    }
-    return mockApiCache;
-  }
-  throw new Error('Mock API is not available in production');
-}
-
-export const api = new Proxy({} as MockApiType & typeof realApi, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop !== 'string') return undefined;
-
-    if (!isMockEnabled) {
-      const realMethod = (realApi as Record<string, unknown>)[prop];
-      if (typeof realMethod === 'function') {
-        return realMethod.bind(realApi);
-      }
-      return realMethod;
-    }
-
-    return async (...args: unknown[]) => {
-      const mock = await getMockApi();
-      const fn = (mock as Record<string, unknown>)[prop];
-      if (typeof fn === 'function') {
-        return fn.apply(mock, args);
-      }
-      return fn;
-    };
-  },
-});
