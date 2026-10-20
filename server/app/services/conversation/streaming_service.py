@@ -82,8 +82,8 @@ class ConversationStreamingService:
         })
 
         try:
-            # 1. Acquire Lock securely
-            lock_acquired = await self.redis_client.set(lock_key, lock_token, nx=True, ex=60)
+            # 1. Acquire Lock securely (180s timeout to accommodate retrieval and generation)
+            lock_acquired = await self.redis_client.set(lock_key, lock_token, nx=True, ex=180)
             if not lock_acquired:
                 logger.warning("conversation_lock_contended", extra={
                     "conversation_id": str(conversation_id)
