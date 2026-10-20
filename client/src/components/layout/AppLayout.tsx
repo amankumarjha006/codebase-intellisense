@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '../ui/button';
 import { Drawer, DrawerContent } from '../ui/drawer';
 import { SkipToContent } from '../ui/A11y';
+import { SpectralDrape } from '../ui/spectral-drape';
 import { realApi, RepositoryListItemOut } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { classifyAuthError } from '../../lib/auth';
@@ -230,6 +231,21 @@ export function AppLayout() {
             tabIndex={-1}
             role="main"
           >
+            {/* Ambient Background: Spectral Drape with subtle low brightness */}
+            <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
+              <SpectralDrape
+                backgroundColor="transparent"
+                colors={['#8AB4F8', '#5E97F6']}
+                intensity={0.42}
+                density={0.75}
+                softness={0.7}
+                speed={0.4}
+                flow={0.5}
+                interactive={false}
+                className="w-full h-full opacity-55"
+              />
+            </div>
+
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}
@@ -237,7 +253,7 @@ export function AppLayout() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
-                className="h-full"
+                className="h-full relative z-10"
               >
                 <Outlet />
               </motion.div>

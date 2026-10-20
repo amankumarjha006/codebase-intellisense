@@ -18,6 +18,8 @@ import { GithubIcon } from '../components/ui/GithubIcon';
 import { BlurText } from '../components/ui/BlurText';
 import { SpotlightCard } from '../components/ui/SpotlightCard';
 import { Dither } from '../components/ui/Dither';
+import { SpectralDrape } from '../components/ui/spectral-drape';
+import { InterferenceRibbons } from '../components/ui/interference-ribbons';
 import { Button } from '../components/ui/button';
 import { Drawer, DrawerContent } from '../components/ui/drawer';
 import { FadeUp, StaggerChildren, ScrollReveal } from '../components/ui/ScrollMotion';
@@ -178,8 +180,30 @@ export function LandingPage() {
       <main id="landing-main">
         {/* Hero Section */}
         <section className={`${errorCopy ? 'pt-10' : 'pt-32'} pb-20 px-4 sm:px-6 relative overflow-hidden`} aria-labelledby="hero-heading">
+          {/* Ambient Background: Interference Ribbons */}
+          <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
+            <InterferenceRibbons
+              backgroundColor="#0F0F0E"
+              colors={['#8AB4F8', '#d3ebff']}
+              wires={72}
+              lineWidth={1.8}
+              ribbonWidth={0.28}
+              amplitude={0.65}
+              waveLength={1.1}
+              angle={38}
+              twist={1.6}
+              curl={0.25}
+              stripes={2.4}
+              glow={0.38}
+              intensity={0.8}
+              speed={0.6}
+              spin={0.3}
+              interactive={true}
+              className="w-full h-full opacity-50"
+            />
+          </div>
 
-          <div className="max-w-4xl mx-auto text-center space-y-6">
+          <div className="max-w-4xl mx-auto text-center space-y-6 relative z-10">
             <FadeUp delay={0}>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)] text-[var(--color-accent)] text-xs font-medium">
                 <Terminal size={12} aria-hidden="true" />
