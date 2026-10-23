@@ -5,7 +5,6 @@ import { api } from '../lib/api';
 import { Repository, IndexJob } from '../lib/types';
 import { formatNumber, formatRelativeTime, shortSha } from '../lib/utils';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
-import { RepositoryNavDock } from '../components/repository/RepositoryNavDock';
 import { StatusChip } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
@@ -112,10 +111,7 @@ export function RepositoryOverviewPage() {
       <RepositoryHeader repository={repository} onRefresh={loadData} />
 
       <main className="p-6 max-w-7xl mx-auto">
-        {/* Two-region Workspace Layout: Main Content Area + Sticky Vertical Navigation Dock */}
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
-          {/* Main Content Workspace Column */}
-          <div className="flex-1 min-w-0 space-y-6">
+        <div className="space-y-6">
             {/* Indexing Progress State Banner (shown only when indexing) */}
             {isIndexing && (
               <section
@@ -494,15 +490,6 @@ export function RepositoryOverviewPage() {
                 </div>
               )}
             </section>
-          </div>
-
-          {/* Right Column: Sleek Floating Sticky Navigation Dock (Desktop lg+) */}
-          <aside
-            aria-label="Repository navigation dock"
-            className="hidden lg:block sticky top-6 shrink-0 z-10"
-          >
-            <RepositoryNavDock repoId={repository.id} orientation="vertical" />
-          </aside>
         </div>
       </main>
     </AnimatedPage>

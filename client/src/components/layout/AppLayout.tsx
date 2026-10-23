@@ -18,6 +18,7 @@ import { Button } from '../ui/button';
 import { Drawer, DrawerContent } from '../ui/drawer';
 import { SkipToContent } from '../ui/A11y';
 import { SpectralDrape } from '../ui/spectral-drape';
+import { TooltipProvider } from '../ui/tooltip';
 import { realApi, RepositoryListItemOut } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { classifyAuthError } from '../../lib/auth';
@@ -118,7 +119,8 @@ export function AppLayout() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="flex h-screen w-screen overflow-hidden bg-[var(--color-page)] text-[var(--color-text)] font-sans antialiased">
+      <TooltipProvider delayDuration={150}>
+        <div className="flex h-screen w-screen overflow-hidden bg-[var(--color-page)] text-[var(--color-text)] font-sans antialiased">
         <SkipToContent />
 
         {/* Desktop Sidebar — animated width */}
@@ -205,15 +207,17 @@ export function AppLayout() {
                 </kbd>
               </button>
 
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={() => setConnectOpen(true)}
-                className="hidden sm:inline-flex"
-              >
-                <MaterialIcon name="add" size={18} aria-hidden="true" />
-                <span>Connect repo</span>
-              </Button>
+              {location.pathname !== '/dashboard' && (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => setConnectOpen(true)}
+                  className="hidden sm:inline-flex"
+                >
+                  <MaterialIcon name="add" size={18} aria-hidden="true" />
+                  <span>Connect repo</span>
+                </Button>
+              )}
             </div>
           </header>
 
@@ -236,7 +240,7 @@ export function AppLayout() {
                 speed={0.4}
                 flow={0.5}
                 interactive={false}
-                className="w-full h-full opacity-55"
+                className="w-full h-full opacity-10"
               />
             </div>
 
@@ -369,6 +373,7 @@ export function AppLayout() {
           </DialogContent>
         </Dialog>
       </div>
+      </TooltipProvider>
     </MotionConfig>
   );
 }

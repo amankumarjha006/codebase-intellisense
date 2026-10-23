@@ -2,6 +2,7 @@ import * as React from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { GithubIcon } from '../ui/GithubIcon';
 import { MaterialIcon } from '../ui/MaterialIcon';
+import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 import { cn } from '../../lib/utils';
 import { realApi, RepositoryListItemOut } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
@@ -41,6 +42,9 @@ export function Sidebar({
     }).catch(() => {});
     return () => { isMounted = false; };
   }, [location.pathname]);
+
+  const isDashboardActive = location.pathname === '/dashboard';
+  const isRepositoriesActive = location.pathname.startsWith('/repositories');
 
   return (
     <aside
@@ -87,76 +91,165 @@ export function Sidebar({
 
       {/* Main Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-5 no-scrollbar" aria-label="Main navigation">
-        {/* Primary Links */}
+        {/* Primary App-Wide Links */}
         <div className="space-y-1">
-          <NavLink
-            to="/dashboard"
-            className={({ isActive }) =>
-              cn(
+          {/* Dashboard */}
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <NavLink
+                  to="/dashboard"
+                  className={cn(
+                    'flex items-center justify-center p-2 rounded-[var(--radius-control)] transition-colors',
+                    isDashboardActive
+                      ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
+                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
+                  )}
+                  aria-label="Dashboard"
+                >
+                  <MaterialIcon
+                    name="dashboard"
+                    active={isDashboardActive}
+                    size={22}
+                    className="shrink-0"
+                    aria-hidden={true}
+                  />
+                </NavLink>
+              </TooltipTrigger>
+              <TooltipContent side="right">Dashboard</TooltipContent>
+            </Tooltip>
+          ) : (
+            <NavLink
+              to="/dashboard"
+              className={cn(
                 'group flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
-                isActive
+                isDashboardActive
                   ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
                   : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
-              )
-            }
-            title={collapsed ? 'Dashboard' : undefined}
-          >
-            {({ isActive }) => (
-              <>
-                <MaterialIcon
-                  name="dashboard"
-                  active={isActive}
-                  size={22}
-                  className={cn(
-                    'shrink-0 transition-colors',
-                    !isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
-                  )}
-                  aria-hidden={true}
-                />
-                {!collapsed ? (
-                  <span className={isActive ? 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]' : undefined}>
-                    Dashboard
-                  </span>
-                ) : (
-                  <span className="sr-only">Dashboard</span>
+              )}
+            >
+              <MaterialIcon
+                name="dashboard"
+                active={isDashboardActive}
+                size={22}
+                className={cn(
+                  'shrink-0 transition-colors',
+                  !isDashboardActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
                 )}
-              </>
-            )}
-          </NavLink>
+                aria-hidden={true}
+              />
+              <span className={isDashboardActive ? 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]' : undefined}>
+                Dashboard
+              </span>
+            </NavLink>
+          )}
 
-          <button
-            onClick={onOpenConnect}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-control)] text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors text-left group"
-            title={collapsed ? 'Connect repository' : undefined}
-          >
-            <MaterialIcon
-              name="add_circle"
-              size={22}
-              className="shrink-0 text-[var(--color-mint-accent,#B9E4D0)] group-hover:scale-105 transition-transform"
-              aria-hidden={true}
-            />
-            {!collapsed ? <span>Connect repository</span> : <span className="sr-only">Connect repository</span>}
-          </button>
+          {/* Repositories */}
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <NavLink
+                  to="/dashboard"
+                  className={cn(
+                    'flex items-center justify-center p-2 rounded-[var(--radius-control)] transition-colors',
+                    isRepositoriesActive && !isDashboardActive
+                      ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
+                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
+                  )}
+                  aria-label="Repositories"
+                >
+                  <MaterialIcon
+                    name="folder_special"
+                    active={isRepositoriesActive && !isDashboardActive}
+                    size={22}
+                    className="shrink-0"
+                    aria-hidden={true}
+                  />
+                </NavLink>
+              </TooltipTrigger>
+              <TooltipContent side="right">Repositories</TooltipContent>
+            </Tooltip>
+          ) : (
+            <NavLink
+              to="/dashboard"
+              className={cn(
+                'group flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
+                isRepositoriesActive && !isDashboardActive
+                  ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
+                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
+              )}
+            >
+              <MaterialIcon
+                name="folder_special"
+                active={isRepositoriesActive && !isDashboardActive}
+                size={22}
+                className={cn(
+                  'shrink-0 transition-colors',
+                  !isRepositoriesActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
+                )}
+                aria-hidden={true}
+              />
+              <span className={isRepositoriesActive && !isDashboardActive ? 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]' : undefined}>
+                Repositories
+              </span>
+            </NavLink>
+          )}
+
+          {/* Connect Repository Action */}
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onOpenConnect}
+                  className="w-full flex items-center justify-center p-2 rounded-[var(--radius-control)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors"
+                  aria-label="Connect repository"
+                >
+                  <MaterialIcon
+                    name="add_circle"
+                    size={22}
+                    color="var(--color-mint-accent, #B9E4D0)"
+                    className="shrink-0"
+                    aria-hidden={true}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Connect repository</TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              onClick={onOpenConnect}
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-control)] text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors text-left group"
+            >
+              <MaterialIcon
+                name="add_circle"
+                size={22}
+                color="var(--color-mint-accent, #B9E4D0)"
+                className="shrink-0 group-hover:scale-105 transition-transform"
+                aria-hidden={true}
+              />
+              <span>Connect repository</span>
+            </button>
+          )}
         </div>
 
-        {/* Repositories */}
+        {/* Connected Repositories Section */}
         {repositories.length > 0 && (
           <div role="list" aria-label="Connected repositories">
             {!collapsed && (
               <div className="px-2.5 mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
-                <span>Repositories</span>
+                <span>Pinned Repositories</span>
                 <span className="font-mono text-[9px]">{repositories.length}</span>
               </div>
             )}
 
             <div className="space-y-0.5">
-              {repositories.map((repo) => {
+              {repositories.slice(0, 10).map((repo) => {
                 const isSelected = location.pathname.startsWith(`/repositories/${repo.id}`);
-                const isReady = repo.latest_job_status === 'READY' || repo.latest_job_status === 'SUCCESS' || repo.latest_job_status === 'INDEXED' || (repo.active_version_short_sha && !repo.latest_job_status);
+                const isReady = repo.latest_job_status === 'READY' || (repo.active_version_short_sha && !repo.latest_job_status);
                 const isIndexing = repo.latest_job_status === 'INDEXING' || repo.latest_job_status === 'FETCHING' || repo.latest_job_status === 'QUEUED';
                 const isFailed = repo.latest_job_status === 'FAILED';
 
-                return (
+                const linkElement = (
                   <NavLink
                     key={repo.id}
                     to={`/repositories/${repo.id}`}
@@ -164,9 +257,9 @@ export function Sidebar({
                       'group flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
                       isSelected
                         ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
-                        : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
+                        : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60',
+                      collapsed && 'justify-center p-2'
                     )}
-                    title={collapsed ? `${repo.owner}/${repo.name}` : undefined}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <MaterialIcon
@@ -179,12 +272,10 @@ export function Sidebar({
                         )}
                         aria-hidden={true}
                       />
-                      {!collapsed ? (
+                      {!collapsed && (
                         <span className={cn('truncate', isSelected && 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]')}>
                           {repo.name}
                         </span>
-                      ) : (
-                        <span className="sr-only">{repo.owner}/{repo.name}</span>
                       )}
                     </div>
 
@@ -221,6 +312,19 @@ export function Sidebar({
                     )}
                   </NavLink>
                 );
+
+                if (collapsed) {
+                  return (
+                    <Tooltip key={repo.id}>
+                      <TooltipTrigger asChild>{linkElement}</TooltipTrigger>
+                      <TooltipContent side="right">
+                        <span>{repo.owner}/{repo.name}</span>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                }
+
+                return linkElement;
               })}
             </div>
           </div>
@@ -230,35 +334,65 @@ export function Sidebar({
         <div>
           {!collapsed && (
             <div className="px-2.5 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
-              Resources
+              Resources & Help
             </div>
           )}
           <div className="space-y-0.5">
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors"
-              title={collapsed ? 'GitHub Docs' : undefined}
-            >
-              <div className="flex items-center gap-2">
-                <MaterialIcon name="menu_book" size={20} className="shrink-0 text-[var(--color-icon-inactive)]" />
-                {!collapsed && <span>Documentation</span>}
-              </div>
-              {!collapsed && <MaterialIcon name="open_in_new" size={16} className="text-[var(--color-muted)]" />}
-            </a>
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <a
+                    href="https://github.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center p-2 rounded-[var(--radius-control)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors"
+                    aria-label="Documentation"
+                  >
+                    <MaterialIcon name="menu_book" size={20} className="shrink-0" />
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent side="right">Documentation</TooltipContent>
+              </Tooltip>
+            ) : (
+              <a
+                href="https://github.com"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <MaterialIcon name="menu_book" size={20} className="shrink-0 text-[var(--color-icon-inactive)]" />
+                  <span>Documentation</span>
+                </div>
+                <MaterialIcon name="open_in_new" size={16} className="text-[var(--color-muted)]" />
+              </a>
+            )}
 
-            <button
-              onClick={onOpenShortcuts}
-              className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors text-left"
-              title={collapsed ? 'Keyboard shortcuts' : undefined}
-            >
-              <div className="flex items-center gap-2">
-                <MaterialIcon name="keyboard" size={20} className="shrink-0 text-[var(--color-icon-inactive)]" />
-                {!collapsed && <span>Shortcuts</span>}
-              </div>
-              {!collapsed && <span className="font-mono text-[10px] text-[var(--color-muted)]">?</span>}
-            </button>
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onOpenShortcuts}
+                    className="w-full flex items-center justify-center p-2 rounded-[var(--radius-control)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors"
+                    aria-label="Keyboard Shortcuts"
+                  >
+                    <MaterialIcon name="keyboard" size={20} className="shrink-0" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Keyboard Shortcuts (?)</TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                onClick={onOpenShortcuts}
+                className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 transition-colors text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <MaterialIcon name="keyboard" size={20} className="shrink-0 text-[var(--color-icon-inactive)]" />
+                  <span>Shortcuts</span>
+                </div>
+                <span className="font-mono text-[10px] text-[var(--color-muted)]">?</span>
+              </button>
+            )}
           </div>
         </div>
       </nav>
@@ -269,9 +403,10 @@ export function Sidebar({
           <DropdownMenuTrigger asChild>
             <button
               className={cn(
-                'w-full flex items-center gap-2.5 p-1.5 rounded-[var(--radius-control)] text-left hover:bg-[var(--color-raised)] transition outline-none group',
+                'w-full flex items-center gap-2.5 p-1.5 rounded-[var(--radius-control)] text-left hover:bg-[var(--color-raised)] transition outline-none group cursor-pointer',
                 collapsed ? 'justify-center' : 'justify-between'
               )}
+              aria-label="User account menu"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div className="h-7 w-7 rounded-full bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-xs font-semibold text-[var(--color-text)] shrink-0">

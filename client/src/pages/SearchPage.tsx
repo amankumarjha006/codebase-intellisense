@@ -4,7 +4,6 @@ import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { api } from '../lib/api';
 import { Repository, SearchResult, SearchFilters } from '../lib/types';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
-import { RepositoryNavDock } from '../components/repository/RepositoryNavDock';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { AnimatedPage } from '../components/ui/AnimatedPage';
@@ -282,15 +281,7 @@ export function SearchPage() {
         </div>
       </div>
 
-      {/* Floating Vertical Navigation Dock (Desktop lg+) */}
-      {repository && (
-        <aside
-          aria-label="Repository navigation dock"
-          className="hidden lg:block sticky top-6 shrink-0 z-10"
-        >
-          <RepositoryNavDock repoId={repository.id} orientation="vertical" />
-        </aside>
-      )}
+
     </div>
   </main>
 </AnimatedPage>

@@ -7,7 +7,6 @@ import { api } from '../lib/api';
 import { Repository, ArchitectureDocument, ArchitectureSection, Citation } from '../lib/types';
 import { shortSha, formatRelativeTime, sleep } from '../lib/utils';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
-import { RepositoryNavDock } from '../components/repository/RepositoryNavDock';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
 import { SourcePanel } from '../components/chat/SourcePanel';
@@ -290,13 +289,7 @@ export function ArchitecturePage() {
           />
         )}
 
-        {/* Floating Vertical Navigation Dock (Desktop lg+) */}
-        <aside
-          aria-label="Repository navigation dock"
-          className="hidden lg:block p-4 shrink-0 z-10"
-        >
-          <RepositoryNavDock repoId={repository.id} orientation="vertical" />
-        </aside>
+
       </div>
     </AnimatedPage>
   );

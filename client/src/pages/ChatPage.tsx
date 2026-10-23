@@ -12,7 +12,6 @@ import {
 } from '../lib/types';
 import { formatRelativeTime } from '../lib/utils';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
-import { RepositoryNavDock } from '../components/repository/RepositoryNavDock';
 import { SourcePanel } from '../components/chat/SourcePanel';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/input';
@@ -666,13 +665,7 @@ export function ChatPage() {
           />
         )}
 
-        {/* Floating Vertical Navigation Dock (Desktop lg+) */}
-        <aside
-          aria-label="Repository navigation dock"
-          className="hidden lg:block p-3 shrink-0 z-10 self-start"
-        >
-          <RepositoryNavDock repoId={repository.id} orientation="vertical" />
-        </aside>
+
       </div>
     </AnimatedPage>
   );

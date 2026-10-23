@@ -4,7 +4,6 @@ import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { api } from '../lib/api';
 import { Repository, FileTreeNode, FileContent } from '../lib/types';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
-import { RepositoryNavDock } from '../components/repository/RepositoryNavDock';
 import { Button } from '../components/ui/button';
 import { shortSha } from '../lib/utils';
 import { AnimatedPage } from '../components/ui/AnimatedPage';
@@ -249,13 +248,7 @@ export function FilesPage() {
           </div>
         </main>
 
-        {/* Floating Vertical Navigation Dock (Desktop lg+) */}
-        <aside
-          aria-label="Repository navigation dock"
-          className="hidden lg:block p-3 shrink-0 z-10 self-start"
-        >
-          <RepositoryNavDock repoId={repository.id} orientation="vertical" />
-        </aside>
+
       </div>
     </AnimatedPage>
   );
