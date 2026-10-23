@@ -1,14 +1,7 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import {
-  X,
-  Copy,
-  Check,
-  ExternalLink,
-  FileCode,
-  ArrowLeft,
-} from 'lucide-react';
+import { MaterialIcon } from '../ui/MaterialIcon';
 import { Citation, FileContent } from '../../lib/types';
 import { api } from '../../lib/api';
 import { Button } from '../ui/button';
@@ -65,11 +58,11 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
             title="Back to conversation"
             aria-label="Back to conversation"
           >
-            <ArrowLeft size={15} aria-hidden="true" />
+            <MaterialIcon name="arrow_back" size={18} aria-hidden="true" />
           </Button>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text)] truncate font-mono">
-              <FileCode size={13} className="text-[var(--color-accent)] shrink-0" aria-hidden="true" />
+              <MaterialIcon name="code" size={16} className="text-[var(--color-accent)] shrink-0" aria-hidden="true" />
               <span className="truncate">{citation.path}</span>
             </div>
             <div className="text-[11px] text-[var(--color-accent)] font-mono">
@@ -87,9 +80,9 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
             aria-label="Copy code snippet"
           >
             {copied ? (
-              <Check size={14} className="text-[var(--color-accent)]" aria-hidden="true" />
+              <MaterialIcon name="check" size={16} className="text-[var(--color-accent)]" aria-hidden="true" />
             ) : (
-              <Copy size={14} aria-hidden="true" />
+              <MaterialIcon name="content_copy" size={16} aria-hidden="true" />
             )}
           </Button>
           <Button
@@ -99,7 +92,7 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
             title="Open in full file viewer"
             aria-label="Open in full file viewer"
           >
-            <ExternalLink size={14} aria-hidden="true" />
+            <MaterialIcon name="open_in_new" size={16} aria-hidden="true" />
           </Button>
           <Button
             variant="ghost"
@@ -108,7 +101,7 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
             title="Close source panel"
             aria-label="Close source panel"
           >
-            <X size={15} aria-hidden="true" />
+            <MaterialIcon name="close" size={18} aria-hidden="true" />
           </Button>
         </div>
       </div>

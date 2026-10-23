@@ -1,14 +1,6 @@
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  Search as SearchIcon,
-  Filter,
-  FileCode,
-  Copy,
-  Check,
-  ExternalLink,
-  MessageSquare,
-} from 'lucide-react';
+import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { api } from '../lib/api';
 import { Repository, SearchResult, SearchFilters } from '../lib/types';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
@@ -91,7 +83,7 @@ export function SearchPage() {
             {/* Search Input Bar */}
             <section role="search" aria-label="Repository code search" className="flex gap-2 max-w-3xl">
           <div className="relative flex-1">
-            <SearchIcon size={15} className="absolute left-3 top-3 text-[var(--color-muted)]" aria-hidden="true" />
+            <MaterialIcon name="search" size={18} className="absolute left-3 top-3 text-[var(--color-muted)]" aria-hidden="true" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -120,7 +112,7 @@ export function SearchPage() {
               className="space-y-5 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-xs"
             >
               <div className="flex items-center gap-1.5 font-semibold text-[var(--color-text)] pb-2 border-b border-[var(--color-border)]">
-                <Filter size={13} className="text-[var(--color-accent)]" aria-hidden="true" />
+                <MaterialIcon name="filter_list" size={16} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                 <span>Filters & Facets</span>
               </div>
 
@@ -204,7 +196,7 @@ export function SearchPage() {
               </div>
             ) : filteredResults.length === 0 ? (
               <div role="status" className="p-12 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] text-center space-y-2">
-                <SearchIcon size={24} className="text-[var(--color-muted)] mx-auto" aria-hidden="true" />
+                <MaterialIcon name="search" size={28} className="text-[var(--color-muted)] mx-auto" aria-hidden="true" />
                 <h4 className="text-sm font-semibold text-[var(--color-text)]">No code matches found</h4>
                 <p className="text-xs text-[var(--color-text-secondary)]">
                   Try searching for a function name, AST node, or broader keywords.
@@ -220,7 +212,7 @@ export function SearchPage() {
                   {/* Result Header */}
                   <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-[var(--color-raised)]/50 border-b border-[var(--color-border)] text-xs">
                     <div className="flex items-center gap-2 font-mono">
-                      <FileCode size={14} className="text-[var(--color-accent)] shrink-0" aria-hidden="true" />
+                      <MaterialIcon name="description" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" className="shrink-0" aria-hidden="true" />
                       <span className="font-semibold text-[var(--color-text)]">{result.file_path}</span>
                       <span className="text-[var(--color-muted)]">
                         lines {result.start_line}–{result.end_line}
@@ -242,9 +234,9 @@ export function SearchPage() {
                         aria-label={`Copy file path ${result.file_path}`}
                       >
                         {copiedPath === result.file_path ? (
-                          <Check size={13} className="text-[var(--color-accent)]" aria-hidden="true" />
+                          <MaterialIcon name="check" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                         ) : (
-                          <Copy size={13} aria-hidden="true" />
+                          <MaterialIcon name="content_copy" size={16} aria-hidden="true" />
                         )}
                       </Button>
 
@@ -257,7 +249,7 @@ export function SearchPage() {
                         title="Open file viewer"
                         aria-label={`Open file ${result.file_path} in code viewer`}
                       >
-                        <ExternalLink size={13} aria-hidden="true" />
+                        <MaterialIcon name="open_in_new" size={16} aria-hidden="true" />
                       </Button>
                     </div>
                   </div>
@@ -276,10 +268,10 @@ export function SearchPage() {
                       size="sm"
                       variant="ghost"
                       onClick={() => navigate(`/repositories/${repoId}/chat`)}
-                      className="h-6 text-[11px] gap-1 text-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                      className="h-6 text-[11px] gap-1 text-[var(--color-mint-accent,#B9E4D0)] hover:text-[var(--color-mint-accent,#B9E4D0)]"
                       aria-label="Ask about this code in Chat"
                     >
-                      <MessageSquare size={11} aria-hidden="true" />
+                      <MaterialIcon name="chat" size={14} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                       <span>Ask about this in Chat</span>
                     </Button>
                   </div>

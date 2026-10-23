@@ -2,15 +2,7 @@ import * as React from 'react';
 import { useParams } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import {
-  Layers,
-  FileCode,
-  CheckCircle2,
-  ArrowRight,
-  StopCircle,
-  Cpu,
-  Workflow,
-} from 'lucide-react';
+import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { api } from '../lib/api';
 import { Repository, ArchitectureDocument, ArchitectureSection, Citation } from '../lib/types';
 import { shortSha, formatRelativeTime, sleep } from '../lib/utils';
@@ -132,10 +124,10 @@ export function ArchitecturePage() {
           {isEmpty && !generating && (
             <div className="py-20 text-center space-y-5 max-w-lg mx-auto">
               <div
-                className="h-14 w-14 rounded-2xl bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)] mx-auto"
+                className="h-14 w-14 rounded-2xl bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] mx-auto"
                 aria-hidden="true"
               >
-                <Layers size={26} />
+                <MaterialIcon name="account_tree" size={28} fill={1} color="var(--color-mint-accent, #B9E4D0)" />
               </div>
               <div className="space-y-1.5">
                 <h2 className="text-lg font-bold text-[var(--color-text)]">
@@ -146,7 +138,7 @@ export function ArchitecturePage() {
                 </p>
               </div>
               <Button onClick={handleStartGeneration} className="gap-2" aria-label="Synthesize Architecture Document">
-                <Workflow size={15} aria-hidden="true" />
+                <MaterialIcon name="hub" size={18} aria-hidden="true" />
                 <span>Synthesize Architecture Document</span>
               </Button>
             </div>
@@ -161,7 +153,7 @@ export function ArchitecturePage() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-warning)]">
-                  <Cpu size={16} className="animate-pulse text-[var(--color-warning)]" aria-hidden="true" />
+                  <MaterialIcon name="memory" size={18} className="animate-pulse text-[var(--color-warning)]" aria-hidden="true" />
                   <span>Synthesizing system architecture from Tree-sitter AST nodes...</span>
                 </div>
                 <Button
@@ -171,7 +163,7 @@ export function ArchitecturePage() {
                   className="h-7 text-xs"
                   aria-label="Stop synthesis"
                 >
-                  <StopCircle size={13} aria-hidden="true" />
+                  <MaterialIcon name="stop_circle" size={16} fill={1} aria-hidden="true" />
                   <span>Stop</span>
                 </Button>
               </div>
@@ -223,7 +215,7 @@ export function ArchitecturePage() {
                             </div>
                           </div>
                           {index < (doc.pipeline_diagram?.length ?? 0) - 1 && (
-                            <ArrowRight size={14} className="text-[var(--color-accent)] shrink-0" aria-hidden="true" />
+                            <MaterialIcon name="arrow_forward" size={16} color="var(--color-mint-accent, #B9E4D0)" className="shrink-0" aria-hidden="true" />
                           )}
                         </React.Fragment>
                       ))}
@@ -248,8 +240,8 @@ export function ArchitecturePage() {
                         </span>
                         <span>{sec.title}</span>
                       </h3>
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] bg-[var(--color-accent-tint)] text-[var(--color-accent)] font-medium">
-                        <CheckCircle2 size={12} aria-hidden="true" />
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)] font-medium">
+                        <MaterialIcon name="check_circle" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                         <span>AST Verified</span>
                       </div>
                     </div>
@@ -272,9 +264,9 @@ export function ArchitecturePage() {
                             key={idx}
                             onClick={() => setSelectedCitation(c)}
                             aria-label={`View citation in ${c.path.split('/').pop()} lines ${c.start_line} to ${c.end_line}`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)] text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 transition cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border border-[rgba(185,228,208,0.3)] bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] hover:bg-[var(--color-mint-accent)]/20 transition cursor-pointer"
                           >
-                            <FileCode size={12} aria-hidden="true" />
+                            <MaterialIcon name="description" size={14} fill={1} aria-hidden="true" />
                             <span>
                               {c.path.split('/').pop()}:{c.start_line}–{c.end_line}
                             </span>

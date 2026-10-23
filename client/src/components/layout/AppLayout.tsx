@@ -1,13 +1,7 @@
 import * as React from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { MotionConfig, motion, AnimatePresence } from 'motion/react';
-import {
-  Menu,
-  Search,
-  GitBranch,
-  Plus,
-  Keyboard,
-} from 'lucide-react';
+import { MaterialIcon } from '../ui/MaterialIcon';
 import { Sidebar } from './Sidebar';
 import { ConnectDrawer } from '../repository/ConnectDrawer';
 import {
@@ -170,7 +164,7 @@ export function AppLayout() {
                 className="p-1.5 rounded-[var(--radius-control)] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)] md:hidden transition"
                 aria-label="Open navigation menu"
               >
-                <Menu size={18} />
+                <MaterialIcon name="menu" size={22} />
               </button>
 
               {/* Breadcrumbs / Context */}
@@ -185,7 +179,7 @@ export function AppLayout() {
                     </Link>
                     <span className="text-[var(--color-border-strong)] hidden sm:inline" aria-hidden="true">/</span>
                     <div className="flex items-center gap-1.5 font-medium text-[var(--color-text)]">
-                      <GitBranch size={13} className="text-[var(--color-accent)]" aria-hidden="true" />
+                      <MaterialIcon name="folder" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                       <span>{currentRepo.owner}/{currentRepo.name}</span>
                     </div>
                   </>
@@ -204,7 +198,7 @@ export function AppLayout() {
                 className="flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-xs text-[var(--color-muted)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text)] transition"
                 aria-label="Open command palette (Ctrl+K)"
               >
-                <Search size={13} aria-hidden="true" />
+                <MaterialIcon name="search" size={18} aria-hidden="true" />
                 <span className="hidden sm:inline">Search codebase & commands</span>
                 <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-[var(--color-border)] bg-[var(--color-raised)] px-1.5 text-[10px] font-mono text-[var(--color-muted)]" aria-hidden="true">
                   ⌘K
@@ -217,7 +211,7 @@ export function AppLayout() {
                 onClick={() => setConnectOpen(true)}
                 className="hidden sm:inline-flex"
               >
-                <Plus size={14} aria-hidden="true" />
+                <MaterialIcon name="add" size={18} aria-hidden="true" />
                 <span>Connect repo</span>
               </Button>
             </div>
@@ -279,7 +273,7 @@ export function AppLayout() {
                       setCommandOpen(false);
                     }}
                   >
-                    <GitBranch className="mr-2 h-4 w-4 text-[var(--color-accent)]" aria-hidden="true" />
+                    <MaterialIcon name="folder" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" className="mr-2" aria-hidden="true" />
                     <span>{repo.owner}/{repo.name}</span>
                     <CommandShortcut>{repo.active_version_short_sha || 'main'}</CommandShortcut>
                   </CommandItem>
@@ -348,7 +342,7 @@ export function AppLayout() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Keyboard size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
+                <MaterialIcon name="keyboard" size={22} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                 <span>Keyboard Shortcuts</span>
               </DialogTitle>
               <DialogDescription>

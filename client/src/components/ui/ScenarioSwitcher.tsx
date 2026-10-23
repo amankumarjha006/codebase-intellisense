@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Settings2, X, RotateCcw } from 'lucide-react';
+import { MaterialIcon } from './MaterialIcon';
 import {
   getStoredScenarios,
   saveStoredScenarios,
@@ -47,14 +47,14 @@ export function ScenarioSwitcher() {
           className="flex items-center gap-2 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-raised)]/90 backdrop-blur-md px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] shadow-xl hover:text-[var(--color-text)] hover:border-[var(--color-accent)] transition-all"
           title="Switch Prototype UI Scenarios"
         >
-          <Settings2 size={13} className="text-[var(--color-accent)]" />
+          <MaterialIcon name="tune" size={14} className="text-[var(--color-accent)]" />
           <span>Prototype Scenarios</span>
         </button>
       ) : (
         <div className="w-80 rounded-[var(--radius-panel)] border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-4 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150">
           <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)] mb-3">
             <div className="flex items-center gap-1.5">
-              <Settings2 size={14} className="text-[var(--color-accent)]" />
+              <MaterialIcon name="tune" size={14} className="text-[var(--color-accent)]" />
               <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text)]">
                 Scenario Switcher
               </span>
@@ -65,13 +65,13 @@ export function ScenarioSwitcher() {
                 className="p-1 text-[var(--color-muted)] hover:text-[var(--color-text)] transition rounded"
                 title="Reset to defaults"
               >
-                <RotateCcw size={12} />
+                <MaterialIcon name="restart_alt" size={14} />
               </button>
               <button
                 onClick={() => setOpen(false)}
                 className="p-1 text-[var(--color-muted)] hover:text-[var(--color-text)] transition rounded"
               >
-                <X size={14} />
+                <MaterialIcon name="close" size={14} />
               </button>
             </div>
           </div>

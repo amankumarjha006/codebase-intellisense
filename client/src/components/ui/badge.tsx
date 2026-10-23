@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { CheckCircle2, AlertCircle, Loader2, CircleSlash, Cpu, Clock, RotateCcw } from 'lucide-react';
+import { MaterialIcon } from './MaterialIcon';
 import { cn } from '../../lib/utils';
 import { JobStatus } from '../../lib/types';
 import { deriveRowStatus, getFailureMessage } from '../../lib/status';
@@ -40,7 +40,7 @@ export interface StatusChipProps {
 
 export function StatusChip({ status, className, size = 'sm' }: StatusChipProps) {
   const isSm = size === 'sm';
-  const iconSize = isSm ? 12 : 14;
+  const iconSize = isSm ? 14 : 16;
 
   switch (status) {
     case 'READY':
@@ -54,7 +54,7 @@ export function StatusChip({ status, className, size = 'sm' }: StatusChipProps) 
             className
           )}
         >
-          <CheckCircle2 size={iconSize} className="shrink-0 text-[var(--color-accent)]" />
+          <MaterialIcon name="check_circle" size={iconSize} className="shrink-0 text-[var(--color-accent)]" fill={1} />
           <span>Ready</span>
         </span>
       );
@@ -68,7 +68,7 @@ export function StatusChip({ status, className, size = 'sm' }: StatusChipProps) 
             className
           )}
         >
-          <Loader2 size={iconSize} className="shrink-0 animate-spin text-[var(--color-warning)]" />
+          <MaterialIcon name="sync" size={iconSize} spin className="shrink-0 text-[var(--color-warning)]" />
           <span>Indexing</span>
         </span>
       );
@@ -83,7 +83,7 @@ export function StatusChip({ status, className, size = 'sm' }: StatusChipProps) 
             className
           )}
         >
-          <Cpu size={iconSize} className="shrink-0 animate-pulse text-[var(--color-warning)]" />
+          <MaterialIcon name="memory" size={iconSize} className="shrink-0 animate-pulse text-[var(--color-warning)]" />
           <span className="capitalize">{status.toLowerCase()}</span>
         </span>
       );
@@ -97,7 +97,7 @@ export function StatusChip({ status, className, size = 'sm' }: StatusChipProps) 
             className
           )}
         >
-          <Clock size={iconSize} className="shrink-0 text-[var(--color-muted)]" />
+          <MaterialIcon name="schedule" size={iconSize} className="shrink-0 text-[var(--color-muted)]" />
           <span>Queued</span>
         </span>
       );
@@ -111,7 +111,7 @@ export function StatusChip({ status, className, size = 'sm' }: StatusChipProps) 
             className
           )}
         >
-          <AlertCircle size={iconSize} className="shrink-0 text-[var(--color-error)]" />
+          <MaterialIcon name="error" size={iconSize} className="shrink-0 text-[var(--color-error)]" />
           <span>Failed</span>
         </span>
       );
@@ -126,7 +126,7 @@ export function StatusChip({ status, className, size = 'sm' }: StatusChipProps) 
             className
           )}
         >
-          <CircleSlash size={iconSize} className="shrink-0 text-[var(--color-muted)]" />
+          <MaterialIcon name="block" size={iconSize} className="shrink-0 text-[var(--color-muted)]" />
           <span>Not indexed</span>
         </span>
       );
@@ -160,7 +160,7 @@ export function RepositoryStatusCell({
 
       {rowStatus.kind === 'in-progress' && (
         <span className="inline-flex items-center gap-1.5 font-medium rounded-full border border-[rgba(251,191,36,0.35)] bg-[var(--color-warning-tint)] text-[var(--color-warning)] px-2.5 py-0.5 text-xs">
-          <Loader2 size={12} className="animate-spin text-[var(--color-warning)]" />
+          <MaterialIcon name="sync" size={14} spin className="text-[var(--color-warning)]" />
           <span>{rowStatus.label}</span>
         </span>
       )}
@@ -170,7 +170,7 @@ export function RepositoryStatusCell({
           title={failureMsg || undefined}
           className="inline-flex items-center gap-1.5 font-medium rounded-full border border-[var(--color-error-border)] bg-[var(--color-error-tint)] text-[var(--color-error)] px-2.5 py-0.5 text-xs"
         >
-          <AlertCircle size={12} className="text-[var(--color-error)]" />
+          <MaterialIcon name="error" size={14} className="text-[var(--color-error)]" />
           <span>Indexing failed</span>
         </span>
       )}
@@ -191,7 +191,7 @@ export function RepositoryStatusCell({
           )}
         >
           {rowStatus.subtitle === 'Last update failed' ? (
-            <AlertCircle size={11} className="shrink-0" />
+            <MaterialIcon name="error" size={13} className="shrink-0 text-[var(--color-error)]" />
           ) : (
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-warning)] animate-pulse" />
           )}
@@ -221,7 +221,7 @@ export function RepositoryStatusCell({
           }}
           className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-[var(--color-border)] bg-[var(--color-raised)] text-[11px] font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition"
         >
-          <RotateCcw size={10} />
+          <MaterialIcon name="restart_alt" size={13} />
           <span>Retry</span>
         </button>
       )}

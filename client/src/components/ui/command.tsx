@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
-import { Search } from 'lucide-react';
+import { MaterialIcon } from './MaterialIcon';
 import { cn } from '../../lib/utils';
 import { Dialog, DialogContent } from './dialog';
 
@@ -38,7 +38,7 @@ export const CommandInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
   <div className="flex items-center border-b border-[var(--color-border)] px-3" cmdk-input-wrapper="">
-    <Search className="mr-2 h-4 w-4 shrink-0 text-[var(--color-muted)]" />
+    <MaterialIcon name="search" size={18} className="mr-2 shrink-0 text-[var(--color-muted)]" />
     <CommandPrimitive.Input
       ref={ref}
       className={cn(

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
-import { ChevronRight } from 'lucide-react';
+import { MaterialIcon } from './MaterialIcon';
 import { cn } from '../../lib/utils';
 
 export const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -26,7 +26,7 @@ export const DropdownMenuSubTrigger = React.forwardRef<
     {...props}
   >
     {children}
-    <ChevronRight className="ml-auto h-4 w-4" />
+    <MaterialIcon name="chevron_right" size={16} className="ml-auto text-[var(--color-muted)]" />
   </DropdownMenuPrimitive.SubTrigger>
 ));
 DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;

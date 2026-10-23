@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
+import { MaterialIcon } from './MaterialIcon';
 import { cn } from '../../lib/utils';
 
 export const Drawer = DialogPrimitive.Root;
@@ -51,7 +51,7 @@ export const DrawerContent = React.forwardRef<
       >
         {children}
         <DialogPrimitive.Close className="absolute right-4 top-4 rounded-[var(--radius-control)] p-1.5 text-[var(--color-muted)] transition hover:text-[var(--color-text)] hover:bg-[var(--color-raised)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]">
-          <X className="h-4 w-4" />
+          <MaterialIcon name="close" size={16} />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>

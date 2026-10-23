@@ -1,14 +1,6 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  AlertCircle,
-  Clock,
-  ShieldAlert,
-  ServerOff,
-  RotateCcw,
-  ArrowLeft,
-  Loader2,
-} from 'lucide-react';
+import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { GithubIcon } from '../components/ui/GithubIcon';
 import { Button } from '../components/ui/button';
 import { AnimatedPage } from '../components/ui/AnimatedPage';
@@ -39,7 +31,7 @@ export function NotFoundPage() {
             className="gap-2"
             aria-label="Return to Dashboard"
           >
-            <ArrowLeft size={14} aria-hidden="true" />
+            <MaterialIcon name="arrow_back" size={16} aria-hidden="true" />
             <span>Return to Dashboard</span>
           </Button>
         </div>
@@ -58,7 +50,7 @@ export function ServiceUnavailablePage() {
           className="h-16 w-16 rounded-2xl bg-[var(--color-warning-tint)] border border-[rgba(251,191,36,0.3)] flex items-center justify-center text-[var(--color-warning)] mx-auto"
           aria-hidden="true"
         >
-          <ServerOff size={28} />
+          <MaterialIcon name="cloud_off" size={32} />
         </div>
         <div className="space-y-1.5">
           <h1 className="text-xl font-bold text-[var(--color-text)]">
@@ -81,7 +73,7 @@ export function ServiceUnavailablePage() {
             onClick={() => window.location.reload()}
             aria-label="Retry loading page"
           >
-            <RotateCcw size={14} aria-hidden="true" />
+            <MaterialIcon name="restart_alt" size={16} aria-hidden="true" />
             <span>Retry</span>
           </Button>
         </div>
@@ -122,7 +114,7 @@ export function SigningInStatusPage() {
           className="h-16 w-16 rounded-2xl bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-accent)] mx-auto"
           aria-hidden="true"
         >
-          <Loader2 size={28} className="animate-spin" />
+          <MaterialIcon name="sync" size={32} spin />
         </div>
         <div className="space-y-1.5">
           <h1 className="text-xl font-bold text-[var(--color-text)]">Signing you in</h1>
@@ -146,7 +138,7 @@ export function SignInFailedStatusPage() {
           className="h-16 w-16 rounded-2xl bg-[var(--color-error-tint)] border border-[var(--color-error-border)] flex items-center justify-center text-[var(--color-error)] mx-auto"
           aria-hidden="true"
         >
-          <AlertCircle size={28} />
+          <MaterialIcon name="error" size={32} />
         </div>
         <div className="space-y-1.5">
           <h1 className="text-xl font-bold text-[var(--color-text)]">Sign-in failed</h1>
@@ -189,7 +181,7 @@ export function AccessDeniedStatusPage() {
           className="h-16 w-16 rounded-2xl bg-[var(--color-error-tint)] border border-[var(--color-error-border)] flex items-center justify-center text-[var(--color-error)] mx-auto"
           aria-hidden="true"
         >
-          <ShieldAlert size={28} />
+          <MaterialIcon name="security" size={32} />
         </div>
         <div className="space-y-1.5">
           <h1 className="text-xl font-bold text-[var(--color-text)]">Access was denied</h1>
@@ -204,7 +196,7 @@ export function AccessDeniedStatusPage() {
             className="gap-2"
             aria-label="Back to Dashboard"
           >
-            <ArrowLeft size={14} aria-hidden="true" />
+            <MaterialIcon name="arrow_back" size={16} aria-hidden="true" />
             <span>Back to Dashboard</span>
           </Button>
         </div>
@@ -230,7 +222,7 @@ export function SessionExpiredStatusPage() {
           className="h-16 w-16 rounded-2xl bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-muted)] mx-auto"
           aria-hidden="true"
         >
-          <Clock size={28} />
+          <MaterialIcon name="schedule" size={32} />
         </div>
         <div className="space-y-1.5">
           <h1 className="text-xl font-bold text-[var(--color-text)]">Your session expired</h1>
@@ -273,7 +265,7 @@ export function ServerUnreachableStatusPage() {
           className="h-16 w-16 rounded-2xl bg-[var(--color-error-tint)] border border-[var(--color-error-border)] flex items-center justify-center text-[var(--color-error)] mx-auto"
           aria-hidden="true"
         >
-          <ServerOff size={28} />
+          <MaterialIcon name="cloud_off" size={32} />
         </div>
         <div className="space-y-1.5">
           <h1 className="text-xl font-bold text-[var(--color-text)]">Can't reach the server</h1>
@@ -294,7 +286,7 @@ export function ServerUnreachableStatusPage() {
             onClick={() => window.location.reload()}
             aria-label="Retry connection"
           >
-            <RotateCcw size={14} aria-hidden="true" />
+            <MaterialIcon name="restart_alt" size={16} aria-hidden="true" />
             <span>Retry</span>
           </Button>
         </div>

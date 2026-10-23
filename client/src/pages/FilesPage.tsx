@@ -1,16 +1,6 @@
 import * as React from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import {
-  Folder,
-  FolderOpen,
-  FileCode,
-  ChevronRight,
-  ChevronDown,
-  Copy,
-  Check,
-  ExternalLink,
-  ShieldCheck,
-} from 'lucide-react';
+import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { api } from '../lib/api';
 import { Repository, FileTreeNode, FileContent } from '../lib/types';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
@@ -97,12 +87,19 @@ export function FilesPage() {
               className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 text-left transition"
               style={{ paddingLeft: `${depth * 12 + 8}px` }}
             >
-              {isExpanded ? <ChevronDown size={13} aria-hidden="true" /> : <ChevronRight size={13} aria-hidden="true" />}
-              {isExpanded ? (
-                <FolderOpen size={14} className="text-[var(--color-accent)] shrink-0" aria-hidden="true" />
-              ) : (
-                <Folder size={14} className="text-[var(--color-muted)] shrink-0" aria-hidden="true" />
-              )}
+              <MaterialIcon
+                name={isExpanded ? 'expand_more' : 'chevron_right'}
+                size={18}
+                aria-hidden={true}
+              />
+              <MaterialIcon
+                name={isExpanded ? 'folder_open' : 'folder'}
+                size={18}
+                fill={isExpanded ? 1 : 0}
+                color={isExpanded ? 'var(--color-mint-accent, #B9E4D0)' : undefined}
+                className="shrink-0"
+                aria-hidden={true}
+              />
               <span className="truncate">{node.name}</span>
             </button>
           )}
@@ -125,12 +122,19 @@ export function FilesPage() {
         aria-label={`File ${node.name}`}
         className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-xs text-left transition select-none truncate ${
           isSelected
-            ? 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] font-medium border-l-2 border-[var(--color-accent)]'
+            ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] font-medium border-l-2 border-[var(--color-mint-accent,#B9E4D0)]'
             : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
         }`}
         style={{ paddingLeft: `${depth * 12 + 18}px` }}
       >
-        <FileCode size={13} className="shrink-0 text-[var(--color-muted)]" aria-hidden="true" />
+        <MaterialIcon
+          name="description"
+          size={16}
+          fill={isSelected ? 1 : 0}
+          color={isSelected ? 'var(--color-mint-accent, #B9E4D0)' : undefined}
+          className="shrink-0 text-[var(--color-muted)]"
+          aria-hidden={true}
+        />
         <span className="truncate">{node.name}</span>
       </button>
     );
@@ -176,8 +180,8 @@ export function FilesPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] bg-[var(--color-accent-tint)] text-[var(--color-accent)] border border-[var(--color-accent-border)] font-medium">
-                <ShieldCheck size={12} aria-hidden="true" />
+              <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)] font-medium">
+                <MaterialIcon name="verified" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                 <span>Tree-sitter AST Anchor</span>
               </div>
 
@@ -189,9 +193,9 @@ export function FilesPage() {
                 aria-label="Copy entire file content"
               >
                 {copied ? (
-                  <Check size={14} className="text-[var(--color-accent)]" aria-hidden="true" />
+                  <MaterialIcon name="check" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                 ) : (
-                  <Copy size={14} aria-hidden="true" />
+                  <MaterialIcon name="content_copy" size={16} aria-hidden="true" />
                 )}
               </Button>
 
@@ -203,7 +207,7 @@ export function FilesPage() {
                 title="View on GitHub"
                 aria-label="View original file on GitHub"
               >
-                <ExternalLink size={14} aria-hidden="true" />
+                <MaterialIcon name="open_in_new" size={16} aria-hidden="true" />
               </a>
             </div>
           </div>

@@ -1,17 +1,6 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  GitBranch,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  ArrowRight,
-  Copy,
-  Check,
-  RotateCcw,
-  Lock,
-} from 'lucide-react';
+import { MaterialIcon } from '../ui/MaterialIcon';
 import { GithubIcon } from '../ui/GithubIcon';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '../ui/drawer';
 import { Button } from '../ui/button';
@@ -280,7 +269,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                     className="mt-3 p-3 rounded-[var(--radius-control)] border border-[var(--color-error-border)] bg-[var(--color-error-tint)] text-xs text-[var(--color-error)] space-y-2"
                   >
                     <div className="flex items-start gap-2">
-                      <AlertCircle size={14} className="shrink-0 mt-0.5" aria-hidden="true" />
+                      <MaterialIcon name="error" size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
                       <div className="leading-relaxed">{errorMsg}</div>
                     </div>
 
@@ -314,7 +303,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                       className="p-1 hover:text-[var(--color-text)] transition"
                       title="Copy diagnostic reference"
                     >
-                      {copiedTrace ? <Check size={12} className="text-[var(--color-accent)]" /> : <Copy size={12} />}
+                      {copiedTrace ? <MaterialIcon name="check" size={14} className="text-[var(--color-accent)]" /> : <MaterialIcon name="content_copy" size={14} />}
                     </button>
                   </div>
                 )}
@@ -334,7 +323,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                   Static analysis parses hierarchical symbol trees across all commits on branch <code className="font-mono text-[var(--color-accent)]">{branch}</code>.
                 </p>
                 <div className="pt-1 flex items-center gap-1.5 text-[10px] font-mono text-[var(--color-muted)]">
-                  <Lock size={11} />
+                  <MaterialIcon name="lock" size={12} />
                   <span>Read-only access. Zero retention ephemeral memory.</span>
                 </div>
               </div>
@@ -344,7 +333,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? (
                     <>
-                      <Loader2 size={14} className="animate-spin" />
+                      <MaterialIcon name="sync" size={16} spin />
                       <span>Verifying repository...</span>
                     </>
                   ) : (
@@ -371,7 +360,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                   Repository Verified
                 </div>
                 <div className="text-sm font-semibold text-[var(--color-text)] flex items-center gap-1.5 mt-1 font-mono">
-                  <GitBranch size={14} className="text-[var(--color-accent)]" />
+                  <MaterialIcon name="call_split" size={16} className="text-[var(--color-accent)]" />
                   <span>{connectedRepo.owner}/{connectedRepo.name}</span>
                 </div>
               </div>
@@ -396,15 +385,15 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                 <div className="font-semibold text-[var(--color-text)]">Pipeline Sequence</div>
                 <ul className="space-y-1.5 text-[var(--color-text-secondary)] text-[11px]">
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 size={12} className="text-[var(--color-accent)]" />
+                    <MaterialIcon name="check_circle" size={14} className="text-[var(--color-accent)]" fill={1} />
                     <span>Tree-sitter concrete syntax parsing</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 size={12} className="text-[var(--color-accent)]" />
+                    <MaterialIcon name="check_circle" size={14} className="text-[var(--color-accent)]" fill={1} />
                     <span>Hierarchical symbol and chunk boundary mapping</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 size={12} className="text-[var(--color-accent)]" />
+                    <MaterialIcon name="check_circle" size={14} className="text-[var(--color-accent)]" fill={1} />
                     <span>Gemini dense embedding generation & pgvector sync</span>
                   </li>
                 </ul>
@@ -417,7 +406,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                 <Button onClick={handleStartIndexing} disabled={loading} className="w-2/3">
                   {loading ? (
                     <>
-                      <Loader2 size={14} className="animate-spin" />
+                      <MaterialIcon name="sync" size={16} spin />
                       <span>Queueing...</span>
                     </>
                   ) : (
@@ -450,10 +439,10 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                     >
                       <div className="mt-0.5 shrink-0">
                         {isCompleted && (
-                          <CheckCircle2 size={16} className="text-[var(--color-accent)]" />
+                          <MaterialIcon name="check_circle" size={18} className="text-[var(--color-accent)]" fill={1} />
                         )}
                         {isCurrent && (
-                          <Loader2 size={16} className="animate-spin text-[var(--color-warning)]" />
+                          <MaterialIcon name="sync" size={18} spin className="text-[var(--color-warning)]" />
                         )}
                         {isUpcoming && (
                           <div className="h-4 w-4 rounded-full border border-[var(--color-border)]" />
@@ -495,7 +484,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
 
               {/* Informational Callout */}
               <div className="p-3 rounded-[var(--radius-control)] bg-[var(--color-raised)]/50 border border-[var(--color-border)] text-xs text-[var(--color-muted)] flex items-center gap-2">
-                <Clock size={13} className="shrink-0 text-[var(--color-accent)]" />
+                <MaterialIcon name="schedule" size={16} className="shrink-0 text-[var(--color-accent)]" />
                 <span>You can close this drawer. Indexing runs asynchronously in the worker.</span>
               </div>
 
@@ -515,7 +504,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
           {step === 'ready' && connectedRepo && (
             <div role="status" aria-label="Repository indexed and ready" className="space-y-6 px-4 mt-6 text-center">
               <div className="h-12 w-12 rounded-full bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] flex items-center justify-center text-[var(--color-accent)] mx-auto">
-                <CheckCircle2 size={24} aria-hidden="true" />
+                <MaterialIcon name="check_circle" size={28} aria-hidden="true" fill={1} />
               </div>
 
               <div className="space-y-1.5">
@@ -541,7 +530,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                   aria-label="Open indexed repository"
                 >
                   <span>Open repository</span>
-                  <ArrowRight size={14} aria-hidden="true" />
+                  <MaterialIcon name="arrow_forward" size={16} aria-hidden="true" />
                 </Button>
               </div>
             </div>
@@ -551,7 +540,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
           {step === 'failed' && (
             <div role="alert" aria-live="assertive" className="space-y-5 px-4 mt-6 text-center">
               <div className="h-12 w-12 rounded-full bg-[var(--color-error-tint)] border border-[var(--color-error-border)] flex items-center justify-center text-[var(--color-error)] mx-auto">
-                <AlertCircle size={24} aria-hidden="true" />
+                <MaterialIcon name="error" size={28} aria-hidden="true" />
               </div>
 
               <div className="space-y-1.5">
@@ -583,7 +572,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                   Close
                 </Button>
                 <Button onClick={handleStartIndexing} className="w-1/2">
-                  <RotateCcw size={13} />
+                  <MaterialIcon name="restart_alt" size={16} />
                   <span>Retry</span>
                 </Button>
               </div>

@@ -2,21 +2,7 @@ import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import {
-  MessageSquare,
-  Plus,
-  Send,
-  FileCode,
-  AlertCircle,
-  ArrowDown,
-  RotateCcw,
-  StopCircle,
-  Loader2,
-  GitBranch,
-  Bot,
-  Terminal,
-  Code2,
-} from 'lucide-react';
+import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { api } from '../lib/api';
 import {
   Repository,
@@ -322,7 +308,7 @@ export function ChatPage() {
           className="px-6 py-2.5 bg-[var(--color-surface)] border-b border-[var(--color-border)] flex items-center justify-between text-xs text-[var(--color-text-secondary)]"
         >
           <div className="flex items-center gap-2">
-            <GitBranch size={14} className="text-[var(--color-accent)] shrink-0" aria-hidden="true" />
+            <MaterialIcon name="folder" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
             <span>
               A newer version of this repository is indexed. Your conversation is pinned to commit{' '}
               <span className="font-mono text-[var(--color-text)]">
@@ -350,7 +336,7 @@ export function ChatPage() {
           aria-label="Repository is currently indexing"
           className="px-6 py-2 bg-[var(--color-warning-tint)] border-b border-[rgba(251,191,36,0.3)] text-xs text-[var(--color-warning)] flex items-center gap-2"
         >
-          <Loader2 size={13} className="animate-spin" aria-hidden="true" />
+          <MaterialIcon name="sync" size={16} spin aria-hidden="true" />
           <span>
             Repository is currently indexing. Q&A answers will be grounded as soon as AST embeddings complete.
           </span>
@@ -372,7 +358,7 @@ export function ChatPage() {
               className="w-full justify-start gap-2"
               aria-label="Start new conversation"
             >
-              <Plus size={14} aria-hidden="true" />
+              <MaterialIcon name="add" size={18} aria-hidden="true" />
               <span>New question</span>
             </Button>
           </div>
@@ -395,13 +381,21 @@ export function ChatPage() {
                   }}
                   className={`w-full flex items-start gap-2.5 p-2 rounded-[var(--radius-control)] text-left text-xs transition ${
                     active
-                      ? 'bg-[var(--color-raised)] text-[var(--color-text)] border border-[var(--color-border-strong)]'
+                      ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
                       : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-raised)]/60 hover:text-[var(--color-text)]'
                   }`}
                 >
-                  <MessageSquare size={14} className="mt-0.5 shrink-0 text-[var(--color-muted)]" aria-hidden="true" />
+                  <MaterialIcon
+                    name="chat"
+                    size={18}
+                    active={active}
+                    className="mt-0.5 shrink-0"
+                    aria-hidden={true}
+                  />
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate">{conv.title}</div>
+                    <div className={active ? 'font-semibold text-[var(--color-mint-accent,#B9E4D0)] truncate' : 'font-medium truncate'}>
+                      {conv.title}
+                    </div>
                     <div className="text-[10px] text-[var(--color-muted)] font-mono mt-0.5">
                       {formatRelativeTime(conv.updated_at)}
                     </div>
@@ -433,10 +427,10 @@ export function ChatPage() {
                 className="max-w-2xl mx-auto py-12 text-center space-y-6"
               >
                 <div
-                  className="h-12 w-12 rounded-xl bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)] mx-auto"
+                  className="h-12 w-12 rounded-xl bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] mx-auto"
                   aria-hidden="true"
                 >
-                  <Terminal size={22} />
+                  <MaterialIcon name="terminal" size={26} fill={1} color="var(--color-mint-accent, #B9E4D0)" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-[var(--color-text)]">
@@ -453,14 +447,14 @@ export function ChatPage() {
                     <button
                       key={i}
                       onClick={() => handleSendMessage(sq.question)}
-                      className="p-3.5 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-accent)] hover:bg-[var(--color-raised)]/60 transition text-xs space-y-1.5 group text-left"
+                      className="p-3.5 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-mint-accent,#B9E4D0)] hover:bg-[var(--color-raised)]/60 transition text-xs space-y-1.5 group text-left"
                     >
-                      <div className="font-medium text-[var(--color-text)] group-hover:text-[var(--color-accent)] transition-colors">
+                      <div className="font-medium text-[var(--color-text)] group-hover:text-[var(--color-mint-accent,#B9E4D0)] transition-colors">
                         {sq.question}
                       </div>
                       {sq.file_hint && (
                         <div className="text-[11px] font-mono text-[var(--color-muted)] truncate flex items-center gap-1">
-                          <Code2 size={11} className="shrink-0" aria-hidden="true" />
+                          <MaterialIcon name="code" size={14} className="shrink-0 text-[var(--color-mint-accent,#B9E4D0)]" aria-hidden="true" />
                           <span>{sq.file_hint}</span>
                         </div>
                       )}
@@ -480,10 +474,10 @@ export function ChatPage() {
               >
                 {msg.role === 'assistant' && (
                   <div
-                    className="h-7 w-7 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)] shrink-0 mt-0.5"
+                    className="h-7 w-7 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shrink-0 mt-0.5"
                     aria-label="AI response"
                   >
-                    <Bot size={15} aria-hidden="true" />
+                    <MaterialIcon name="smart_toy" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                   </div>
                 )}
 
@@ -516,9 +510,9 @@ export function ChatPage() {
                               key={idx}
                               onClick={() => setSelectedCitation(c)}
                               aria-label={`View citation in ${c.path.split('/').pop()} lines ${c.start_line} to ${c.end_line}`}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)] text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 transition cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border border-[rgba(185,228,208,0.3)] bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] hover:bg-[var(--color-mint-accent)]/20 transition cursor-pointer"
                             >
-                              <FileCode size={12} aria-hidden="true" />
+                              <MaterialIcon name="description" size={14} fill={1} aria-hidden="true" />
                               <span>
                                 {c.path.split('/').pop()}:{c.start_line}–{c.end_line}
                               </span>
@@ -536,15 +530,15 @@ export function ChatPage() {
             {streaming && (
               <div className="flex gap-3 max-w-3xl mx-auto justify-start" aria-live="polite">
                 <div
-                  className="h-7 w-7 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)] shrink-0 mt-0.5"
+                  className="h-7 w-7 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shrink-0 mt-0.5"
                   aria-label="Assistant streaming"
                 >
-                  <Bot size={15} className="animate-pulse" aria-hidden="true" />
+                  <MaterialIcon name="smart_toy" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" className="animate-pulse" aria-hidden="true" />
                 </div>
                 <div className="rounded-[var(--radius-panel)] p-4 text-xs sm:text-sm leading-relaxed max-w-[85%] space-y-3">
                   <div className="prose prose-invert prose-xs max-w-none">
                     <Markdown remarkPlugins={[remarkGfm]}>{streamedText}</Markdown>
-                    <span className="inline-block w-1.5 h-3.5 bg-[var(--color-accent)] animate-pulse ml-0.5 align-middle" />
+                    <span className="inline-block w-1.5 h-3.5 bg-[var(--color-mint-accent,#B9E4D0)] animate-pulse ml-0.5 align-middle" />
                   </div>
 
                   {streamedCitations.length > 0 && (
@@ -560,9 +554,9 @@ export function ChatPage() {
                           key={idx}
                           onClick={() => setSelectedCitation(c)}
                           aria-label={`View citation in ${c.path.split('/').pop()} lines ${c.start_line} to ${c.end_line}`}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)] text-[var(--color-accent)]"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border border-[rgba(185,228,208,0.3)] bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)]"
                         >
-                          <FileCode size={12} aria-hidden="true" />
+                          <MaterialIcon name="description" size={14} fill={1} aria-hidden="true" />
                           <span>
                             {c.path.split('/').pop()}:{c.start_line}–{c.end_line}
                           </span>
@@ -582,7 +576,7 @@ export function ChatPage() {
                 className="max-w-2xl mx-auto p-4 rounded-[var(--radius-panel)] border border-[var(--color-error-border)] bg-[var(--color-error-tint)] text-xs text-[var(--color-error)] space-y-2"
               >
                 <div className="flex items-center gap-2 font-semibold">
-                  <AlertCircle size={15} aria-hidden="true" />
+                  <MaterialIcon name="error" size={18} fill={1} aria-hidden="true" />
                   <span>{errorInfo.message}</span>
                 </div>
                 {errorInfo.retry_after && (
@@ -597,7 +591,7 @@ export function ChatPage() {
                     onClick={() => handleSendMessage()}
                     className="border-[var(--color-error-border)] text-[var(--color-error)] hover:bg-[var(--color-error-tint)]"
                   >
-                    <RotateCcw size={12} aria-hidden="true" />
+                    <MaterialIcon name="restart_alt" size={16} aria-hidden="true" />
                     <span>Retry question</span>
                   </Button>
                 </div>
@@ -612,7 +606,7 @@ export function ChatPage() {
               aria-label="Jump to latest message"
               className="absolute bottom-20 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-[var(--color-raised)] border border-[var(--color-border-strong)] text-xs text-[var(--color-text)] shadow-lg flex items-center gap-1.5 hover:bg-[var(--color-surface)] transition"
             >
-              <ArrowDown size={13} aria-hidden="true" />
+              <MaterialIcon name="arrow_downward" size={16} aria-hidden="true" />
               <span>Jump to latest</span>
             </button>
           )}
@@ -641,7 +635,7 @@ export function ChatPage() {
                       className="h-7 text-xs"
                       aria-label="Stop generation"
                     >
-                      <StopCircle size={13} aria-hidden="true" />
+                      <MaterialIcon name="stop_circle" size={16} fill={1} aria-hidden="true" />
                       <span>Stop</span>
                     </Button>
                   ) : (
@@ -654,7 +648,7 @@ export function ChatPage() {
                       aria-label="Send message"
                     >
                       <span>Send</span>
-                      <Send size={12} aria-hidden="true" />
+                      <MaterialIcon name="send" size={16} fill={1} aria-hidden="true" />
                     </Button>
                   )}
                 </div>

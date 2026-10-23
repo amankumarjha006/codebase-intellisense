@@ -30,8 +30,14 @@
   --color-success: #4ADE80;
   --color-success-tint: rgba(74, 222, 128, 0.12);
   --color-warning: #FBBF24;
-  --color-warning-tint: rgba(251, 191, 36, 0.12);
   --color-overlay: rgba(0, 0, 0, 0.60);
+
+  /* ── Pastel Mint Design System ──────────────────────── */
+  --color-mint-accent: #B9E4D0;
+  --color-mint-hover: #D0F1E0;
+  --color-mint-selected-bg: #253A32;
+  --color-mint-secondary: #E3F5EB;
+  --color-icon-inactive: #929A94;
 
   /* ── Typography ─────────────────────────────────────── */
   --font-sans: 'Google Sans FlexVariable', 'Google Sans Flex', system-ui, -apple-system, sans-serif;
@@ -218,4 +224,47 @@ body {
   inset: -6px;
   min-width: 44px;
   min-height: 44px;
+}
+
+/* ── Material Symbols Rounded Baseline & Glyph Fill Axis ── */
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded', sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: color 180ms ease, font-variation-settings 180ms ease;
+}
+
+/* Outlined state (inactive) */
+.material-symbols-rounded.icon-inactive {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  color: var(--color-icon-inactive);
+}
+
+/* Solid filled glyph state (active) */
+.material-symbols-rounded.icon-active {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  color: var(--color-mint-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .material-symbols-rounded {
+    transition: none !important;
+  }
 }

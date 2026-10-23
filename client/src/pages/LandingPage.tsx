@@ -1,19 +1,7 @@
 import * as React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
-import {
-  Terminal,
-  ArrowRight,
-  ShieldCheck,
-  Code2,
-  Menu,
-  ExternalLink,
-  AlertTriangle,
-  X,
-  Link2,
-  Fingerprint,
-  Hash,
-} from 'lucide-react';
+import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { GithubIcon } from '../components/ui/GithubIcon';
 import { BlurText } from '../components/ui/BlurText';
 import { SpotlightCard } from '../components/ui/SpotlightCard';
@@ -80,7 +68,7 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-accent)]" aria-hidden="true">
-              <Terminal size={17} />
+              <MaterialIcon name="terminal" size={18} />
             </div>
             <span className="text-sm font-bold tracking-tight text-[var(--color-text)]">
               Codebase Intellisense
@@ -99,7 +87,7 @@ export function LandingPage() {
             </a>
             <a href="https://github.com" target="_blank" rel="noreferrer" className="hover:text-[var(--color-text)] transition flex items-center gap-1">
               <span>GitHub</span>
-              <ExternalLink size={10} aria-hidden="true" />
+              <MaterialIcon name="open_in_new" size={12} aria-hidden="true" />
             </a>
           </nav>
 
@@ -113,7 +101,7 @@ export function LandingPage() {
               className="p-1.5 rounded-[var(--radius-control)] text-[var(--color-muted)] hover:text-[var(--color-text)] md:hidden"
               aria-label="Open mobile menu"
             >
-              <Menu size={18} />
+              <MaterialIcon name="menu" size={20} />
             </button>
           </div>
         </div>
@@ -159,7 +147,7 @@ export function LandingPage() {
         <div className="max-w-4xl mx-auto pt-24 px-4 sm:px-6" role="alert">
           <div className="rounded-[var(--radius-control)] border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 px-4 py-3 text-xs text-[var(--color-danger)] flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-2">
-              <AlertTriangle size={15} className="shrink-0" aria-hidden="true" />
+              <MaterialIcon name="warning" size={16} className="shrink-0" aria-hidden="true" />
               <span className="font-medium">{errorCopy}</span>
             </div>
             <button
@@ -171,7 +159,7 @@ export function LandingPage() {
               className="text-[var(--color-muted)] hover:text-[var(--color-text)] p-0.5 rounded transition"
               aria-label="Dismiss error"
             >
-              <X size={14} />
+              <MaterialIcon name="close" size={16} />
             </button>
           </div>
         </div>
@@ -206,7 +194,7 @@ export function LandingPage() {
           <div className="max-w-4xl mx-auto text-center space-y-6 relative z-10">
             <FadeUp delay={0}>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--color-accent-border)] bg-[var(--color-accent-tint)] text-[var(--color-accent)] text-xs font-medium">
-                <Terminal size={12} aria-hidden="true" />
+                <MaterialIcon name="terminal" size={14} aria-hidden="true" />
                 <span>AST Verification Engine v2.4.0</span>
               </div>
             </FadeUp>
@@ -231,7 +219,7 @@ export function LandingPage() {
                 <Button size="lg" variant="primary" onClick={handleSignIn} className="w-full sm:w-auto">
                   <GithubIcon size={16} />
                   <span>Connect with GitHub</span>
-                  <ArrowRight size={15} aria-hidden="true" />
+                  <MaterialIcon name="arrow_forward" size={16} aria-hidden="true" />
                 </Button>
                 <Button size="lg" variant="secondary" asChild className="w-full sm:w-auto">
                   <a href="#how-it-works">
@@ -310,7 +298,7 @@ export function LandingPage() {
                     aria-pressed={activeCitation}
                     aria-label="Toggle source citation view"
                   >
-                    <Link2 size={12} aria-hidden="true" />
+                    <MaterialIcon name="link" size={14} aria-hidden="true" />
                     <span>src/payments/idempotency.ts:42-58</span>
                   </button>
                 </div>
@@ -428,7 +416,7 @@ export function LandingPage() {
             <StaggerChildren className="grid grid-cols-1 sm:grid-cols-3 gap-5" staggerDelay={0.06}>
               <div className="p-5 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3">
                 <div className="flex items-center justify-between">
-                  <Fingerprint size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
+                  <MaterialIcon name="fingerprint" size={20} className="text-[var(--color-accent)]" aria-hidden="true" />
                   <span className="text-xs font-mono text-[var(--color-muted)]">01</span>
                 </div>
                 <h4 className="text-sm font-bold text-[var(--color-text)]">Zero Synthetic Hallucinations</h4>
@@ -439,7 +427,7 @@ export function LandingPage() {
 
               <div className="p-5 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3">
                 <div className="flex items-center justify-between">
-                  <ShieldCheck size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
+                  <MaterialIcon name="verified_user" size={20} className="text-[var(--color-accent)]" aria-hidden="true" />
                   <span className="text-xs font-mono text-[var(--color-muted)]">02</span>
                 </div>
                 <h4 className="text-sm font-bold text-[var(--color-text)]">Air-Gapped Indexing</h4>
@@ -450,7 +438,7 @@ export function LandingPage() {
 
               <div className="p-5 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] space-y-3">
                 <div className="flex items-center justify-between">
-                  <Hash size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
+                  <MaterialIcon name="tag" size={20} className="text-[var(--color-accent)]" aria-hidden="true" />
                   <span className="text-xs font-mono text-[var(--color-muted)]">03</span>
                 </div>
                 <h4 className="text-sm font-bold text-[var(--color-text)]">Branch Delta Diffs</h4>
@@ -480,7 +468,7 @@ export function LandingPage() {
                 </p>
                 <div className="flex flex-col sm:flex-row items-start gap-3 pt-2">
                   <Button size="lg" variant="primary" onClick={handleSignIn}>
-                    <Code2 size={16} aria-hidden="true" />
+                    <MaterialIcon name="code" size={18} aria-hidden="true" />
                     <span>Continue with GitHub</span>
                   </Button>
                   <span className="text-[11px] text-[var(--color-muted)] font-mono self-center">
@@ -497,7 +485,7 @@ export function LandingPage() {
       <footer className="py-8 px-4 sm:px-6 border-t border-[var(--color-border)] bg-[var(--color-page)] text-xs text-[var(--color-muted)]" role="contentinfo">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Terminal size={14} className="text-[var(--color-accent)]" aria-hidden="true" />
+            <MaterialIcon name="terminal" size={16} className="text-[var(--color-accent)]" aria-hidden="true" />
             <span>Codebase Intellisense © 2026. All rights reserved.</span>
           </div>
           <nav className="flex items-center gap-6" aria-label="Footer navigation">

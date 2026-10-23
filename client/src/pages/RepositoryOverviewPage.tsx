@@ -1,17 +1,6 @@
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  GitCommit,
-  GitBranch,
-  FolderGit2,
-  Lock,
-  Globe,
-  Copy,
-  Check,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-} from 'lucide-react';
+import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { api } from '../lib/api';
 import { Repository, IndexJob } from '../lib/types';
 import { formatNumber, formatRelativeTime, shortSha } from '../lib/utils';
@@ -100,7 +89,7 @@ export function RepositoryOverviewPage() {
         aria-live="assertive"
         className="p-12 text-center max-w-md mx-auto space-y-4"
       >
-        <AlertCircle size={32} className="text-[var(--color-error)] mx-auto" aria-hidden="true" />
+        <MaterialIcon name="error" size={32} className="text-[var(--color-error)] mx-auto" aria-hidden="true" />
         <h2 className="text-lg font-semibold text-[var(--color-text)]">Repository not found</h2>
         <p className="text-xs text-[var(--color-text-secondary)]">{error}</p>
         <Button variant="secondary" onClick={() => navigate('/dashboard')}>
@@ -135,7 +124,7 @@ export function RepositoryOverviewPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-warning)]">
-                    <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                    <MaterialIcon name="sync" size={16} spin aria-hidden="true" />
                     <span>Repository Indexing in Progress</span>
                   </div>
                   <span className="font-mono text-xs font-semibold text-[var(--color-warning)]">
@@ -182,19 +171,19 @@ export function RepositoryOverviewPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2.5">
                     <div className="flex items-center gap-2 text-[var(--color-text)]">
-                      <FolderGit2 size={18} className="text-[var(--color-accent)] shrink-0" aria-hidden="true" />
+                      <MaterialIcon name="folder" size={22} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                       <h1 id="repo-summary-heading" className="text-lg sm:text-xl font-bold tracking-tight text-[var(--color-text)]">
                         {repository.owner}/{repository.name}
                       </h1>
                     </div>
                     {repository.is_private ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-[var(--color-raised)] border border-[var(--color-border)] text-[var(--color-muted)]">
-                        <Lock size={10} aria-hidden="true" />
+                        <MaterialIcon name="lock" size={14} aria-hidden="true" />
                         <span>Private</span>
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-[var(--color-raised)] border border-[var(--color-border)] text-[var(--color-muted)]">
-                        <Globe size={10} aria-hidden="true" />
+                        <MaterialIcon name="public" size={14} aria-hidden="true" />
                         <span>Public</span>
                       </span>
                     )}
@@ -218,7 +207,7 @@ export function RepositoryOverviewPage() {
                 <div className="space-y-1">
                   <span className="text-[11px] font-medium text-[var(--color-muted)] block">Branch</span>
                   <div className="flex items-center gap-1.5 text-xs font-mono font-medium text-[var(--color-text)]">
-                    <GitBranch size={13} className="text-[var(--color-accent)] shrink-0" aria-hidden="true" />
+                    <MaterialIcon name="call_split" size={16} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                     <span className="truncate">{repository.default_branch || 'main'}</span>
                   </div>
                 </div>
@@ -229,16 +218,16 @@ export function RepositoryOverviewPage() {
                   {activeSha ? (
                     <button
                       onClick={() => handleCopySha(activeSha)}
-                      className="group inline-flex items-center gap-1.5 text-xs font-mono font-medium text-[var(--color-text)] hover:text-[var(--color-accent)] transition cursor-pointer"
+                      className="group inline-flex items-center gap-1.5 text-xs font-mono font-medium text-[var(--color-text)] hover:text-[var(--color-mint-accent,#B9E4D0)] transition cursor-pointer"
                       title={`Click to copy full commit SHA: ${activeSha}`}
                       aria-label={`Copy commit SHA ${shortSha(activeSha)}`}
                     >
-                      <GitCommit size={13} className="text-[var(--color-accent)] shrink-0" aria-hidden="true" />
+                      <MaterialIcon name="commit" size={16} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                       <span>{shortSha(activeSha)}</span>
                       {copiedSha === activeSha ? (
-                        <Check size={12} className="text-[var(--color-accent)]" aria-hidden="true" />
+                        <MaterialIcon name="check" size={14} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                       ) : (
-                        <Copy size={12} className="text-[var(--color-muted)] group-hover:text-[var(--color-accent)] transition-colors" aria-hidden="true" />
+                        <MaterialIcon name="content_copy" size={14} className="text-[var(--color-muted)] group-hover:text-[var(--color-mint-accent,#B9E4D0)] transition-colors" aria-hidden="true" />
                       )}
                     </button>
                   ) : (
@@ -347,7 +336,7 @@ export function RepositoryOverviewPage() {
                     <tr className="hover:bg-[var(--color-raised)]/30 transition">
                       <td className="py-3 px-4 text-[var(--color-text-secondary)] font-medium">Indexed Branch</td>
                       <td className="py-3 px-4 font-mono text-[var(--color-text)] flex items-center gap-1.5">
-                        <GitBranch size={12} className="text-[var(--color-accent)]" aria-hidden="true" />
+                        <MaterialIcon name="call_split" size={14} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                         <span>{repository.default_branch || 'main'}</span>
                       </td>
                       <td className="py-3 px-4 text-[var(--color-muted)] text-[11px] hidden sm:table-cell">
@@ -419,22 +408,22 @@ export function RepositoryOverviewPage() {
                           {/* Commit SHA with Copy Button */}
                           <td className="py-2.5 px-4 whitespace-nowrap">
                             <div className="flex items-center gap-1.5 font-semibold text-[var(--color-text)]">
-                              <GitCommit size={13} className="text-[var(--color-accent)]" aria-hidden="true" />
+                              <MaterialIcon name="commit" size={16} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                               <button
                                 onClick={() => handleCopySha(entry.sha)}
-                                className="group inline-flex items-center gap-1 hover:text-[var(--color-accent)] transition cursor-pointer"
+                                className="group inline-flex items-center gap-1 hover:text-[var(--color-mint-accent,#B9E4D0)] transition cursor-pointer"
                                 title={`Click to copy full commit SHA: ${entry.sha}`}
                                 aria-label={`Copy commit SHA ${shortSha(entry.sha)}`}
                               >
                                 <span>{shortSha(entry.sha)}</span>
                                 {copiedSha === entry.sha ? (
-                                  <Check size={11} className="text-[var(--color-accent)]" aria-hidden="true" />
+                                  <MaterialIcon name="check" size={14} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                                 ) : (
-                                  <Copy size={11} className="text-[var(--color-muted)] group-hover:text-[var(--color-accent)] transition-colors opacity-70" aria-hidden="true" />
+                                  <MaterialIcon name="content_copy" size={14} className="text-[var(--color-muted)] group-hover:text-[var(--color-mint-accent,#B9E4D0)] transition-colors opacity-70" aria-hidden="true" />
                                 )}
                               </button>
                               {entry.label && (
-                                <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-[var(--color-accent-tint)] text-[var(--color-accent)] border border-[var(--color-accent-border)] font-sans">
+                                <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)] font-sans">
                                   {entry.label}
                                 </span>
                               )}
@@ -454,20 +443,20 @@ export function RepositoryOverviewPage() {
                           {/* Status */}
                           <td className="py-2.5 px-4 whitespace-nowrap">
                             {entry.status === 'READY' && (
-                              <span className="inline-flex items-center gap-1 text-[var(--color-accent)] font-medium">
-                                <CheckCircle2 size={12} aria-hidden="true" />
+                              <span className="inline-flex items-center gap-1 text-[var(--color-mint-accent,#B9E4D0)] font-medium">
+                                <MaterialIcon name="check_circle" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                                 <span>Ready</span>
                               </span>
                             )}
                             {entry.status === 'INDEXING' && (
                               <span className="inline-flex items-center gap-1 text-[var(--color-warning)] font-medium">
-                                <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                                <MaterialIcon name="sync" size={16} spin aria-hidden="true" />
                                 <span>Indexing</span>
                               </span>
                             )}
                             {entry.status === 'FAILED' && (
                               <span className="inline-flex items-center gap-1 text-[var(--color-error)] font-medium">
-                                <AlertCircle size={12} aria-hidden="true" />
+                                <MaterialIcon name="error" size={16} fill={1} aria-hidden="true" />
                                 <span>Failed</span>
                               </span>
                             )}
@@ -497,7 +486,7 @@ export function RepositoryOverviewPage() {
                 </div>
               ) : (
                 <div className="p-8 text-center space-y-2">
-                  <GitCommit size={24} className="text-[var(--color-muted)] mx-auto opacity-60" aria-hidden="true" />
+                  <MaterialIcon name="commit" size={28} className="text-[var(--color-muted)] mx-auto opacity-60" aria-hidden="true" />
                   <p className="text-xs font-medium text-[var(--color-text)]">No commit indexing history available</p>
                   <p className="text-[11px] text-[var(--color-muted)]">
                     Trigger a re-index to analyze and track git revisions.

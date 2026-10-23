@@ -1,24 +1,6 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  GitBranch,
-  Search,
-  Plus,
-  RefreshCw,
-  ExternalLink,
-  Lock,
-  Globe,
-  MoreVertical,
-  WifiOff,
-  Copy,
-  Check,
-  Terminal,
-  Trash2,
-  AlertTriangle,
-  Loader2,
-  Cpu,
-  Layers,
-} from 'lucide-react';
+import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { ApiError, RepositoryListItemOut } from '../lib/api';
 import { formatRelativeTime } from '../lib/utils';
 import { RepositoryStatusCell } from '../components/ui/badge';
@@ -143,7 +125,7 @@ export function DashboardPage() {
             aria-label="Synchronize repository states"
             title="Synchronize repository states"
           >
-            <RefreshCw size={13} className={loading || isPolling ? 'animate-spin' : ''} aria-hidden="true" />
+            <MaterialIcon name="sync" size={18} spin={loading || isPolling} aria-hidden={true} />
             <span className="hidden sm:inline">Sync</span>
           </Button>
 
@@ -153,7 +135,7 @@ export function DashboardPage() {
             onClick={() => setConnectOpen(true)}
             aria-label="Connect new repository"
           >
-            <Plus size={15} aria-hidden="true" />
+            <MaterialIcon name="add" size={18} aria-hidden="true" />
             <span>Connect Repository</span>
           </Button>
         </div>
@@ -166,7 +148,7 @@ export function DashboardPage() {
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-3"
         >
           <div className="relative flex-1 max-w-md">
-            <Search size={14} className="absolute left-3 top-2.5 text-[var(--color-muted)]" aria-hidden="true" />
+            <MaterialIcon name="search" size={18} className="absolute left-3 top-2.5 text-[var(--color-muted)]" aria-hidden="true" />
             <Input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -267,7 +249,7 @@ export function DashboardPage() {
               className="h-12 w-12 rounded-full bg-[var(--color-error-tint)] border border-[var(--color-error-border)] flex items-center justify-center text-[var(--color-error)] mx-auto"
               aria-hidden="true"
             >
-              <WifiOff size={22} />
+              <MaterialIcon name="wifi_off" size={24} />
             </div>
 
             <div className="space-y-1.5">
@@ -291,9 +273,9 @@ export function DashboardPage() {
                   aria-label="Copy diagnostic reference id"
                 >
                   {copiedRequestId ? (
-                    <Check size={12} className="text-[var(--color-accent)]" aria-hidden="true" />
+                    <MaterialIcon name="check" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
                   ) : (
-                    <Copy size={12} aria-hidden="true" />
+                    <MaterialIcon name="content_copy" size={16} aria-hidden="true" />
                   )}
                 </button>
               </div>
@@ -301,7 +283,7 @@ export function DashboardPage() {
 
             <div className="pt-2 flex items-center justify-center gap-3">
               <Button variant="primary" size="sm" onClick={refetch}>
-                <RefreshCw size={13} aria-hidden="true" />
+                <MaterialIcon name="sync" size={18} aria-hidden="true" />
                 <span>Retry connection</span>
               </Button>
             </div>
@@ -317,10 +299,10 @@ export function DashboardPage() {
           className="rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 sm:p-12 text-center space-y-6 max-w-2xl mx-auto mt-6 shadow-sm"
         >
           <div
-            className="h-14 w-14 rounded-2xl bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-accent)] mx-auto"
+            className="h-14 w-14 rounded-2xl bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] mx-auto"
             aria-hidden="true"
           >
-            <Terminal size={26} />
+            <MaterialIcon name="terminal" size={28} fill={1} color="var(--color-mint-accent, #B9E4D0)" />
           </div>
 
           <div className="space-y-2 max-w-md mx-auto">
@@ -338,13 +320,13 @@ export function DashboardPage() {
               onClick={() => setConnectOpen(true)}
               aria-label="Connect your first repository"
             >
-              <Plus size={15} aria-hidden="true" />
+              <MaterialIcon name="add" size={18} aria-hidden="true" />
               <span>Connect repository</span>
             </Button>
           </div>
 
           <p className="text-[11px] text-[var(--color-muted)] flex items-center justify-center gap-1.5 font-mono">
-            <Lock size={11} aria-hidden="true" />
+            <MaterialIcon name="lock" size={14} aria-hidden="true" />
             <span>Zero-retention ephemeral memory · Static AST analysis only</span>
           </p>
 
@@ -352,7 +334,7 @@ export function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-[var(--color-border)] text-left">
             <div className="p-3 rounded-[var(--radius-control)] bg-[var(--color-raised)]/40 border border-[var(--color-border)]/50 space-y-1">
               <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wider uppercase text-[var(--color-muted)]">
-                <Cpu size={12} className="text-[var(--color-accent)]" aria-hidden="true" />
+                <MaterialIcon name="memory" size={16} className="text-[var(--color-mint-accent,#B9E4D0)]" aria-hidden="true" />
                 <span>AST Resolution</span>
               </div>
               <p className="text-[11px] text-[var(--color-text-secondary)] leading-normal">
@@ -362,7 +344,7 @@ export function DashboardPage() {
 
             <div className="p-3 rounded-[var(--radius-control)] bg-[var(--color-raised)]/40 border border-[var(--color-border)]/50 space-y-1">
               <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wider uppercase text-[var(--color-muted)]">
-                <Terminal size={12} className="text-[var(--color-accent)]" aria-hidden="true" />
+                <MaterialIcon name="terminal" size={16} className="text-[var(--color-mint-accent,#B9E4D0)]" aria-hidden="true" />
                 <span>Evidence Auditing</span>
               </div>
               <p className="text-[11px] text-[var(--color-text-secondary)] leading-normal">
@@ -372,7 +354,7 @@ export function DashboardPage() {
 
             <div className="p-3 rounded-[var(--radius-control)] bg-[var(--color-raised)]/40 border border-[var(--color-border)]/50 space-y-1">
               <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wider uppercase text-[var(--color-muted)]">
-                <Layers size={12} className="text-[var(--color-accent)]" aria-hidden="true" />
+                <MaterialIcon name="layers" size={16} className="text-[var(--color-mint-accent,#B9E4D0)]" aria-hidden="true" />
                 <span>Local Runtime</span>
               </div>
               <p className="text-[11px] text-[var(--color-text-secondary)] leading-normal">
@@ -421,24 +403,26 @@ export function DashboardPage() {
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
                           <div
-                            className="h-8 w-8 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)] shrink-0 transition-transform group-hover:scale-105"
+                            className="h-8 w-8 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shrink-0 transition-transform group-hover:scale-105"
                             aria-hidden="true"
                           >
-                            <GitBranch size={16} />
+                            <MaterialIcon name="folder" size={20} fill={1} color="var(--color-mint-accent, #B9E4D0)" />
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 font-semibold text-[var(--color-text)] group-hover:text-[var(--color-accent)] transition-colors">
+                            <div className="flex items-center gap-1.5 font-semibold text-[var(--color-text)] group-hover:text-[var(--color-mint-accent,#B9E4D0)] transition-colors">
                               <span className="text-[var(--color-muted)] font-normal">{repo.owner}/</span>
                               <span>{repo.name}</span>
                               {repo.is_private ? (
-                                <Lock
-                                  size={11}
+                                <MaterialIcon
+                                  name="lock"
+                                  size={14}
                                   className="text-[var(--color-muted)] ml-0.5"
                                   aria-label="Private repository"
                                 />
                               ) : (
-                                <Globe
-                                  size={11}
+                                <MaterialIcon
+                                  name="public"
+                                  size={14}
                                   className="text-[var(--color-muted)] ml-0.5"
                                   aria-label="Public repository"
                                 />
@@ -452,7 +436,7 @@ export function DashboardPage() {
                       <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px] text-[var(--color-text-secondary)]">
                         {repo.active_version_short_sha ? (
                           <div className="flex items-center gap-1.5">
-                            <GitBranch size={12} className="text-[var(--color-muted)]" aria-hidden="true" />
+                            <MaterialIcon name="call_split" size={14} className="text-[var(--color-muted)]" aria-hidden="true" />
                             <span>main · {repo.active_version_short_sha}</span>
                           </div>
                         ) : (
@@ -495,7 +479,7 @@ export function DashboardPage() {
                             title="Open repository"
                             aria-label={`Open repository ${repo.name}`}
                           >
-                            <ExternalLink size={14} aria-hidden="true" />
+                            <MaterialIcon name="open_in_new" size={18} aria-hidden="true" />
                           </Button>
 
                           <DropdownMenu>
@@ -506,7 +490,7 @@ export function DashboardPage() {
                                 title="Repository actions"
                                 aria-label={`Actions for ${repo.name}`}
                               >
-                                <MoreVertical size={14} aria-hidden="true" />
+                                <MaterialIcon name="more_vert" size={18} aria-hidden="true" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-44">
@@ -514,7 +498,7 @@ export function DashboardPage() {
                                 onClick={() => triggerIndex(repo.id)}
                                 className="cursor-pointer gap-2 text-xs"
                               >
-                                <RefreshCw size={13} className="text-[var(--color-accent)]" aria-hidden="true" />
+                                <MaterialIcon name="sync" size={16} color="var(--color-mint-accent,#B9E4D0)" aria-hidden="true" />
                                 <span>Re-index repo</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
@@ -522,7 +506,7 @@ export function DashboardPage() {
                                 destructive
                                 className="cursor-pointer gap-2 text-xs text-[var(--color-error)] focus:text-[var(--color-error)]"
                               >
-                                <Trash2 size={13} aria-hidden="true" />
+                                <MaterialIcon name="delete" size={16} aria-hidden="true" />
                                 <span>Delete</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -550,7 +534,7 @@ export function DashboardPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-[var(--color-error)]">
-              <AlertTriangle size={18} aria-hidden="true" />
+              <MaterialIcon name="warning" size={22} fill={1} className="text-[var(--color-error)]" aria-hidden="true" />
               <span>Delete repository?</span>
             </DialogTitle>
             <DialogDescription className="pt-1.5 text-xs text-[var(--color-text-secondary)] leading-relaxed">
@@ -590,12 +574,12 @@ export function DashboardPage() {
             >
               {isDeleting ? (
                 <>
-                  <Loader2 size={13} className="animate-spin" aria-hidden="true" />
+                  <MaterialIcon name="sync" size={16} spin aria-hidden="true" />
                   <span>Deleting...</span>
                 </>
               ) : (
                 <>
-                  <Trash2 size={13} aria-hidden="true" />
+                  <MaterialIcon name="delete" size={16} aria-hidden="true" />
                   <span>Delete repository</span>
                 </>
               )}

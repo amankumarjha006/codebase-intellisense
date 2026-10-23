@@ -1,11 +1,8 @@
 import * as React from 'react';
-import {
-  RefreshCw,
-  ExternalLink,
-  AlertCircle,
-} from 'lucide-react';
 import { Repository } from '../../lib/types';
 import { Button } from '../ui/button';
+import { MaterialIcon } from '../ui/MaterialIcon';
+import { GithubIcon } from '../ui/GithubIcon';
 import { shortSha } from '../../lib/utils';
 import { api } from '../../lib/api';
 import { RepositoryNavDock } from './RepositoryNavDock';
@@ -40,7 +37,7 @@ export function RepositoryHeader({ repository, onRefresh }: RepositoryHeaderProp
           className="px-6 py-2.5 bg-[var(--color-warning-tint)] border-b border-[rgba(251,191,36,0.3)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-[var(--color-warning)]"
         >
           <div className="flex items-center gap-2">
-            <AlertCircle size={15} className="shrink-0" aria-hidden="true" />
+            <MaterialIcon name="warning" size={18} fill={1} className="text-[var(--color-warning)]" aria-hidden="true" />
             <span>
               Latest indexing job failed. Querying active fallback commit{' '}
               <span className="font-mono font-semibold">
@@ -56,7 +53,7 @@ export function RepositoryHeader({ repository, onRefresh }: RepositoryHeaderProp
             aria-label="Retry indexing repository"
             className="h-7 text-xs border-[rgba(251,191,36,0.4)] text-[var(--color-text)] hover:bg-[var(--color-warning-tint)]"
           >
-            <RefreshCw size={12} className={reindexing ? 'animate-spin' : ''} aria-hidden="true" />
+            <MaterialIcon name="sync" size={16} spin={reindexing} aria-hidden="true" />
             <span>Retry Indexing</span>
           </Button>
         </div>
@@ -79,7 +76,7 @@ export function RepositoryHeader({ repository, onRefresh }: RepositoryHeaderProp
             aria-label="Re-index repository"
             className="h-8 text-xs font-medium"
           >
-            <RefreshCw size={13} className={reindexing ? 'animate-spin' : ''} aria-hidden="true" />
+            <MaterialIcon name="sync" size={18} spin={reindexing} aria-hidden="true" />
             <span>Re-index repository</span>
           </Button>
 
@@ -90,8 +87,9 @@ export function RepositoryHeader({ repository, onRefresh }: RepositoryHeaderProp
             aria-label={`Open ${repository.owner}/${repository.name} on GitHub`}
             className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[var(--radius-control)] border border-[var(--color-border)] text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)] transition"
           >
+            <GithubIcon size={16} aria-hidden="true" />
             <span>GitHub</span>
-            <ExternalLink size={12} aria-hidden="true" />
+            <MaterialIcon name="open_in_new" size={16} className="text-[var(--color-muted)]" aria-hidden="true" />
           </a>
         </div>
       </div>

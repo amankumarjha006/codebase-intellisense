@@ -1,12 +1,6 @@
 import * as React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  FileText,
-  MessageSquare,
-  Layers,
-  Search,
-  FolderTree,
-} from 'lucide-react';
+import { MaterialIcon } from '../ui/MaterialIcon';
 import { cn } from '../../lib/utils';
 
 interface RepositoryNavDockProps {
@@ -28,31 +22,31 @@ export function RepositoryNavDock({
     {
       name: 'Overview',
       path: basePath,
-      icon: FileText,
+      iconName: 'description',
       isActive: currentPath === basePath || currentPath === `${basePath}/`,
     },
     {
       name: 'Chat',
       path: `${basePath}/chat`,
-      icon: MessageSquare,
+      iconName: 'chat',
       isActive: currentPath.startsWith(`${basePath}/chat`),
     },
     {
       name: 'Architecture',
       path: `${basePath}/architecture`,
-      icon: Layers,
+      iconName: 'account_tree',
       isActive: currentPath.startsWith(`${basePath}/architecture`),
     },
     {
       name: 'Search',
       path: `${basePath}/search`,
-      icon: Search,
+      iconName: 'search',
       isActive: currentPath.startsWith(`${basePath}/search`),
     },
     {
       name: 'Files',
       path: `${basePath}/files`,
-      icon: FolderTree,
+      iconName: 'folder_open',
       isActive: currentPath.startsWith(`${basePath}/files`),
     },
   ];
@@ -63,7 +57,7 @@ export function RepositoryNavDock({
       <nav
         aria-label="Repository navigation"
         className={cn(
-          'flex items-center gap-1 p-1 rounded-xl bg-[var(--color-surface)]/90 backdrop-blur-md border border-[var(--color-border)] overflow-x-auto no-scrollbar',
+          'flex items-center gap-1.5 p-1 rounded-xl bg-[var(--color-surface)]/90 backdrop-blur-md border border-[var(--color-border)] overflow-x-auto no-scrollbar',
           className
         )}
       >
@@ -73,21 +67,25 @@ export function RepositoryNavDock({
             to={item.path}
             aria-current={item.isActive ? 'page' : undefined}
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors select-none',
+              'group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors select-none',
               item.isActive
-                ? 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] font-semibold border border-[var(--color-accent-border)]'
+                ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] font-semibold border border-[rgba(185,228,208,0.22)]'
                 : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/70'
             )}
           >
-            <item.icon
-              size={13}
+            <MaterialIcon
+              name={item.iconName}
+              active={item.isActive}
+              size={20}
               className={cn(
-                'shrink-0',
-                item.isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'
+                'shrink-0 transition-colors',
+                !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
               )}
-              aria-hidden="true"
+              aria-hidden={true}
             />
-            <span>{item.name}</span>
+            <span className={item.isActive ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold' : undefined}>
+              {item.name}
+            </span>
           </Link>
         ))}
       </nav>
@@ -100,7 +98,7 @@ export function RepositoryNavDock({
       <nav
         aria-label="Repository navigation dock"
         className={cn(
-          'flex flex-col gap-1 p-1.5 w-36 rounded-2xl bg-[var(--color-surface)]/95 backdrop-blur-md border border-[var(--color-border)] shadow-xl shrink-0',
+          'flex flex-col gap-1.5 p-1.5 w-38 rounded-2xl bg-[var(--color-surface)]/95 backdrop-blur-md border border-[var(--color-border)] shadow-xl shrink-0',
           className
         )}
       >
@@ -110,21 +108,25 @@ export function RepositoryNavDock({
             to={item.path}
             aria-current={item.isActive ? 'page' : undefined}
             className={cn(
-              'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all font-medium select-none group',
+              'group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all font-medium select-none',
               item.isActive
-                ? 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] font-semibold border border-[var(--color-accent-border)] shadow-xs'
+                ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] font-semibold border border-[rgba(185,228,208,0.22)] shadow-xs'
                 : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/70'
             )}
           >
-            <item.icon
-              size={14}
+            <MaterialIcon
+              name={item.iconName}
+              active={item.isActive}
+              size={20}
               className={cn(
-                'shrink-0 transition-transform group-hover:scale-105',
-                item.isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)] group-hover:text-[var(--color-text)]'
+                'shrink-0 transition-all group-hover:scale-105',
+                !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
               )}
-              aria-hidden="true"
+              aria-hidden={true}
             />
-            <span className="truncate">{item.name}</span>
+            <span className={cn('truncate', item.isActive && 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold')}>
+              {item.name}
+            </span>
           </Link>
         ))}
       </nav>
@@ -139,7 +141,7 @@ export function RepositoryNavDock({
       <nav
         aria-label="Repository navigation"
         className={cn(
-          'lg:hidden flex items-center gap-1 p-1 rounded-xl bg-[var(--color-surface)]/90 backdrop-blur-md border border-[var(--color-border)] overflow-x-auto no-scrollbar',
+          'lg:hidden flex items-center gap-1.5 p-1 rounded-xl bg-[var(--color-surface)]/90 backdrop-blur-md border border-[var(--color-border)] overflow-x-auto no-scrollbar',
           className
         )}
       >
@@ -149,21 +151,25 @@ export function RepositoryNavDock({
             to={item.path}
             aria-current={item.isActive ? 'page' : undefined}
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors select-none',
+              'group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors select-none',
               item.isActive
-                ? 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] font-semibold border border-[var(--color-accent-border)]'
+                ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] font-semibold border border-[rgba(185,228,208,0.22)]'
                 : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/70'
             )}
           >
-            <item.icon
-              size={13}
+            <MaterialIcon
+              name={item.iconName}
+              active={item.isActive}
+              size={20}
               className={cn(
-                'shrink-0',
-                item.isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)]'
+                'shrink-0 transition-colors',
+                !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
               )}
-              aria-hidden="true"
+              aria-hidden={true}
             />
-            <span>{item.name}</span>
+            <span className={item.isActive ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold' : undefined}>
+              {item.name}
+            </span>
           </Link>
         ))}
       </nav>
@@ -172,7 +178,7 @@ export function RepositoryNavDock({
       <nav
         aria-label="Repository navigation dock"
         className={cn(
-          'hidden lg:flex flex-col gap-1 p-1.5 w-36 rounded-2xl bg-[var(--color-surface)]/95 backdrop-blur-md border border-[var(--color-border)] shadow-xl shrink-0',
+          'hidden lg:flex flex-col gap-1.5 p-1.5 w-38 rounded-2xl bg-[var(--color-surface)]/95 backdrop-blur-md border border-[var(--color-border)] shadow-xl shrink-0',
           className
         )}
       >
@@ -182,21 +188,25 @@ export function RepositoryNavDock({
             to={item.path}
             aria-current={item.isActive ? 'page' : undefined}
             className={cn(
-              'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all font-medium select-none group',
+              'group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all font-medium select-none',
               item.isActive
-                ? 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] font-semibold border border-[var(--color-accent-border)] shadow-xs'
+                ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] font-semibold border border-[rgba(185,228,208,0.22)] shadow-xs'
                 : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/70'
             )}
           >
-            <item.icon
-              size={14}
+            <MaterialIcon
+              name={item.iconName}
+              active={item.isActive}
+              size={20}
               className={cn(
-                'shrink-0 transition-transform group-hover:scale-105',
-                item.isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-muted)] group-hover:text-[var(--color-text)]'
+                'shrink-0 transition-all group-hover:scale-105',
+                !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
               )}
-              aria-hidden="true"
+              aria-hidden={true}
             />
-            <span className="truncate">{item.name}</span>
+            <span className={cn('truncate', item.isActive && 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold')}>
+              {item.name}
+            </span>
           </Link>
         ))}
       </nav>
