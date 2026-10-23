@@ -40,7 +40,7 @@ export function RepositoryNavDock({
     {
       name: 'Search',
       path: `${basePath}/search`,
-      iconName: 'search',
+      iconName: 'find_in_page',
       isActive: currentPath.startsWith(`${basePath}/search`),
     },
     {
