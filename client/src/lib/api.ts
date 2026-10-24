@@ -541,22 +541,38 @@ export const realApi = {
     const res = await realApi.searchRepository(repoId, query, undefined, 50, options);
     const results: SearchResult[] = (res.results || []).map((r) => {
       const ext = r.file_path.includes('.') ? '.' + r.file_path.split('.').pop()! : '';
+      let symbolName: string | null = null;
+      let symbolType: string | null = null;
+      const classMatch = r.snippet.match(/\bclass\s+([A-Za-z0-9_]+)/);
+      const funcMatch =
+        r.snippet.match(/\b(?:def|function|async\s+function)\s+([A-Za-z0-9_]+)/) ||
+        r.snippet.match(/\b(?:const|let|var)\s+([A-Za-z0-9_]+)\s*=\s*(?:async\s*)?\(/);
+      if (classMatch) {
+        symbolName = classMatch[1];
+        symbolType = 'class';
+      } else if (funcMatch) {
+        symbolName = funcMatch[1];
+        symbolType = 'function';
+      }
+
       return {
         file_path: r.file_path,
         sha: 'head',
         language: ext.replace('.', '') || 'text',
-        symbol_name: null,
-        symbol_type: null,
-        context_function: null,
+        symbol_name: symbolName,
+        symbol_type: symbolType,
+        context_function: symbolName ? `${symbolType}: ${symbolName}` : null,
         start_line: r.start_line,
         end_line: r.end_line,
         snippet: r.snippet,
         match_ranges: [],
+        score: r.score,
       };
     });
 
     const extCounts = new Map<string, number>();
     const dirCounts = new Map<string, number>();
+    const symbolCounts = new Map<string, number>();
 
     for (const r of results) {
       const ext = r.file_path.includes('.') ? '.' + r.file_path.split('.').pop()! : 'other';
@@ -567,12 +583,16 @@ export const realApi = {
         const dir = parts[0] + '/';
         dirCounts.set(dir, (dirCounts.get(dir) || 0) + 1);
       }
+
+      if (r.symbol_type) {
+        symbolCounts.set(r.symbol_type, (symbolCounts.get(r.symbol_type) || 0) + 1);
+      }
     }
 
     const filters: SearchFilters = {
       extensions: Array.from(extCounts.entries()).map(([ext, count]) => ({ ext, count })),
       directories: Array.from(dirCounts.entries()).map(([dir, count]) => ({ dir, count })),
-      symbol_types: [],
+      symbol_types: Array.from(symbolCounts.entries()).map(([type, count]) => ({ type, count })),
     };
 
     return { results, filters };

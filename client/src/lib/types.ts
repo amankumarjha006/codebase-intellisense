@@ -150,6 +150,7 @@ export interface SearchResult {
   end_line: number;
   snippet: string;
   match_ranges: Array<{ start: number; end: number }>;
+  score?: number;
 }
 
 export interface SearchFilters {

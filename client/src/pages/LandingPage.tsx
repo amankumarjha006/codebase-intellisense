@@ -360,7 +360,7 @@ export function LandingPage() {
                 <div className="rounded-[var(--radius-control)] bg-[var(--color-page)] border border-[var(--color-border)] p-2.5 font-mono text-[11px] text-[var(--color-text-secondary)] space-y-0.5">
                   <div className="flex items-center justify-between">
                     <span>{'>'} Parsing symbol definitions...</span>
-                    <span className="text-[var(--color-accent)] font-semibold">AST verified</span>
+                    <span className="text-[var(--color-accent)] font-semibold">Symbols verified</span>
                   </div>
                   <div className="text-[var(--color-muted)]">Found 4,812 interfaces · 0 broken links</div>
                 </div>

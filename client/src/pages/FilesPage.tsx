@@ -35,6 +35,13 @@ export function FilesPage() {
   }, [repoId]);
 
   React.useEffect(() => {
+    const urlPath = searchParams.get('path');
+    if (urlPath && urlPath !== activeFilePath) {
+      setActiveFilePath(urlPath);
+    }
+  }, [searchParams, activeFilePath]);
+
+  React.useEffect(() => {
     if (!repoId || !activeFilePath) return;
     api.getFileContent(repoId, activeFilePath).then((content) => {
       setFileContent(content);
@@ -179,11 +186,6 @@ export function FilesPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)] font-medium">
-                <MaterialIcon name="verified" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
-                <span>Tree-sitter AST Anchor</span>
-              </div>
-
               <Button
                 variant="ghost"
                 size="icon-sm"

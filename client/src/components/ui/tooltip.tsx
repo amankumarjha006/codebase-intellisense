@@ -9,7 +9,13 @@ interface TooltipContextType {
 
 const TooltipContext = React.createContext<TooltipContextType | null>(null);
 
-export function TooltipProvider({ children }: { children: React.ReactNode }) {
+export function TooltipProvider({
+  children,
+}: {
+  children: React.ReactNode;
+  delayDuration?: number;
+  skipDelayDuration?: number;
+}) {
   return <>{children}</>;
 }
 

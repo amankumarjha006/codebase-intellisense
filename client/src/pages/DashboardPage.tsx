@@ -289,7 +289,7 @@ export function DashboardPage() {
                   {readyCount}
                 </div>
                 <p className="text-[11px] text-[var(--color-text-secondary)]">
-                  Active AST symbol vectors verified
+                  Active repositories ready for querying
                 </p>
               </CardContent>
             </Card>

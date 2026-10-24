@@ -241,7 +241,7 @@ export function ArchitecturePage() {
                       </h3>
                       <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)] font-medium">
                         <MaterialIcon name="check_circle" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
-                        <span>AST Verified</span>
+                        <span>Verified</span>
                       </div>
                     </div>
 
