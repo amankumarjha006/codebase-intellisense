@@ -709,6 +709,12 @@ export const realApi = {
       generated_at: new Date().toISOString(),
       sections,
       pipeline_diagram: pipelineDiagram,
+      graph: {
+        nodes,
+        relationships,
+        truncated: Boolean(payload.truncated),
+        total_nodes: typeof payload.total_nodes === 'number' ? payload.total_nodes : nodes.length,
+      },
     };
   },
 

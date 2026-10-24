@@ -192,12 +192,39 @@ export interface ArchitectureSection {
   citations: Citation[];
 }
 
+export interface ArchitectureGraphNode {
+  id: string;
+  name?: string;
+  label?: string;
+  path?: string;
+  sublabel?: string;
+  type?: 'file' | 'symbol' | 'module' | 'pipeline' | string;
+  language?: string;
+  symbol_type?: string;
+  file_id?: string;
+  description?: string;
+  size?: number;
+  line_count?: number;
+}
+
+export interface ArchitectureGraphRelationship {
+  source: string;
+  target: string;
+  type: string;
+}
+
 export interface ArchitectureDocument {
   repository_id: string;
   sha: string;
   generated_at: string;
   sections: ArchitectureSection[];
   pipeline_diagram: PipelineDiagramNode[] | null;
+  graph?: {
+    nodes: ArchitectureGraphNode[];
+    relationships: ArchitectureGraphRelationship[];
+    truncated?: boolean;
+    total_nodes?: number;
+  };
 }
 
 export interface PipelineDiagramNode {
