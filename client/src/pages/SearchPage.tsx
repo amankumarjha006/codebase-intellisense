@@ -573,9 +573,10 @@ export function SearchPage() {
                               <Button
                                 variant="ghost"
                                 size="icon-sm"
-                                onClick={() =>
-                                  navigate(`/repositories/${repoId}/files?path=${encodeURIComponent(result.file_path)}`)
-                                }
+                                onClick={() => {
+                                  const lineQuery = result.start_line > 0 ? `&start_line=${result.start_line}&end_line=${result.end_line}` : '';
+                                  navigate(`/repositories/${repoId}/files?path=${encodeURIComponent(result.file_path)}${lineQuery}`);
+                                }}
                                 aria-label={`Open file ${result.file_path} in code viewer`}
                               >
                                 <MaterialIcon name="open_in_new" size={16} aria-hidden="true" />
@@ -629,9 +630,10 @@ export function SearchPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() =>
-                              navigate(`/repositories/${repoId}/files?path=${encodeURIComponent(result.file_path)}`)
-                            }
+                            onClick={() => {
+                              const lineQuery = result.start_line > 0 ? `&start_line=${result.start_line}&end_line=${result.end_line}` : '';
+                              navigate(`/repositories/${repoId}/files?path=${encodeURIComponent(result.file_path)}${lineQuery}`);
+                            }}
                             className="h-7 text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
                           >
                             <span>View Source</span>

@@ -122,7 +122,10 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => navigate(`/repositories/${repoId}/files?path=${encodeURIComponent(citation.path)}`)}
+                  onClick={() => {
+                    const lineQuery = citation.start_line > 0 ? `&start_line=${citation.start_line}&end_line=${citation.end_line}` : '';
+                    navigate(`/repositories/${repoId}/files?path=${encodeURIComponent(citation.path)}${lineQuery}`);
+                  }}
                   className="text-[var(--color-text-secondary)] hover:text-[var(--color-mint-accent,#B9E4D0)]"
                   aria-label="Open in full file viewer"
                 >
@@ -205,7 +208,10 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
             size="sm"
             variant="secondary"
             className="h-7 text-xs font-sans"
-            onClick={() => navigate(`/repositories/${repoId}/files?path=${encodeURIComponent(citation.path)}`)}
+            onClick={() => {
+              const lineQuery = citation.start_line > 0 ? `&start_line=${citation.start_line}&end_line=${citation.end_line}` : '';
+              navigate(`/repositories/${repoId}/files?path=${encodeURIComponent(citation.path)}${lineQuery}`);
+            }}
             aria-label="View complete file in browser"
           >
             <span>View Full File</span>
