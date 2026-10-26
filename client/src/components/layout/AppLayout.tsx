@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
-import { MotionConfig, motion, AnimatePresence } from 'motion/react';
+import { MotionConfig, motion } from 'motion/react';
 import { MaterialIcon } from '../ui/MaterialIcon';
 import { Sidebar } from './Sidebar';
 import { ConnectDrawer } from '../repository/ConnectDrawer';
@@ -18,7 +18,8 @@ import { Button } from '../ui/button';
 import { Drawer, DrawerContent } from '../ui/drawer';
 import { SkipToContent } from '../ui/A11y';
 import { SpectralDrape } from '../ui/spectral-drape';
-import { TooltipProvider } from '../ui/tooltip';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { realApi, RepositoryListItemOut } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { classifyAuthError } from '../../lib/auth';
@@ -50,14 +51,20 @@ export function AppLayout() {
   }, [loading, user, error, navigate, markSessionExpired]);
 
   React.useEffect(() => {
+    let isMounted = true;
     realApi
       .listRepositories(1, 30)
-      .then((res) => setRepositories(res.items || []))
+      .then((res) => {
+        if (isMounted) setRepositories(res.items || []);
+      })
       .catch((err: unknown) => {
         if (classifyAuthError(err) === 'unauthenticated') {
           markSessionExpired();
         }
       });
+    return () => {
+      isMounted = false;
+    };
   }, [location.pathname, markSessionExpired]);
 
   // Focus main content on route change for screen readers
@@ -102,6 +109,51 @@ export function AppLayout() {
     ? repositories.find((r) => r.id === currentRepoId) || null
     : null;
 
+  // If navigating directly to a repository, load its details if missing from initial list
+  React.useEffect(() => {
+    if (!currentRepoId) return;
+    if (repositories.some((r) => r.id === currentRepoId)) return;
+
+    let isMounted = true;
+    realApi
+      .getRepositoryDetail(currentRepoId)
+      .then((detail) => {
+        if (!isMounted || !detail) return;
+        setRepositories((prev) => {
+          if (prev.some((r) => r.id === detail.id)) return prev;
+          return [
+            ...prev,
+            {
+              id: detail.id,
+              owner: detail.owner,
+              name: detail.name,
+              is_private: detail.is_private,
+              created_at: new Date().toISOString(),
+              latest_job_status: null,
+              latest_job_failure_code: null,
+              active_version_short_sha: detail.active_version?.commit_sha?.slice(0, 7) || null,
+              last_indexed_at: detail.active_version?.indexed_at || null,
+            },
+          ];
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentRepoId, repositories]);
+
+  // Back navigation handler: return to repository list or restore context
+  const handleBackToRepositories = React.useCallback(() => {
+    const navState = location.state as { from?: string; search?: string; filter?: string } | null;
+    if (navState?.from && navState.from.startsWith('/dashboard')) {
+      navigate(navState.from, { state: navState });
+    } else {
+      navigate('/dashboard');
+    }
+  }, [location.state, navigate]);
+
   if (loading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[var(--color-page)] text-[var(--color-muted)] font-mono text-xs" role="status" aria-label="Authenticating">
@@ -113,7 +165,24 @@ export function AppLayout() {
     );
   }
 
-  if (!user || error) {
+  if (error) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[var(--color-page)] text-[var(--color-text)] p-6" role="alert">
+        <div className="max-w-md w-full rounded-[var(--radius-panel)] border border-[var(--color-error-border)] bg-[var(--color-surface)] p-6 text-center space-y-4">
+          <MaterialIcon name="wifi_off" size={28} className="mx-auto text-[var(--color-error)]" />
+          <h2 className="text-base font-semibold">Server Unreachable</h2>
+          <p className="text-xs text-[var(--color-text-secondary)]">
+            Unable to connect to the backend server.
+          </p>
+          <Button variant="primary" size="sm" onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
     return null;
   }
 
@@ -159,38 +228,65 @@ export function AppLayout() {
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Top Bar */}
           <header className="flex h-14 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)]/80 backdrop-blur-md px-4 z-20 shrink-0" role="banner">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               {/* Mobile menu trigger */}
               <button
                 onClick={() => setMobileMenuOpen(true)}
-                className="p-1.5 rounded-[var(--radius-control)] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)] md:hidden transition"
+                className="p-1.5 rounded-[var(--radius-control)] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)] md:hidden transition shrink-0"
                 aria-label="Open navigation menu"
               >
                 <MaterialIcon name="menu" size={22} />
               </button>
 
-              {/* Breadcrumbs / Context */}
-              <nav className="flex items-center gap-2 text-xs" aria-label="Breadcrumb">
-                {currentRepo ? (
+              {/* Back Navigation & Breadcrumbs / Context */}
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                {currentRepoId && (
                   <>
-                    <Link
-                      to="/dashboard"
-                      className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition hidden sm:inline"
-                    >
-                      Repositories
-                    </Link>
-                    <span className="text-[var(--color-border-strong)] hidden sm:inline" aria-hidden="true">/</span>
-                    <div className="flex items-center gap-1.5 font-medium text-[var(--color-text)]">
-                      <MaterialIcon name="folder" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
-                      <span>{currentRepo.owner}/{currentRepo.name}</span>
-                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleBackToRepositories}
+                          className="h-8 px-2 sm:px-2.5 gap-1.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)] border border-transparent hover:border-[var(--color-border)] rounded-[var(--radius-control)] transition-colors focus-visible:ring-1 focus-visible:ring-[var(--color-mint-accent,#B9E4D0)] cursor-pointer shrink-0"
+                          aria-label="Back to repositories"
+                        >
+                          <MaterialIcon name="arrow_back" size={18} aria-hidden="true" />
+                          <span className="hidden sm:inline font-medium">Back to repositories</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="sm:hidden text-xs">
+                        Back to repositories
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <span className="text-[var(--color-border-strong)] hidden sm:inline select-none" aria-hidden="true">|</span>
                   </>
-                ) : (
-                  <span className="font-medium text-[var(--color-text)]">
-                    {location.pathname === '/dashboard' ? 'Repository Overview' : 'Codebase Intellisense'}
-                  </span>
                 )}
-              </nav>
+
+                <nav className="flex items-center gap-2 text-xs min-w-0" aria-label="Breadcrumb">
+                  {currentRepoId ? (
+                    <>
+                      <Link
+                        to="/dashboard"
+                        state={location.state}
+                        className="text-[var(--color-muted)] hover:text-[var(--color-mint-accent,#B9E4D0)] transition-colors underline-offset-2 hover:underline hidden sm:inline shrink-0"
+                      >
+                        Repositories
+                      </Link>
+                      <span className="text-[var(--color-border-strong)] hidden sm:inline select-none" aria-hidden="true">/</span>
+                      <div className="flex items-center gap-1.5 font-medium text-[var(--color-text)] truncate">
+                        <MaterialIcon name="folder" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" className="shrink-0" />
+                        <span className="truncate">{currentRepo ? `${currentRepo.owner}/${currentRepo.name}` : 'Repository'}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <span className="font-medium text-[var(--color-text)] truncate">
+                      {location.pathname === '/dashboard' ? 'Repository Overview' : 'Codebase Intellisense'}
+                    </span>
+                  )}
+                </nav>
+              </div>
             </div>
 
             {/* Quick Actions */}
@@ -244,18 +340,11 @@ export function AppLayout() {
               />
             </div>
 
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
-                className="h-full relative z-10"
-              >
+            <ErrorBoundary>
+              <div className="h-full relative z-10">
                 <Outlet />
-              </motion.div>
-            </AnimatePresence>
+              </div>
+            </ErrorBoundary>
           </main>
         </div>
 

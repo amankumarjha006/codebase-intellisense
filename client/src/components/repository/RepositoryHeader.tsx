@@ -108,6 +108,7 @@ export function RepositoryHeader({
           <Link
             key={item.name}
             to={item.path}
+            state={location.state}
             aria-current={item.isActive ? 'page' : undefined}
             className={cn(
               'group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors select-none',

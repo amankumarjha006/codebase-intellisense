@@ -100,9 +100,9 @@ export function useRepositoryPolling({
           return null;
         }
 
-        setRepositories(data.items);
-        setTotal(data.total);
-        setHasMore(data.has_more);
+        setRepositories(data?.items || []);
+        setTotal(data?.total ?? 0);
+        setHasMore(Boolean(data?.has_more));
         setError(null);
         return data;
       } catch (err: unknown) {
@@ -178,7 +178,7 @@ export function useRepositoryPolling({
 
         if (!isMountedRef.current) return;
 
-        const items = result ? result.items : repositoriesRef.current;
+        const items = result?.items || repositoriesRef.current || [];
         const active = hasActiveJob(items);
 
         if (active) {

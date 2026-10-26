@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { ApiError, RepositoryListItemOut } from '../lib/api';
 import { formatNumber, formatRelativeTime, shortSha } from '../lib/utils';
@@ -40,10 +40,15 @@ type StatusFilter = 'ALL' | 'READY' | 'ACTIVE' | 'FAILED';
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { markSessionExpired } = useAuth();
-  const [searchInput, setSearchInput] = React.useState('');
-  const [debouncedSearch, setDebouncedSearch] = React.useState('');
-  const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('ALL');
+
+  // Restore previous search/filter context if returning from repository navigation
+  const navState = location.state as { from?: string; search?: string; filter?: StatusFilter } | null;
+
+  const [searchInput, setSearchInput] = React.useState(navState?.search || '');
+  const [debouncedSearch, setDebouncedSearch] = React.useState(navState?.search || '');
+  const [statusFilter, setStatusFilter] = React.useState<StatusFilter>(navState?.filter || 'ALL');
   const [connectOpen, setConnectOpen] = React.useState(false);
   const [copiedRequestId, setCopiedRequestId] = React.useState(false);
   const [repoToDelete, setRepoToDelete] = React.useState<RepositoryListItemOut | null>(null);
@@ -74,51 +79,61 @@ export function DashboardPage() {
     onSessionExpired: markSessionExpired,
   });
 
+  const safeRepos = React.useMemo(() => repositories || [], [repositories]);
+
+  // Navigate to repository preserving current search & filter state
+  const navigateToRepo = React.useCallback(
+    (repoId: string) => {
+      navigate(`/repositories/${repoId}`, {
+        state: { from: '/dashboard', search: debouncedSearch, filter: statusFilter },
+      });
+    },
+    [navigate, debouncedSearch, statusFilter]
+  );
+
   // Calculate honest metrics supplied by backend
   const readyCount = React.useMemo(() => {
-    return repositories.filter(
+    return safeRepos.filter(
       (r) => r.latest_job_status === 'READY' || (r.active_version_short_sha && !r.latest_job_status)
     ).length;
-  }, [repositories]);
+  }, [safeRepos]);
 
   const activeCount = React.useMemo(() => {
-    return repositories.filter((r) =>
+    return safeRepos.filter((r) =>
       ['QUEUED', 'FETCHING', 'INDEXING', 'ANALYZING'].includes(r.latest_job_status || '')
     ).length;
-  }, [repositories]);
+  }, [safeRepos]);
 
   const alertCount = React.useMemo(() => {
-    return repositories.filter((r) => r.latest_job_status === 'FAILED').length;
-  }, [repositories]);
-
-
+    return safeRepos.filter((r) => r.latest_job_status === 'FAILED').length;
+  }, [safeRepos]);
 
   // Most recent indexing activity timestamp & repo
   const mostRecentSync = React.useMemo(() => {
-    const sorted = [...repositories]
+    const sorted = [...safeRepos]
       .filter((r) => r.last_indexed_at)
       .sort((a, b) => new Date(b.last_indexed_at!).getTime() - new Date(a.last_indexed_at!).getTime());
     return sorted[0] || null;
-  }, [repositories]);
+  }, [safeRepos]);
 
   // Filter repositories based on statusFilter
   const filteredRepositories = React.useMemo(() => {
-    if (statusFilter === 'ALL') return repositories;
+    if (statusFilter === 'ALL') return safeRepos;
     if (statusFilter === 'READY') {
-      return repositories.filter(
+      return safeRepos.filter(
         (r) => r.latest_job_status === 'READY' || (r.active_version_short_sha && !r.latest_job_status)
       );
     }
     if (statusFilter === 'ACTIVE') {
-      return repositories.filter((r) =>
+      return safeRepos.filter((r) =>
         ['QUEUED', 'FETCHING', 'INDEXING', 'ANALYZING'].includes(r.latest_job_status || '')
       );
     }
     if (statusFilter === 'FAILED') {
-      return repositories.filter((r) => r.latest_job_status === 'FAILED');
+      return safeRepos.filter((r) => r.latest_job_status === 'FAILED');
     }
-    return repositories;
-  }, [repositories, statusFilter]);
+    return safeRepos;
+  }, [safeRepos, statusFilter]);
 
   // Construct real recent activity events from actual repository data
   const recentActivities = React.useMemo(() => {
@@ -133,7 +148,7 @@ export function DashboardPage() {
       failureCode?: string | null;
     }> = [];
 
-    repositories.forEach((repo) => {
+    safeRepos.forEach((repo) => {
       if (repo.latest_job_status === 'INDEXING' || repo.latest_job_status === 'QUEUED') {
         events.push({
           id: `${repo.id}-indexing`,
@@ -610,13 +625,13 @@ export function DashboardPage() {
                   return (
                     <TableRow
                       key={repo.id}
-                      onClick={() => navigate(`/repositories/${repo.id}`)}
+                      onClick={() => navigateToRepo(repo.id)}
                       className="cursor-pointer group hover:bg-[var(--color-raised)]/50 transition-colors"
                       tabIndex={0}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          navigate(`/repositories/${repo.id}`);
+                          navigateToRepo(repo.id);
                         }
                       }}
                       aria-label={`Open repository ${repo.owner}/${repo.name}`}
@@ -792,7 +807,7 @@ export function DashboardPage() {
 
                   <div className="min-w-0 flex flex-wrap items-center gap-1.5">
                     <button
-                      onClick={() => navigate(`/repositories/${act.repoId}`)}
+                      onClick={() => navigateToRepo(act.repoId)}
                       className="font-semibold text-[var(--color-text)] hover:text-[var(--color-mint-accent,#B9E4D0)] transition truncate cursor-pointer text-left"
                     >
                       {act.owner}/{act.repoName}
@@ -822,7 +837,7 @@ export function DashboardPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => navigate(`/repositories/${act.repoId}`)}
+                    onClick={() => navigateToRepo(act.repoId)}
                     className="h-6 px-2 text-[11px] text-[var(--color-mint-accent,#B9E4D0)] hover:text-[var(--color-mint-hover,#D0F1E0)]"
                   >
                     View
