@@ -176,6 +176,9 @@ class RepositoryService:
                     branch=branch,
                     index_status="PENDING",
                 )
+            else:
+                version.index_status = "PENDING"
+                version.branch = branch
 
             # 3. Create IndexJob
             job = self.repository_repo.create_index_job(

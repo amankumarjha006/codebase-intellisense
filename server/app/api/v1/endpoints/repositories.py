@@ -15,9 +15,7 @@ from app.models.user import User
 from app.models.repository import Repository
 from app.repositories.repository import RepositoryRepository
 from app.repositories.knowledge import KnowledgeRepository
-from app.services.retrieval import RetrievalService, RetrievalRequest, KeywordRetrievalStrategy, SemanticRetrievalStrategy, HybridRetrievalStrategy
-from app.services.embedding.service import EmbeddingService
-from app.services.embedding.gemini import GeminiEmbeddingProvider
+from app.services.retrieval import RetrievalService, RetrievalRequest
 from app.core.config import settings
 from app.services.repository import RepositoryService
 from app.services.github import GithubService
@@ -60,54 +58,7 @@ from app.services.rag_query.exceptions import (
     InvalidRepositoryVersionError
 )
 from app.services.llm.exceptions import TransientLLMError, PermanentLLMError
-from app.services.llm.factory import create_llm_provider
-from app.services.context.builder import ContextBuilder
-from app.services.rag.service import RAGService
-from app.services.citation.service import CitationService
-from app.services.answer.service import AnswerService
-
 router = APIRouter()
-
-
-def _get_effective_retrieval_service(db: Session, retrieval_service: RetrievalService) -> RetrievalService:
-    from app.services.embedding.gemini import GeminiEmbeddingProvider as RealGeminiEmbeddingProvider
-    if GeminiEmbeddingProvider is not RealGeminiEmbeddingProvider:
-        knowledge_repo = KnowledgeRepository(db)
-        provider = GeminiEmbeddingProvider(
-            api_key=settings.GEMINI_API_KEY,
-            model=settings.EMBEDDING_MODEL,
-            dimension=settings.EMBEDDING_DIMENSION,
-        )
-        embedding_service = EmbeddingService(knowledge_repo, provider)
-        semantic_strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
-        keyword_strategy = KeywordRetrievalStrategy(knowledge_repo)
-        hybrid_strategy = HybridRetrievalStrategy(keyword_strategy, semantic_strategy)
-        return RetrievalService(hybrid_strategy)
-    return retrieval_service
-
-
-def _get_effective_rag_query_service(
-    db: Session,
-    retrieval_service: RetrievalService,
-    rag_query_service: RAGQueryService,
-) -> RAGQueryService:
-    from app.services.rag_query.service import RAGQueryService as RealRAGQueryService
-    if RAGQueryService is not RealRAGQueryService:
-        repo_repo = RepositoryRepository(db)
-        context_builder = ContextBuilder()
-        llm_provider = create_llm_provider(settings)
-        rag_service = RAGService(llm_provider)
-        citation_service = CitationService()
-        answer_service = AnswerService()
-        return RAGQueryService(
-            repository_repo=repo_repo,
-            retrieval_service=retrieval_service,
-            context_builder=context_builder,
-            rag_service=rag_service,
-            citation_service=citation_service,
-            answer_service=answer_service,
-        )
-    return rag_query_service
 
 @router.get("", response_model=RepositoryListOut, summary="List Repositories")
 def get_repositories(
@@ -462,7 +413,6 @@ def search_repository(
         version_id = active_version.id
 
     # --- Retrieval (delegated to RetrievalService) ---
-    retrieval_service = _get_effective_retrieval_service(db, retrieval_service)
 
     retrieval_request = RetrievalRequest(
         repository_version_id=version_id,
@@ -681,8 +631,14 @@ async def analyze_repository(
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
     _: None = Depends(general_rate_limiter),):
-    """Queues a background job to analyze the repository."""
-    github_account = current_user.github_accounts[0] if current_user.github_accounts else None
+    github_account = None
+    if current_user.github_accounts:
+        github_account = next(
+            (acc for acc in current_user.github_accounts if acc.username.lower() == repository.owner.lower()),
+            None
+        )
+        if not github_account:
+            github_account = current_user.github_accounts[0]
     
     if not github_account:
         return JSONResponse(
@@ -818,9 +774,6 @@ async def query_repository(
     """
     Executes a RAG query against a specific repository.
     """
-    effective_retrieval = _get_effective_retrieval_service(db, retrieval_service)
-    rag_query_service = _get_effective_rag_query_service(db, effective_retrieval, rag_query_service)
-
     query_req = RAGQueryRequest(
         repository_id=repository_id,
         query=request.query,
@@ -849,7 +802,7 @@ async def query_repository(
         )
     except TransientLLMError:
         return JSONResponse(
-            status_code=502,
+            status_code=503,
             content={"error": {"code": "UPSTREAM_SERVICE_UNAVAILABLE", "message": "AI service is temporarily unavailable. Please try again later."}}
         )
     except PermanentLLMError:

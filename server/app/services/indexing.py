@@ -499,14 +499,20 @@ class IndexingService:
                 self.db.commit()
 
                 self._analyze_repository(version, repo_path)
+                self._update_job_status(job.id, "READY")
+                self.db.commit()
             except Exception as analysis_err:
                 logger.error(f"Analysis failed for job {job.id}: {analysis_err}")
                 self.db.rollback()
                 # Analysis failure does not overwrite SUCCESS on the version.
                 # The job records the error but the indexed data remains valid.
-
-            self._update_job_status(job.id, "READY")
-            self.db.commit()
+                self._update_job_status(
+                    job.id,
+                    "FAILED",
+                    error_message=f"Indexing succeeded but analysis failed: {analysis_err}",
+                    failure_code="ANALYSIS_FAILED",
+                )
+                self.db.commit()
 
         except Exception as e:
             logger.error(f"Indexing failed for job {job.id}: {e}")

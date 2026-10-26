@@ -1,5 +1,5 @@
 """
-Development runner to start FastAPI backend, Next.js frontend, and the background indexing worker.
+Development runner to start FastAPI backend, Vite React frontend, and the background indexing worker.
 Explicitly activates server/.venv before starting backend services.
 
 Usage:
@@ -38,7 +38,12 @@ def get_command_config(subcommand: str):
             cmd = f'call "{activate_bat}" && {subcommand}'
         else:
             python_exe = scripts_dir / "python.exe" if (scripts_dir / "python.exe").is_file() else Path(sys.executable)
-            cmd = f'"{python_exe}" -m {subcommand}'
+            if subcommand.startswith("python -m "):
+                cmd = f'"{python_exe}" -m {subcommand[10:]}'
+            elif subcommand.startswith("python "):
+                cmd = f'"{python_exe}" {subcommand[7:]}'
+            else:
+                cmd = f'"{python_exe}" -m {subcommand}'
     else:
         bin_dir = VENV_DIR / "bin"
         activate_sh = bin_dir / "activate"
@@ -52,7 +57,12 @@ def get_command_config(subcommand: str):
             cmd = f'. "{activate_sh}" && {subcommand}'
         else:
             python_bin = bin_dir / "python" if (bin_dir / "python").is_file() else Path(sys.executable)
-            cmd = f'"{python_bin}" -m {subcommand}'
+            if subcommand.startswith("python -m "):
+                cmd = f'"{python_bin}" -m {subcommand[10:]}'
+            elif subcommand.startswith("python "):
+                cmd = f'"{python_bin}" {subcommand[7:]}'
+            else:
+                cmd = f'"{python_bin}" -m {subcommand}'
 
     return cmd, env
 

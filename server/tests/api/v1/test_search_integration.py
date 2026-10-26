@@ -40,7 +40,7 @@ def mock_redis(mocker):
 def mock_gemini(mocker):
     from tests.services.test_embedding_service import FakeEmbeddingProvider
     fake_provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
-    mocker.patch("app.api.v1.endpoints.repositories.GeminiEmbeddingProvider", return_value=fake_provider)
+    mocker.patch("app.services.embedding.gemini.GeminiEmbeddingProvider", return_value=fake_provider)
     return fake_provider
 
 @pytest_asyncio.fixture

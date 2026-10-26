@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { api } from '../lib/api';
 import { Repository, IndexJob } from '../lib/types';
+import { IN_PROGRESS_STATUSES } from '../lib/status';
 import { formatNumber, formatRelativeTime, shortSha } from '../lib/utils';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
 import { Badge, StatusChip } from '../components/ui/badge';
@@ -35,9 +36,11 @@ export function RepositoryOverviewPage() {
     }, 2000);
   };
 
-  const loadData = React.useCallback(async () => {
+  const loadData = React.useCallback(async (silent = false) => {
     if (!id) return;
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const repo = await api.getRepository(id);
@@ -51,7 +54,7 @@ export function RepositoryOverviewPage() {
         setFilesCount(null);
       }
 
-      if (repo.latest_job_status === 'INDEXING' || repo.latest_job_status === 'QUEUED') {
+      if (repo.latest_job_status && (IN_PROGRESS_STATUSES as readonly string[]).includes(repo.latest_job_status)) {
         const job = await api.getIndexJob(id);
         setIndexJob(job);
       }
@@ -62,7 +65,9 @@ export function RepositoryOverviewPage() {
         setError('Repository not found');
       }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [id]);
 
@@ -79,6 +84,11 @@ export function RepositoryOverviewPage() {
     }
   };
 
+  const isIndexing = Boolean(
+    repository?.latest_job_status &&
+    (IN_PROGRESS_STATUSES as readonly string[]).includes(repository.latest_job_status)
+  );
+
   React.useEffect(() => {
     loadData();
 
@@ -88,6 +98,14 @@ export function RepositoryOverviewPage() {
     window.addEventListener('scenario-change', handleScenarioChange);
     return () => window.removeEventListener('scenario-change', handleScenarioChange);
   }, [loadData]);
+
+  React.useEffect(() => {
+    if (!isIndexing) return;
+    const interval = setInterval(() => {
+      loadData(true);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isIndexing, loadData]);
 
   if (loading) {
     return (
@@ -129,7 +147,6 @@ export function RepositoryOverviewPage() {
     );
   }
 
-  const isIndexing = repository.latest_job_status === 'INDEXING' || repository.latest_job_status === 'QUEUED';
   const isFailed = repository.latest_job_status === 'FAILED';
   const progressPercent = indexJob?.progress?.percent ?? 64;
   const activeSha = repository.indexed_commit || repository.active_version_short_sha || '';

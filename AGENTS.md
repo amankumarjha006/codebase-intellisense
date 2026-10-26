@@ -5,7 +5,7 @@
 - **Purpose:** AI-powered GitHub repository analysis platform designed for codebase understanding, architecture visualization, semantic search, and repository-grounded Q&A.
 
 ## Approved Technology Stack
-- **Frontend (`client`):** Next.js (App Router), React, TypeScript, Tailwind CSS, ESLint.
+- **Frontend (`client`):** Vite, React 19, TypeScript, React Router v7, Tailwind CSS, ESLint.
 - **Backend (`server`):** Python, FastAPI, Pydantic, Pydantic Settings, SQLAlchemy, Alembic, Uvicorn.
 - **Database / Vector Store:** PostgreSQL + `pgvector` (Primary database and vector store).
 - **Infrastructure / Caching:** Docker, Docker Compose, Redis (for caching and future background worker queue).

@@ -150,7 +150,7 @@ async def test_repository_endpoint_no_secret_leak_on_transient_llm_error(async_c
         json={"query": "Explain the architecture"}
     )
     
-    assert response.status_code == 502
+    assert response.status_code == 503
     data = response.json()
     assert data["error"]["code"] == "UPSTREAM_SERVICE_UNAVAILABLE"
     assert data["error"]["message"] == "AI service is temporarily unavailable. Please try again later."

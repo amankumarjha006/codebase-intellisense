@@ -134,6 +134,12 @@ class Embedding(Base):
     __tablename__ = "embeddings"
     __table_args__ = (
         UniqueConstraint("code_chunk_id", "model_name", name="uq_embeddings_chunk_model"),
+        Index(
+            "ix_embeddings_vector_hnsw",
+            "vector",
+            postgresql_using="hnsw",
+            postgresql_ops={"vector": "vector_cosine_ops"},
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)

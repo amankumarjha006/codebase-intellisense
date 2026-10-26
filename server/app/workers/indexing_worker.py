@@ -194,6 +194,8 @@ class IndexingWorker:
                         job.failure_code = "INTERNAL_ERROR"
                         job.error_message = "Worker terminated unexpectedly during processing"
                         job.completed_at = datetime.now(timezone.utc)
+                        if job.repository_version:
+                            job.repository_version.index_status = "FAILED"
                         db.commit()
                         self._remove_from_processing(job_id_str)
                 except Exception as e:
@@ -222,6 +224,8 @@ class IndexingWorker:
                 stuck_job.failure_code = "INTERNAL_ERROR"
                 stuck_job.error_message = "Worker terminated unexpectedly during processing"
                 stuck_job.completed_at = datetime.now(timezone.utc)
+                if stuck_job.repository_version:
+                    stuck_job.repository_version.index_status = "FAILED"
                 reconciled_count += 1
             if reconciled_count > 0:
                 db.commit()
@@ -306,6 +310,8 @@ class IndexingWorker:
                 if not isinstance(job.failure_code, str):
                     job.failure_code = failure_code
                 job.completed_at = datetime.now(timezone.utc)
+                if job.repository_version:
+                    job.repository_version.index_status = "FAILED"
                 db.commit()
         except Exception as e:
             logger.error(f"Failed to mark job {job_id} as failed: {e}")

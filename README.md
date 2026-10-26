@@ -6,7 +6,7 @@ An AI-powered GitHub repository analysis platform designed for intelligent codeb
 
 ## Approved Technology Stack
 
-- **Frontend (`client`):** Next.js, React, TypeScript, Tailwind CSS, ESLint
+- **Frontend (`client`):** Vite, React 19, TypeScript, React Router v7, Tailwind CSS, ESLint
 - **Backend (`server`):** Python, FastAPI, Pydantic, SQLAlchemy, Alembic, Uvicorn
 - **Database / Vector Store:** PostgreSQL + `pgvector`
 - **Infrastructure / Caching:** Docker, Docker Compose, Redis
@@ -19,7 +19,7 @@ An AI-powered GitHub repository analysis platform designed for intelligent codeb
 ```text
 codebase-intelligence/
 ├── .agents/          # Custom AI agent skills and configuration
-├── client/           # Next.js TypeScript frontend
+├── client/           # Vite React TypeScript frontend
 ├── server/           # FastAPI Python backend
 │   ├── app/          # Backend application code (api, core, models, schemas, services)
 │   └── alembic/      # Database migrations
@@ -44,7 +44,7 @@ Start PostgreSQL (with `pgvector`) and Redis containers via Docker Compose:
 docker compose up -d
 ```
 
-- **PostgreSQL:** `localhost:5432` (`POSTGRES_DB=codebase_intellisense`, `user=postgres`, `pass=postgres`)
+- **PostgreSQL:** `localhost:5433` (`POSTGRES_DB=codebase_intellisense`, `user=postgres`, `pass=postgres`)
 - **Redis:** `localhost:6379`
 
 ---
@@ -75,7 +75,7 @@ uvicorn app.main:app --reload
 
 ### 3. Frontend Setup (`client`)
 
-Navigate to `client/`, install dependencies, and start the Next.js development server:
+Navigate to `client/`, install dependencies, and start the Vite development server:
 
 ```bash
 cd client

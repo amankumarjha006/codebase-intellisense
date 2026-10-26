@@ -235,3 +235,40 @@ async def test_analyze_repository_decryption_failure(async_client, mock_auth, mo
     
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "INVALID_REQUEST"
+
+
+@pytest.mark.asyncio
+async def test_analyze_repository_matches_owner_account(async_client, mock_redis, mock_db, mocker, repo_id):
+    user_id = str(uuid4())
+    mock_redis.get.return_value = user_id
+    mock_user = User(id=uuid4(), email="test@example.com", full_name="Test User")
+    personal_acc = GithubAccount(github_user_id="111", username="personal", access_token_encrypted="enc_personal")
+    org_acc = GithubAccount(github_user_id="222", username="workorg", access_token_encrypted="enc_org")
+    mock_user.github_accounts = [personal_acc, org_acc]
+
+    mock_user_repo = mocker.patch("app.repositories.user.UserAccountRepository")
+    mock_user_repo.return_value.get_user_by_id.return_value = mock_user
+
+    async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
+
+    mock_repo = Repository(id=repo_id, owner="workorg", name="work-repo", is_private=True)
+    mock_auth_dep = mocker.patch("app.api.deps.RepositoryRepository")
+    mock_auth_dep.return_value.get_for_user.return_value = mock_repo
+
+    mock_decrypt = mocker.patch("app.api.v1.endpoints.repositories.get_decrypted_token", return_value="dec_token")
+    mock_github = mocker.patch("app.api.v1.endpoints.repositories.GithubService").return_value
+    mock_github.get_branch_commit = AsyncMock(return_value="commit123")
+
+    mock_repo_service = mocker.patch("app.api.v1.endpoints.repositories.RepositoryService").return_value
+    mock_version = RepositoryVersion(id=uuid4(), repository_id=repo_id, commit_sha="commit123", branch="main")
+    mock_job = IndexJob(id=uuid4(), repository_id=repo_id, repository_version_id=mock_version.id, status="QUEUED")
+    mock_repo_service.queue_analysis.return_value = (mock_version, mock_job)
+    mocker.patch("app.api.v1.endpoints.repositories.enqueue_indexing_job")
+
+    response = await async_client.post(
+        f"{settings.API_V1_STR}/repositories/{repo_id}/analyze",
+        json={"branch": "main"}
+    )
+
+    assert response.status_code == 202
+    mock_decrypt.assert_called_once_with(org_acc)

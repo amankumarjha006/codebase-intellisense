@@ -69,19 +69,25 @@ def mock_auth_dep(mocker):
 def repo_id():
     return uuid4()
 
+
+@pytest.fixture
+def mock_rag_query_service(mocker):
+    from app.api.deps import get_rag_query_service
+    mock_service = mocker.MagicMock()
+    mock_service.execute = AsyncMock()
+    app.dependency_overrides[get_rag_query_service] = lambda: mock_service
+    yield mock_service
+    app.dependency_overrides.pop(get_rag_query_service, None)
+
 @pytest.mark.asyncio
-async def test_query_repository_happy_path(async_client, mock_auth, mock_redis, mocker, mock_auth_dep, repo_id):
+async def test_query_repository_happy_path(async_client, mock_auth, mock_redis, mocker, mock_auth_dep, repo_id, mock_rag_query_service):
     async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
 
     # Override get_authorized_repository to use our specific repo_id
     mock_auth_dep.id = repo_id
 
     mock_execute = AsyncMock()
-    
-    # We mock RAGQueryService entirely to prevent side effects and verify API leakage
-    mock_rag_service = mocker.patch("app.api.v1.endpoints.repositories.RAGQueryService")
-    mock_instance = mock_rag_service.return_value
-    mock_instance.execute = mock_execute
+    mock_rag_query_service.execute = mock_execute
 
     version_id = uuid4()
     mock_execute.return_value = RAGQueryResponse(
@@ -145,12 +151,12 @@ async def test_query_repository_unauthorized(async_client, mock_auth, mock_redis
     assert response.status_code == 404
 
 @pytest.mark.asyncio
-async def test_query_repository_invalid_query(async_client, mock_auth, mock_redis, mocker, mock_auth_dep, repo_id):
+async def test_query_repository_invalid_query(async_client, mock_auth, mock_redis, mocker, mock_auth_dep, repo_id, mock_rag_query_service):
     async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
     mock_auth_dep.id = repo_id
 
     mock_execute = AsyncMock(side_effect=InvalidQueryError("Empty query"))
-    mocker.patch("app.api.v1.endpoints.repositories.RAGQueryService").return_value.execute = mock_execute
+    mock_rag_query_service.execute = mock_execute
 
     response = await async_client.post(
         f"{settings.API_V1_STR}/repositories/{repo_id}/query",
@@ -161,12 +167,12 @@ async def test_query_repository_invalid_query(async_client, mock_auth, mock_redi
     assert response.json()["error"]["code"] == "INVALID_REQUEST"
 
 @pytest.mark.asyncio
-async def test_query_repository_no_indexed_version(async_client, mock_auth, mock_redis, mocker, mock_auth_dep, repo_id):
+async def test_query_repository_no_indexed_version(async_client, mock_auth, mock_redis, mocker, mock_auth_dep, repo_id, mock_rag_query_service):
     async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
     mock_auth_dep.id = repo_id
 
     mock_execute = AsyncMock(side_effect=NoIndexedVersionError("No active version"))
-    mocker.patch("app.api.v1.endpoints.repositories.RAGQueryService").return_value.execute = mock_execute
+    mock_rag_query_service.execute = mock_execute
 
     response = await async_client.post(
         f"{settings.API_V1_STR}/repositories/{repo_id}/query",
@@ -177,12 +183,12 @@ async def test_query_repository_no_indexed_version(async_client, mock_auth, mock
     assert response.json()["error"]["code"] == "NOT_FOUND"
 
 @pytest.mark.asyncio
-async def test_query_repository_invalid_version(async_client, mock_auth, mock_redis, mocker, mock_auth_dep, repo_id):
+async def test_query_repository_invalid_version(async_client, mock_auth, mock_redis, mocker, mock_auth_dep, repo_id, mock_rag_query_service):
     async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
     mock_auth_dep.id = repo_id
 
     mock_execute = AsyncMock(side_effect=InvalidRepositoryVersionError("Version not SUCCESS"))
-    mocker.patch("app.api.v1.endpoints.repositories.RAGQueryService").return_value.execute = mock_execute
+    mock_rag_query_service.execute = mock_execute
 
     response = await async_client.post(
         f"{settings.API_V1_STR}/repositories/{repo_id}/query",
@@ -193,28 +199,28 @@ async def test_query_repository_invalid_version(async_client, mock_auth, mock_re
     assert response.json()["error"]["code"] == "INVALID_REQUEST"
 
 @pytest.mark.asyncio
-async def test_query_repository_transient_llm_error(async_client, mock_auth, mock_redis, mocker, mock_auth_dep, repo_id):
+async def test_query_repository_transient_llm_error(async_client, mock_auth, mock_redis, mocker, mock_auth_dep, repo_id, mock_rag_query_service):
     async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
     mock_auth_dep.id = repo_id
 
     mock_execute = AsyncMock(side_effect=TransientLLMError("Rate limit exceeded"))
-    mocker.patch("app.api.v1.endpoints.repositories.RAGQueryService").return_value.execute = mock_execute
+    mock_rag_query_service.execute = mock_execute
 
     response = await async_client.post(
         f"{settings.API_V1_STR}/repositories/{repo_id}/query",
         json={"query": "test query"}
     )
 
-    assert response.status_code == 502
+    assert response.status_code == 503
     assert response.json()["error"]["code"] == "UPSTREAM_SERVICE_UNAVAILABLE"
 
 @pytest.mark.asyncio
-async def test_query_repository_permanent_llm_error(async_client, mock_auth, mock_redis, mocker, mock_auth_dep, repo_id):
+async def test_query_repository_permanent_llm_error(async_client, mock_auth, mock_redis, mocker, mock_auth_dep, repo_id, mock_rag_query_service):
     async_client.cookies.set(settings.SESSION_COOKIE_NAME, "valid_session")
     mock_auth_dep.id = repo_id
 
     mock_execute = AsyncMock(side_effect=PermanentLLMError("Invalid API key"))
-    mocker.patch("app.api.v1.endpoints.repositories.RAGQueryService").return_value.execute = mock_execute
+    mock_rag_query_service.execute = mock_execute
 
     response = await async_client.post(
         f"{settings.API_V1_STR}/repositories/{repo_id}/query",
