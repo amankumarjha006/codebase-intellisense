@@ -136,66 +136,6 @@ export function RepositoriesPage() {
     return sorted[0] || null;
   }, [safeRepos]);
 
-  // Construct real recent activity events from actual repository data
-  const recentActivities = React.useMemo(() => {
-    const events: Array<{
-      id: string;
-      repoId: string;
-      repoName: string;
-      owner: string;
-      type: 'INDEXED' | 'INDEXING' | 'FAILED' | 'CONNECTED';
-      timestamp: string;
-      sha?: string | null;
-      failureCode?: string | null;
-    }> = [];
-
-    safeRepos.forEach((repo) => {
-      if (repo.latest_job_status === 'INDEXING' || repo.latest_job_status === 'QUEUED') {
-        events.push({
-          id: `${repo.id}-indexing`,
-          repoId: repo.id,
-          repoName: repo.name,
-          owner: repo.owner,
-          type: 'INDEXING',
-          timestamp: repo.created_at,
-          sha: repo.active_version_short_sha,
-        });
-      } else if (repo.latest_job_status === 'FAILED') {
-        events.push({
-          id: `${repo.id}-failed`,
-          repoId: repo.id,
-          repoName: repo.name,
-          owner: repo.owner,
-          type: 'FAILED',
-          timestamp: repo.last_indexed_at || repo.created_at,
-          failureCode: repo.latest_job_failure_code,
-        });
-      } else if (repo.last_indexed_at) {
-        events.push({
-          id: `${repo.id}-indexed`,
-          repoId: repo.id,
-          repoName: repo.name,
-          owner: repo.owner,
-          type: 'INDEXED',
-          timestamp: repo.last_indexed_at,
-          sha: repo.active_version_short_sha,
-        });
-      } else if (repo.created_at) {
-        events.push({
-          id: `${repo.id}-connected`,
-          repoId: repo.id,
-          repoName: repo.name,
-          owner: repo.owner,
-          type: 'CONNECTED',
-          timestamp: repo.created_at,
-        });
-      }
-    });
-
-    return events
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 5);
-  }, [safeRepos]);
 
   // Filter repositories based on statusFilter
   const filteredRepositories = React.useMemo(() => {
@@ -292,105 +232,56 @@ export function RepositoriesPage() {
         </div>
       </header>
 
-      {/* Modern 4-Card Telemetry Grid with Top Accent */}
+      {/* Compact Catalog Summary Strip */}
       {!loading && !error && repositories.length > 0 && (
-        <section aria-label="Repository telemetry status">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* 1. Connected Repositories */}
-            <Card className="card-top-accent bg-[var(--color-surface)]/90 border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-all shadow-sm">
-              <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-                <CardDescription className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider">
-                  Connected Repositories
-                </CardDescription>
-                <div className="h-8 w-8 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shadow-xs">
-                  <MaterialIcon name="folder" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" />
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 pt-1 space-y-1">
-                <div className="text-2xl font-bold font-mono text-[var(--color-text)]">
-                  {total}
-                </div>
-                <p className="text-[11px] text-[var(--color-text-secondary)]">
-                  Total repositories in workspace
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* 2. Ready & Searchable */}
-            <Card className="card-top-accent bg-[var(--color-surface)]/90 border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-all shadow-sm">
-              <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-                <CardDescription className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider">
-                  Ready to Search
-                </CardDescription>
-                <div className="h-8 w-8 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shadow-xs">
-                  <MaterialIcon name="check_circle" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" />
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 pt-1 space-y-1">
-                <div className="text-2xl font-bold font-mono text-[var(--color-mint-accent,#B9E4D0)] flex items-center gap-2">
-                  <span>{readyCount}</span>
-                  <span className="h-2 w-2 rounded-full bg-[var(--color-mint-accent,#B9E4D0)] animate-pulse" aria-hidden="true" />
-                </div>
-                <p className="text-[11px] text-[var(--color-text-secondary)]">
-                  Fully indexed and ready for queries
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* 3. Active Indexing */}
-            <Card className="card-top-accent bg-[var(--color-surface)]/90 border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-all shadow-sm">
-              <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-                <CardDescription className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider">
-                  Indexing
-                </CardDescription>
-                <div className="h-8 w-8 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-warning)] shadow-xs">
-                  <MaterialIcon
-                    name="sync"
-                    size={18}
-                    spin={activeCount > 0}
-                    color={activeCount > 0 ? 'var(--color-warning)' : 'var(--color-muted)'}
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 pt-1 space-y-1">
-                <div className="text-2xl font-bold font-mono text-[var(--color-text)]">
-                  {activeCount}
-                </div>
-                <p className="text-[11px] text-[var(--color-text-secondary)]">
-                  {activeCount > 0 ? 'Analyzing repository code' : 'All indexing jobs completed'}
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* 4. Latest Activity */}
-            <Card className="card-top-accent bg-[var(--color-surface)]/90 border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-all shadow-sm">
-              <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-                <CardDescription className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider">
-                  Last Updated
-                </CardDescription>
-                <div className="h-8 w-8 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shadow-xs">
-                  <MaterialIcon
-                    name="schedule"
-                    size={18}
-                    fill={1}
-                    color="var(--color-mint-accent, #B9E4D0)"
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 pt-1 space-y-1">
-                <div className="text-2xl font-bold font-mono text-[var(--color-text)] truncate">
-                  {mostRecentSync?.last_indexed_at
-                    ? formatRelativeTime(mostRecentSync.last_indexed_at)
-                    : 'Up to date'}
-                </div>
-                <p className="text-[11px] text-[var(--color-text-secondary)] truncate">
-                  {mostRecentSync
-                    ? `Recent: ${mostRecentSync.owner}/${mostRecentSync.name}`
-                    : 'All repositories synchronized'}
-                </p>
-              </CardContent>
-            </Card>
+        <section
+          aria-label="Repository catalog summary"
+          className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)]/90 shadow-xs"
+        >
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <span className="inline-flex items-center gap-1.5 font-medium text-[var(--color-text)]">
+              <MaterialIcon name="folder" size={16} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
+              <span>
+                <strong className="font-mono text-sm">{total}</strong> {total === 1 ? 'codebase' : 'codebases'}
+              </span>
+            </span>
+            <span className="text-[var(--color-border)] font-mono select-none">|</span>
+            <span className="inline-flex items-center gap-1.5 text-[var(--color-text-secondary)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-mint-accent,#B9E4D0)]" aria-hidden="true" />
+              <span>
+                <strong className="font-mono text-[var(--color-text)]">{readyCount}</strong> ready to search
+              </span>
+            </span>
+            {activeCount > 0 && (
+              <>
+                <span className="text-[var(--color-border)] font-mono select-none">|</span>
+                <span className="inline-flex items-center gap-1.5 text-[var(--color-warning)]">
+                  <MaterialIcon name="sync" size={14} spin aria-hidden="true" />
+                  <span>
+                    <strong className="font-mono">{activeCount}</strong> indexing
+                  </span>
+                </span>
+              </>
+            )}
+            {alertCount > 0 && (
+              <>
+                <span className="text-[var(--color-border)] font-mono select-none">|</span>
+                <span className="inline-flex items-center gap-1.5 text-[var(--color-error)]">
+                  <MaterialIcon name="error" size={14} aria-hidden="true" />
+                  <span>
+                    <strong className="font-mono">{alertCount}</strong> failed
+                  </span>
+                </span>
+              </>
+            )}
           </div>
+
+          {mostRecentSync?.last_indexed_at && (
+            <div className="text-[11px] font-mono text-[var(--color-muted)] flex items-center gap-1.5">
+              <MaterialIcon name="schedule" size={13} aria-hidden="true" />
+              <span>Last sync: {formatRelativeTime(mostRecentSync.last_indexed_at)}</span>
+            </div>
+          )}
         </section>
       )}
 
@@ -871,72 +762,7 @@ export function RepositoriesPage() {
         </section>
       )}
 
-      {/* Recent Activity Section */}
-      {!loading && !error && recentActivities.length > 0 && (
-        <section aria-labelledby="recent-activity-heading" className="space-y-3 pt-2">
-          <div className="flex items-center justify-between">
-            <h2 id="recent-activity-heading" className="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
-              Recent Activity
-            </h2>
-          </div>
 
-          <div className="rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 divide-y divide-[var(--color-border)]/60">
-            {recentActivities.map((act) => (
-              <div
-                key={act.id}
-                className="py-2.5 px-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs hover:bg-[var(--color-raised)]/30 rounded transition"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="shrink-0">
-                    {act.type === 'INDEXED' && (
-                      <MaterialIcon name="check_circle" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-label="Completed" />
-                    )}
-                    {act.type === 'INDEXING' && (
-                      <MaterialIcon name="sync" size={18} spin color="var(--color-warning)" aria-label="Indexing" />
-                    )}
-                    {act.type === 'FAILED' && (
-                      <MaterialIcon name="error" size={18} fill={1} color="var(--color-error)" aria-label="Failed" />
-                    )}
-                    {act.type === 'CONNECTED' && (
-                      <MaterialIcon name="link" size={18} color="var(--color-mint-accent, #B9E4D0)" aria-label="Connected" />
-                    )}
-                  </div>
-
-                  <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
-                    <span className="font-semibold text-[var(--color-text)]">
-                      {act.owner}/{act.repoName}
-                    </span>
-                    <span className="text-[var(--color-muted)]">·</span>
-                    <span className="text-[var(--color-text-secondary)]">
-                      {act.type === 'INDEXED' && 'Repository indexed'}
-                      {act.type === 'INDEXING' && 'Indexing in progress'}
-                      {act.type === 'FAILED' && (act.failureCode ? `Indexing failed: ${act.failureCode}` : 'Indexing failed')}
-                      {act.type === 'CONNECTED' && 'Repository connected'}
-                    </span>
-                    {act.sha && (
-                      <span className="font-mono text-[10px] px-1 py-0.5 rounded bg-[var(--color-raised)] text-[var(--color-muted)] border border-[var(--color-border)]">
-                        {shortSha(act.sha)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 shrink-0 self-end sm:self-center font-mono text-[11px] text-[var(--color-muted)]">
-                  <span>{formatRelativeTime(act.timestamp)}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate(`/repositories/${act.repoId}`)}
-                    className="h-6 px-2 text-[11px] text-[var(--color-mint-accent,#B9E4D0)] hover:text-[var(--color-mint-hover,#D0F1E0)] hover:bg-[var(--color-raised)]/60 cursor-pointer"
-                  >
-                    <span>View</span>
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Connect Repository Drawer */}
       <ConnectDrawer
