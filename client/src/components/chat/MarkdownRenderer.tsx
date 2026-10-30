@@ -9,7 +9,7 @@ interface MarkdownRendererProps {
 
 export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   return (
-    <div className="text-xs sm:text-sm text-[var(--color-text)] leading-relaxed select-text space-y-3">
+    <div className="chat-prose select-text space-y-3">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -20,7 +20,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             if (isInline) {
               return (
                 <code
-                  className="px-1.5 py-0.5 rounded-[4px] bg-[var(--color-raised)] border border-[var(--color-border)] text-[var(--color-mint-accent,#B9E4D0)] font-mono text-[11px] sm:text-[12px]"
+                  className="chat-inline-code"
                   {...props}
                 >
                   {children}
@@ -34,25 +34,25 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             return <CodeBlock code={codeString} language={language} />;
           },
           p({ children }) {
-            return <p className="mb-2.5 last:mb-0 leading-relaxed text-[var(--color-text)]">{children}</p>;
+            return <p className="mb-2.5 last:mb-0 leading-[1.72] text-[var(--color-text)]">{children}</p>;
           },
           h1({ children }) {
             return (
-              <h1 className="text-base sm:text-lg font-bold text-[var(--color-text)] mt-4 mb-2 border-b border-[var(--color-border)]/60 pb-1.5">
+              <h1 className="text-base sm:text-[17px] font-semibold tracking-tight text-[var(--color-text)] mt-4 mb-2 border-b border-[var(--color-border)]/60 pb-1.5">
                 {children}
               </h1>
             );
           },
           h2({ children }) {
             return (
-              <h2 className="text-sm sm:text-base font-semibold text-[var(--color-text)] mt-3.5 mb-1.5">
+              <h2 className="text-sm sm:text-[15px] font-semibold tracking-tight text-[var(--color-text)] mt-3.5 mb-1.5">
                 {children}
               </h2>
             );
           },
           h3({ children }) {
             return (
-              <h3 className="text-xs sm:text-sm font-semibold text-[var(--color-mint-accent,#B9E4D0)] uppercase tracking-wider mt-3 mb-1 font-mono">
+              <h3 className="text-xs sm:text-[13px] font-semibold text-[var(--color-mint-accent,#B9E4D0)] uppercase tracking-wider mt-3 mb-1 font-mono">
                 {children}
               </h3>
             );
@@ -68,7 +68,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
           },
           blockquote({ children }) {
             return (
-              <blockquote className="border-l-2 border-[var(--color-mint-accent,#B9E4D0)] bg-[var(--color-raised)]/30 px-3.5 py-2 rounded-r my-2.5 text-xs text-[var(--color-text-secondary)] italic">
+              <blockquote className="border-l border-[var(--color-border-strong)] bg-[var(--color-raised)]/20 pl-3.5 pr-2 py-1.5 rounded-r my-2.5 text-xs text-[var(--color-text-secondary)] italic">
                 {children}
               </blockquote>
             );

@@ -36,7 +36,7 @@ export function ChatMessageItem({
     return (
       <div className="flex justify-end max-w-3xl mx-auto w-full my-4">
         <div className="rounded-[var(--radius-panel)] px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border-strong)] text-[var(--color-text)] max-w-[85%] sm:max-w-[75%] shadow-sm">
-          <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed select-text font-sans">
+          <p className="chat-user-bubble whitespace-pre-wrap select-text">
             {message.content}
           </p>
           <div className="mt-1.5 text-[10px] text-[var(--color-muted)] font-mono text-right select-none">

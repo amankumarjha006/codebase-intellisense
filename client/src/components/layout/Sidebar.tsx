@@ -44,7 +44,7 @@ export function Sidebar({
   }, [location.pathname]);
 
   const isDashboardActive = location.pathname === '/dashboard';
-  const isRepositoriesActive = location.pathname.startsWith('/repositories');
+  const isRepositoriesActive = location.pathname === '/repositories' || location.pathname === '/repositories/';
 
   return (
     <aside
@@ -149,10 +149,10 @@ export function Sidebar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <NavLink
-                  to="/dashboard"
+                  to="/repositories"
                   className={cn(
                     'flex items-center justify-center p-2 rounded-[var(--radius-control)] transition-colors',
-                    isRepositoriesActive && !isDashboardActive
+                    isRepositoriesActive
                       ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
                       : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
                   )}
@@ -160,7 +160,7 @@ export function Sidebar({
                 >
                   <MaterialIcon
                     name="folder_special"
-                    active={isRepositoriesActive && !isDashboardActive}
+                    active={isRepositoriesActive}
                     size={22}
                     className="shrink-0"
                     aria-hidden={true}
@@ -171,17 +171,17 @@ export function Sidebar({
             </Tooltip>
           ) : (
             <NavLink
-              to="/dashboard"
+              to="/repositories"
               className={cn(
                 'group flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
-                isRepositoriesActive && !isDashboardActive
+                isRepositoriesActive
                   ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
                   : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
               )}
             >
               <MaterialIcon
                 name="folder_special"
-                active={isRepositoriesActive && !isDashboardActive}
+                active={isRepositoriesActive}
                 size={22}
                 className={cn(
                   'shrink-0 transition-colors',
@@ -189,7 +189,7 @@ export function Sidebar({
                 )}
                 aria-hidden={true}
               />
-              <span className={isRepositoriesActive && !isDashboardActive ? 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]' : undefined}>
+              <span className={isRepositoriesActive ? 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]' : undefined}>
                 Repositories
               </span>
             </NavLink>

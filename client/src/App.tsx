@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { RepositoriesPage } from './pages/RepositoriesPage';
 import { RepositoryOverviewPage } from './pages/RepositoryOverviewPage';
 import { ChatPage } from './pages/ChatPage';
 import { ArchitecturePage } from './pages/ArchitecturePage';
@@ -32,7 +33,7 @@ export function App() {
             {/* Authenticated application routes wrapped in AppLayout */}
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/repositories" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/repositories" element={<RepositoriesPage />} />
               <Route path="/repositories/:id" element={<RepositoryOverviewPage />} />
               <Route path="/repositories/:id/chat" element={<ChatPage />} />
               <Route path="/repositories/:id/chat/:conversationId" element={<ChatPage />} />

@@ -17,11 +17,11 @@ interface ConnectDrawerProps {
 type ConnectStep = 'input' | 'configure' | 'indexing' | 'ready' | 'failed';
 
 const STAGES = [
-  { id: 'QUEUED', label: 'Queued', description: 'Queued in cluster pipeline' },
-  { id: 'FETCHING', label: 'Fetching', description: 'Clone and tree-sitter tarball unpacked' },
-  { id: 'INDEXING', label: 'Indexing', description: 'Parsing AST symbol hierarchy and chunk boundaries' },
-  { id: 'ANALYZING', label: 'Analyzing', description: 'Generating dense vector embeddings and pgvector sync' },
-  { id: 'READY', label: 'Ready', description: 'Citations available for natural-language queries' },
+  { id: 'QUEUED', label: 'Queued', description: 'Waiting to start processing' },
+  { id: 'FETCHING', label: 'Fetching', description: 'Downloading repository files' },
+  { id: 'INDEXING', label: 'Indexing', description: 'Analyzing code structure & symbols' },
+  { id: 'ANALYZING', label: 'Analyzing', description: 'Building search index' },
+  { id: 'READY', label: 'Ready', description: 'Ready to search & explore' },
 ] as const;
 
 export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawerProps) {
@@ -213,18 +213,13 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
       <DrawerContent side="right" className="flex flex-col justify-between max-w-lg">
         <div>
           <DrawerHeader>
-            <div className="flex items-center gap-2 text-xs font-mono text-[var(--color-muted)] mb-1">
-              <span>REPOSITORY INDEXING</span>
-              <span>·</span>
-              <span>Tree-sitter AST</span>
-            </div>
             <DrawerTitle>
               {connectedRepo ? `Indexing ${connectedRepo.owner}/${connectedRepo.name}` : 'Connect repository'}
             </DrawerTitle>
             <DrawerDescription>
               {connectedRepo
-                ? 'Building AST symbol table and reference dependency graph.'
-                : 'Connect a public or private GitHub repository to parse symbol hierarchies and index code vectors on demand.'}
+                ? 'Analyzing code structure, symbols, and architecture.'
+                : 'Connect a public or private GitHub repository to search code, explore architecture, and chat with AI.'}
             </DrawerDescription>
           </DrawerHeader>
 
@@ -279,7 +274,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                           type="button"
                           onClick={() => {
                             onOpenChange(false);
-                            navigate('/dashboard');
+                            navigate('/repositories');
                           }}
                           className="font-medium underline hover:text-[var(--color-text)] transition"
                         >
@@ -313,18 +308,18 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
               <div className="p-3 rounded-[var(--radius-control)] bg-[var(--color-raised)]/60 border border-[var(--color-border)] text-xs space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
-                    Verification Scope
+                    Security & Access
                   </span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)]">
-                    AST Indexing: Ready
+                    Read-Only
                   </span>
                 </div>
                 <p className="text-[11px] text-[var(--color-text-secondary)] leading-normal">
-                  Static analysis parses hierarchical symbol trees across all commits on branch <code className="font-mono text-[var(--color-accent)]">{branch}</code>.
+                  Analyzes repository files on branch <code className="font-mono text-[var(--color-accent)]">{branch}</code> for code search and navigation.
                 </p>
                 <div className="pt-1 flex items-center gap-1.5 text-[10px] font-mono text-[var(--color-muted)]">
                   <MaterialIcon name="lock" size={12} />
-                  <span>Read-only access. Zero retention ephemeral memory.</span>
+                  <span>Read-only access. Your source code is never used for training.</span>
                 </div>
               </div>
 
@@ -377,24 +372,24 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                   placeholder="main"
                 />
                 <p className="text-[11px] text-[var(--color-muted)] mt-1.5">
-                  The primary branch to parse concrete syntax trees and generate dense vectors.
+                  The primary branch to analyze for code search and navigation.
                 </p>
               </div>
 
               <div className="p-3 rounded-[var(--radius-control)] bg-[var(--color-raised)]/60 border border-[var(--color-border)] text-xs space-y-2">
-                <div className="font-semibold text-[var(--color-text)]">Pipeline Sequence</div>
+                <div className="font-semibold text-[var(--color-text)]">What happens next</div>
                 <ul className="space-y-1.5 text-[var(--color-text-secondary)] text-[11px]">
                   <li className="flex items-center gap-2">
                     <MaterialIcon name="check_circle" size={14} className="text-[var(--color-accent)]" fill={1} />
-                    <span>Tree-sitter concrete syntax parsing</span>
+                    <span>Download and verify repository files</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <MaterialIcon name="check_circle" size={14} className="text-[var(--color-accent)]" fill={1} />
-                    <span>Hierarchical symbol and chunk boundary mapping</span>
+                    <span>Extract code symbols, functions, and architecture</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <MaterialIcon name="check_circle" size={14} className="text-[var(--color-accent)]" fill={1} />
-                    <span>Gemini dense embedding generation & pgvector sync</span>
+                    <span>Build fast semantic search index</span>
                   </li>
                 </ul>
               </div>
@@ -485,7 +480,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
               {/* Informational Callout */}
               <div className="p-3 rounded-[var(--radius-control)] bg-[var(--color-raised)]/50 border border-[var(--color-border)] text-xs text-[var(--color-muted)] flex items-center gap-2">
                 <MaterialIcon name="schedule" size={16} className="shrink-0 text-[var(--color-accent)]" />
-                <span>You can close this drawer. Indexing runs asynchronously in the worker.</span>
+                <span>You can close this drawer. Indexing will continue in the background.</span>
               </div>
 
               <div className="pt-2">
@@ -513,10 +508,10 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                   <span>Ready</span>
                 </div>
                 <h3 className="text-base font-semibold text-[var(--color-text)]">
-                  Repository indexed and verified
+                  Repository ready
                 </h3>
                 <p className="text-xs text-[var(--color-text-secondary)] max-w-sm mx-auto leading-relaxed">
-                  Every query against this repository will cite verifiable file and line coordinates from the indexed AST.
+                  Your repository is indexed and ready for AI search, architecture exploration, and grounded Q&A.
                 </p>
               </div>
 

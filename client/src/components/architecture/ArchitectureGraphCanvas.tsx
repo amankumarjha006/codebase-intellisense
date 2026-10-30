@@ -255,6 +255,31 @@ export function ArchitectureGraphCanvas({
     }));
   };
 
+  // Keyboard navigation across layout nodes
+  const handleNodeKeyDown = (e: React.KeyboardEvent, nodeId: string, currentIndex: number) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelectNode(selectedNodeId === nodeId ? null : nodeId);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onSelectNode(null);
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const nextNode = layoutNodes[(currentIndex + 1) % layoutNodes.length];
+      if (nextNode) {
+        const el = document.getElementById(`graph-node-${nextNode.id}`);
+        el?.focus();
+      }
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const prevNode = layoutNodes[(currentIndex - 1 + layoutNodes.length) % layoutNodes.length];
+      if (prevNode) {
+        const el = document.getElementById(`graph-node-${prevNode.id}`);
+        el?.focus();
+      }
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -386,7 +411,7 @@ export function ArchitectureGraphCanvas({
 
           {/* Nodes Layer */}
           <g className="nodes-layer">
-            {layoutNodes.map((node) => {
+            {layoutNodes.map((node, nodeIdx) => {
               const isSelected = selectedNodeId === node.id;
               const isIncoming = incomingIds.has(node.id);
               const isOutgoing = outgoingIds.has(node.id);
@@ -427,11 +452,17 @@ export function ArchitectureGraphCanvas({
                   className={`overflow-visible transition-opacity duration-200 ${isDimmed ? 'opacity-25' : 'opacity-100'}`}
                 >
                   <div
+                    id={`graph-node-${node.id}`}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Node ${node.name || node.label || node.id}, type: ${node.type || 'module'}. Press Enter to inspect, Arrow keys to navigate.`}
+                    aria-pressed={isSelected}
+                    onKeyDown={(e) => handleNodeKeyDown(e, node.id, nodeIdx)}
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectNode(node.id);
                     }}
-                    className={`w-full h-full rounded-[var(--radius-panel)] border ${borderClass} ${bgClass} ${ringClass} p-2.5 flex flex-col justify-between transition-all duration-150 cursor-pointer shadow-md select-none group`}
+                    className={`w-full h-full rounded-[var(--radius-panel)] border ${borderClass} ${bgClass} ${ringClass} p-2.5 flex flex-col justify-between transition-all duration-150 cursor-pointer shadow-md select-none group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--color-mint-accent,#B9E4D0)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-page)]`}
                   >
                     {/* Header Row: Icon, Title, Badge */}
                     <div className="flex items-center justify-between gap-1.5 min-w-0">
@@ -566,6 +597,13 @@ export function ArchitectureGraphCanvas({
         <span className="text-[10px] font-mono text-[var(--color-muted)] px-1.5 select-none">
           {Math.round(transform.scale * 100)}%
         </span>
+
+        <div className="h-4 w-px bg-[var(--color-border)] mx-0.5 hidden md:block" />
+
+        <div className="hidden md:flex items-center gap-1.5 px-2 text-[10px] text-[var(--color-muted)] font-mono">
+          <MaterialIcon name="keyboard" size={13} className="text-[var(--color-mint-accent,#B9E4D0)]" aria-hidden="true" />
+          <span>Arrows / Enter to navigate</span>
+        </div>
       </div>
 
       {/* Floating Graph Legend Widget (Bottom-Right or Collapsible) */}

@@ -1,67 +1,25 @@
 import * as React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
-import { ApiError, RepositoryListItemOut } from '../lib/api';
-import { formatNumber, formatRelativeTime, shortSha } from '../lib/utils';
-import { RepositoryStatusCell, StatusChip } from '../components/ui/badge';
+import { ApiError } from '../lib/api';
+import { formatRelativeTime, shortSha } from '../lib/utils';
+import { StatusChip } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import { Skeleton } from '../components/ui/skeleton';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
-import {
-  Table,
-  TableHeader,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-} from '../components/ui/table';
+import { Card, CardHeader, CardDescription, CardContent } from '../components/ui/card';
 import { ConnectDrawer } from '../components/repository/ConnectDrawer';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '../components/ui/dialog';
 import { useRepositoryPolling } from '../lib/useRepositoryPolling';
 import { AnimatedPage } from '../components/ui/AnimatedPage';
 import { LiveRegion } from '../components/ui/A11y';
 import { useAuth } from '../lib/AuthContext';
 
-type StatusFilter = 'ALL' | 'READY' | 'ACTIVE' | 'FAILED';
-
 export function DashboardPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { markSessionExpired } = useAuth();
 
-  // Restore previous search/filter context if returning from repository navigation
-  const navState = location.state as { from?: string; search?: string; filter?: StatusFilter } | null;
-
-  const [searchInput, setSearchInput] = React.useState(navState?.search || '');
-  const [debouncedSearch, setDebouncedSearch] = React.useState(navState?.search || '');
-  const [statusFilter, setStatusFilter] = React.useState<StatusFilter>(navState?.filter || 'ALL');
   const [connectOpen, setConnectOpen] = React.useState(false);
   const [copiedRequestId, setCopiedRequestId] = React.useState(false);
-  const [repoToDelete, setRepoToDelete] = React.useState<RepositoryListItemOut | null>(null);
-  const [isDeleting, setIsDeleting] = React.useState(false);
   const [a11yAnnouncement, setA11yAnnouncement] = React.useState('');
-
-  // Debounce search input by 300ms
-  React.useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(searchInput.trim());
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [searchInput]);
 
   const {
     repositories,
@@ -70,26 +28,13 @@ export function DashboardPage() {
     isPolling,
     error,
     refetch,
-    triggerIndex,
-    deleteRepository,
   } = useRepositoryPolling({
     page: 1,
     limit: 100,
-    search: debouncedSearch,
     onSessionExpired: markSessionExpired,
   });
 
   const safeRepos = React.useMemo(() => repositories || [], [repositories]);
-
-  // Navigate to repository preserving current search & filter state
-  const navigateToRepo = React.useCallback(
-    (repoId: string) => {
-      navigate(`/repositories/${repoId}`, {
-        state: { from: '/dashboard', search: debouncedSearch, filter: statusFilter },
-      });
-    },
-    [navigate, debouncedSearch, statusFilter]
-  );
 
   // Calculate honest metrics supplied by backend
   const readyCount = React.useMemo(() => {
@@ -104,10 +49,6 @@ export function DashboardPage() {
     ).length;
   }, [safeRepos]);
 
-  const alertCount = React.useMemo(() => {
-    return safeRepos.filter((r) => r.latest_job_status === 'FAILED').length;
-  }, [safeRepos]);
-
   // Most recent indexing activity timestamp & repo
   const mostRecentSync = React.useMemo(() => {
     const sorted = [...safeRepos]
@@ -115,25 +56,6 @@ export function DashboardPage() {
       .sort((a, b) => new Date(b.last_indexed_at!).getTime() - new Date(a.last_indexed_at!).getTime());
     return sorted[0] || null;
   }, [safeRepos]);
-
-  // Filter repositories based on statusFilter
-  const filteredRepositories = React.useMemo(() => {
-    if (statusFilter === 'ALL') return safeRepos;
-    if (statusFilter === 'READY') {
-      return safeRepos.filter(
-        (r) => r.latest_job_status === 'READY' || (r.active_version_short_sha && !r.latest_job_status)
-      );
-    }
-    if (statusFilter === 'ACTIVE') {
-      return safeRepos.filter((r) =>
-        ['QUEUED', 'FETCHING', 'INDEXING', 'ANALYZING'].includes(r.latest_job_status || '')
-      );
-    }
-    if (statusFilter === 'FAILED') {
-      return safeRepos.filter((r) => r.latest_job_status === 'FAILED');
-    }
-    return safeRepos;
-  }, [safeRepos, statusFilter]);
 
   // Construct real recent activity events from actual repository data
   const recentActivities = React.useMemo(() => {
@@ -194,15 +116,15 @@ export function DashboardPage() {
     return events
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 5);
-  }, [repositories]);
+  }, [safeRepos]);
 
   React.useEffect(() => {
     if (loading) {
-      setA11yAnnouncement('Loading repositories...');
+      setA11yAnnouncement('Loading workspace dashboard...');
     } else if (error) {
-      setA11yAnnouncement('Error loading repositories.');
+      setA11yAnnouncement('Error loading dashboard.');
     } else {
-      setA11yAnnouncement(`Loaded ${repositories.length} repositories.`);
+      setA11yAnnouncement(`Loaded workspace dashboard with ${repositories.length} repositories.`);
     }
   }, [loading, error, repositories.length]);
 
@@ -216,36 +138,35 @@ export function DashboardPage() {
   const httpStatus = error instanceof ApiError ? error.status : null;
 
   return (
-    <AnimatedPage className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-7">
+    <AnimatedPage className="relative p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-7">
       <LiveRegion message={a11yAnnouncement} />
+
+      {/* Top Ambient Subtle Gradient */}
+      <div
+        className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 -z-10 w-full max-w-5xl h-72 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(185,228,208,0.05),transparent_70%)]"
+        aria-hidden="true"
+      />
 
       {/* Page Heading & Primary Action */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[var(--color-border)]/50">
         <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--color-text)]">
-              Repositories
-            </h1>
-            {!loading && !error && repositories.length > 0 && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono font-medium bg-[var(--color-raised)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]">
-                {total} {total === 1 ? 'codebase' : 'codebases'}
-              </span>
-            )}
-          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--color-text)]">
+            Dashboard
+          </h1>
           <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] max-w-2xl">
-            Manage connected GitHub repositories, verify AST symbol indices, and query semantic codebase intelligence.
+            Overview of your connected repositories, recent updates, and codebase status.
           </p>
         </div>
 
-        {/* Single Prominent Connect Repository Action + Sync */}
+        {/* Sync & Connect Actions */}
         <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center">
           <Button
             variant="secondary"
             size="sm"
             onClick={refetch}
             disabled={loading}
-            aria-label="Synchronize repository states"
-            title="Synchronize repository states"
+            aria-label="Synchronize workspace status"
+            title="Synchronize workspace status"
             className="h-9 px-3"
           >
             <MaterialIcon name="sync" size={18} spin={loading || isPolling} aria-hidden="true" />
@@ -265,14 +186,26 @@ export function DashboardPage() {
         </div>
       </header>
 
-      {/* Summary Metrics: Compact shadcn Cards (Only shown when user has repositories) */}
+      {/* Summary Metrics: Compact Cards */}
       {!loading && !error && repositories.length > 0 && (
-        <section aria-label="Repository metrics overview">
+        <section aria-label="Workspace metrics overview">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* 1. Connected Repositories */}
-            <Card className="bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-colors">
+            {/* 1. Connected Repositories — Accessible Navigation Link */}
+            <Card
+              role="link"
+              tabIndex={0}
+              aria-label="Manage connected repositories in catalog"
+              onClick={() => navigate('/repositories')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate('/repositories');
+                }
+              }}
+              className="card-top-accent bg-[var(--color-surface)]/90 border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-all shadow-sm cursor-pointer group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-mint-accent,#B9E4D0)]"
+            >
               <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-                <CardDescription className="text-xs font-medium text-[var(--color-muted)] uppercase tracking-wider">
+                <CardDescription className="text-xs font-medium text-[var(--color-muted)] uppercase tracking-wider group-hover:text-[var(--color-text)] transition-colors">
                   Connected Repositories
                 </CardDescription>
                 <div className="h-8 w-8 rounded-lg bg-[var(--color-raised)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)]">
@@ -280,20 +213,21 @@ export function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent className="p-4 pt-1 space-y-1">
-                <div className="text-2xl font-bold font-mono text-[var(--color-text)]">
-                  {total}
+                <div className="text-2xl font-bold font-mono text-[var(--color-text)] flex items-center justify-between">
+                  <span>{total}</span>
+                  <MaterialIcon name="arrow_forward" size={16} className="text-[var(--color-muted)] group-hover:text-[var(--color-mint-accent,#B9E4D0)] transition" />
                 </div>
                 <p className="text-[11px] text-[var(--color-text-secondary)]">
-                  Aggregated across your workspace
+                  Total repositories in workspace
                 </p>
               </CardContent>
             </Card>
 
-            {/* 2. Indexed & Ready */}
-            <Card className="bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-colors">
+            {/* 2. Ready & Searchable */}
+            <Card className="card-top-accent bg-[var(--color-surface)]/90 border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-all shadow-sm">
               <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
                 <CardDescription className="text-xs font-medium text-[var(--color-muted)] uppercase tracking-wider">
-                  Ready & Searchable
+                  Ready to Search
                 </CardDescription>
                 <div className="h-8 w-8 rounded-lg bg-[var(--color-raised)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)]">
                   <MaterialIcon name="check_circle" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" />
@@ -304,16 +238,16 @@ export function DashboardPage() {
                   {readyCount}
                 </div>
                 <p className="text-[11px] text-[var(--color-text-secondary)]">
-                  Active repositories ready for querying
+                  Fully indexed and ready for queries
                 </p>
               </CardContent>
             </Card>
 
             {/* 3. Active Pipelines */}
-            <Card className="bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-colors">
+            <Card className="card-top-accent bg-[var(--color-surface)]/90 border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-all shadow-sm">
               <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
                 <CardDescription className="text-xs font-medium text-[var(--color-muted)] uppercase tracking-wider">
-                  Active Indexing
+                  Indexing
                 </CardDescription>
                 <div className="h-8 w-8 rounded-lg bg-[var(--color-raised)] flex items-center justify-center text-[var(--color-warning)]">
                   <MaterialIcon
@@ -329,16 +263,16 @@ export function DashboardPage() {
                   {activeCount}
                 </div>
                 <p className="text-[11px] text-[var(--color-text-secondary)]">
-                  {activeCount > 0 ? 'Parsing AST or generating embeddings' : 'All indexing jobs completed'}
+                  {activeCount > 0 ? 'Analyzing repository code' : 'All repositories are up to date'}
                 </p>
               </CardContent>
             </Card>
 
             {/* 4. Recent Synchronization Activity */}
-            <Card className="bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-colors">
+            <Card className="card-top-accent bg-[var(--color-surface)]/90 border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-all shadow-sm">
               <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
                 <CardDescription className="text-xs font-medium text-[var(--color-muted)] uppercase tracking-wider">
-                  Latest Activity
+                  Last Updated
                 </CardDescription>
                 <div className="h-8 w-8 rounded-lg bg-[var(--color-raised)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)]">
                   <MaterialIcon
@@ -370,7 +304,7 @@ export function DashboardPage() {
       {loading && (
         <div
           role="status"
-          aria-label="Loading repository list"
+          aria-label="Loading workspace dashboard"
           className="rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-sm p-5 space-y-4"
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pb-2">
@@ -380,24 +314,16 @@ export function DashboardPage() {
           </div>
           <div className="space-y-3 pt-4">
             <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-28 w-full" />
           </div>
         </div>
       )}
 
       {/* Error State */}
       {!loading && error && (
-        <div role="alert" aria-live="assertive" className="space-y-6">
-          <div className="flex items-center gap-2 text-xs font-mono text-[var(--color-error)]">
-            <span className="h-2 w-2 rounded-full bg-[var(--color-error)] animate-pulse" aria-hidden="true" />
-            <span>
-              Cluster Unreachable {httpStatus ? `(HTTP ${httpStatus})` : ''}
-            </span>
-          </div>
-
-          <div className="rounded-[var(--radius-panel)] border border-[var(--color-error-border)] bg-[var(--color-surface)] p-8 text-center space-y-5 max-w-2xl mx-auto shadow-sm">
+        <div role="alert" aria-live="assertive" className="space-y-4">
+          <div className="rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center space-y-4 max-w-md mx-auto shadow-sm">
             <div
               className="h-12 w-12 rounded-full bg-[var(--color-error-tint)] border border-[var(--color-error-border)] flex items-center justify-center text-[var(--color-error)] mx-auto"
               aria-hidden="true"
@@ -407,44 +333,24 @@ export function DashboardPage() {
 
             <div className="space-y-1.5">
               <h2 className="text-base font-semibold text-[var(--color-text)]">
-                Can't reach the server.
+                Unable to connect to server
               </h2>
-              <p className="text-xs text-[var(--color-text-secondary)] max-w-md mx-auto leading-relaxed">
-                The request timed out while loading repository records from the backend. The database or indexing workers may be restarting.
+              <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+                Could not load workspace records. Please check your network connection and try again.
               </p>
             </div>
-
-            {requestId && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-control)] bg-[var(--color-raised)] border border-[var(--color-border)] text-xs font-mono text-[var(--color-muted)]">
-                <span>DIAGNOSTIC TRACE</span>
-                <span className="text-[var(--color-text)]">Reference: {requestId}</span>
-                <button
-                  type="button"
-                  onClick={() => handleCopyRequestId(requestId)}
-                  className="p-1 hover:text-[var(--color-text)] transition rounded"
-                  title="Copy reference id"
-                  aria-label="Copy diagnostic reference id"
-                >
-                  {copiedRequestId ? (
-                    <MaterialIcon name="check" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
-                  ) : (
-                    <MaterialIcon name="content_copy" size={16} aria-hidden="true" />
-                  )}
-                </button>
-              </div>
-            )}
 
             <div className="pt-2 flex items-center justify-center gap-3">
               <Button variant="primary" size="sm" onClick={refetch}>
                 <MaterialIcon name="sync" size={18} aria-hidden="true" />
-                <span>Retry connection</span>
+                <span>Retry</span>
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Meaningful Empty State: 0 Repositories Connected */}
+      {/* Empty State: 0 Repositories Connected */}
       {!loading && !error && repositories.length === 0 && (
         <section
           role="status"
@@ -460,10 +366,10 @@ export function DashboardPage() {
 
           <div className="space-y-2 max-w-md mx-auto">
             <h2 className="text-lg font-bold tracking-tight text-[var(--color-text)]">
-              Connect your first repository
+              Welcome to Codebase Intellisense
             </h2>
             <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
-              Sync your private or public GitHub repositories to parse AST code structure, inspect architectural dependencies, and query grounded Q&A.
+              Connect your first repository to search code, explore architecture, and ask questions with verified citations.
             </p>
           </div>
 
@@ -484,303 +390,222 @@ export function DashboardPage() {
             <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--color-raised)]/40 border border-[var(--color-border)]/50 space-y-1.5">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider uppercase text-[var(--color-muted)]">
                 <MaterialIcon name="memory" size={16} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
-                <span>AST Resolution</span>
+                <span>Code Intelligence</span>
               </div>
               <p className="text-[11px] text-[var(--color-text-secondary)] leading-normal">
-                Parses syntax trees to extract functions, classes, and architectural calls with line-level citations.
+                Understands functions, classes, and relationships across your codebase.
               </p>
             </div>
 
             <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--color-raised)]/40 border border-[var(--color-border)]/50 space-y-1.5">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider uppercase text-[var(--color-muted)]">
                 <MaterialIcon name="terminal" size={16} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
-                <span>Verified Citations</span>
+                <span>Verified Answers</span>
               </div>
               <p className="text-[11px] text-[var(--color-text-secondary)] leading-normal">
-                Grounded Q&A responses cite verified source code coordinates directly from your repository tree.
+                Ask questions in plain English with direct links to the relevant lines in your code.
               </p>
             </div>
 
             <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--color-raised)]/40 border border-[var(--color-border)]/50 space-y-1.5">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider uppercase text-[var(--color-muted)]">
                 <MaterialIcon name="layers" size={16} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
-                <span>Zero-Retention</span>
+                <span>Fast & Secure</span>
               </div>
               <p className="text-[11px] text-[var(--color-text-secondary)] leading-normal">
-                Ephemeral memory security with pgvector indexing tailored for modern developer workflows.
+                Instant search and codebase exploration with enterprise-grade security.
               </p>
             </div>
           </div>
         </section>
       )}
 
-      {/* Populated Repository List & Scannable Table */}
-      {!loading && !error && repositories.length > 0 && (
-        <section aria-label="Repositories list" className="space-y-4">
-          {/* Controls: Search & Filter Tabs */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-md">
-              <MaterialIcon
-                name="search"
-                size={18}
-                className="absolute left-3 top-2.5 text-[var(--color-muted)]"
-                aria-hidden="true"
-              />
-              <Input
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search repositories by name or owner..."
-                aria-label="Filter repositories by name or owner"
-                className="pl-9 pr-10 text-xs h-9 bg-[var(--color-surface)] border-[var(--color-border)] rounded-[var(--radius-control)] focus:border-[var(--color-mint-accent,#B9E4D0)]"
-              />
-              <kbd
-                aria-hidden="true"
-                className="absolute right-2.5 top-2.5 hidden sm:inline-flex items-center gap-0.5 rounded border border-[var(--color-border)] bg-[var(--color-raised)] px-1.5 text-[10px] font-mono text-[var(--color-muted)]"
-              >
-                ⌘K
-              </kbd>
+      {/* Active Codebases: Quick Access Cards */}
+      {!loading && !error && safeRepos.length > 0 && (
+        <section aria-labelledby="active-codebases-heading" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 id="active-codebases-heading" className="text-sm font-semibold tracking-tight text-[var(--color-text)]">
+                Active Codebases
+              </h2>
+              <p className="text-xs text-[var(--color-text-secondary)]">
+                Quick access to intelligence tools for your indexed repositories
+              </p>
             </div>
 
-            {/* Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar" role="group" aria-label="Filter by status">
-              <button
-                onClick={() => setStatusFilter('ALL')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                  statusFilter === 'ALL'
-                    ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)] font-semibold'
-                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
-                }`}
-              >
-                All ({total})
-              </button>
-
-              <button
-                onClick={() => setStatusFilter('READY')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                  statusFilter === 'READY'
-                    ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)] font-semibold'
-                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
-                }`}
-              >
-                Indexed ({readyCount})
-              </button>
-
-              {activeCount > 0 && (
-                <button
-                  onClick={() => setStatusFilter('ACTIVE')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1 ${
-                    statusFilter === 'ACTIVE'
-                      ? 'bg-[var(--color-warning-tint)] text-[var(--color-warning)] border border-[rgba(251,191,36,0.3)] font-semibold'
-                      : 'text-[var(--color-warning)] hover:bg-[var(--color-raised)]/60'
-                  }`}
-                >
-                  <MaterialIcon name="sync" size={14} spin aria-hidden="true" />
-                  <span>Active ({activeCount})</span>
-                </button>
-              )}
-
-              {alertCount > 0 && (
-                <button
-                  onClick={() => setStatusFilter('FAILED')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1 ${
-                    statusFilter === 'FAILED'
-                      ? 'bg-[var(--color-error-tint)] text-[var(--color-error)] border border-[var(--color-error-border)] font-semibold'
-                      : 'text-[var(--color-error)] hover:bg-[var(--color-raised)]/60'
-                  }`}
-                >
-                  <MaterialIcon name="error" size={14} aria-hidden="true" />
-                  <span>Failed ({alertCount})</span>
-                </button>
-              )}
-            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate('/repositories')}
+              className="text-xs gap-1.5 h-8 font-medium cursor-pointer"
+            >
+              <span>View all in table ({total})</span>
+              <MaterialIcon name="arrow_forward" size={14} aria-hidden="true" />
+            </Button>
           </div>
 
-          {/* Scannable Table */}
-          <div className="rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-sm">
-            <Table aria-label="Connected repositories">
-              <TableHeader>
-                <TableRow className="bg-[var(--color-raised)]/40 hover:bg-[var(--color-raised)]/40 border-b border-[var(--color-border)]">
-                  <TableHead className="py-3 px-4 font-semibold text-[11px] uppercase tracking-wider text-[var(--color-muted)]">
-                    Repository
-                  </TableHead>
-                  <TableHead className="py-3 px-4 font-semibold text-[11px] uppercase tracking-wider text-[var(--color-muted)]">
-                    Branch & Commit
-                  </TableHead>
-                  <TableHead className="py-3 px-4 font-semibold text-[11px] uppercase tracking-wider text-[var(--color-muted)]">
-                    Verification State
-                  </TableHead>
-                  <TableHead className="py-3 px-4 font-semibold text-[11px] uppercase tracking-wider text-[var(--color-muted)]">
-                    Last Indexed
-                  </TableHead>
-                  <TableHead className="py-3 px-4 text-right font-semibold text-[11px] uppercase tracking-wider text-[var(--color-muted)]">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {safeRepos.map((repo) => {
+              const activeSha = repo.active_version_short_sha || '';
+              const isReady = repo.latest_job_status === 'READY' || (activeSha && !repo.latest_job_status);
+              const isIndexing = ['QUEUED', 'FETCHING', 'INDEXING', 'ANALYZING'].includes(repo.latest_job_status || '');
+              const isFailed = repo.latest_job_status === 'FAILED';
 
-              <TableBody className="divide-y divide-[var(--color-border)]">
-                {filteredRepositories.map((repo) => {
-                  const activeSha = repo.active_version_short_sha || '';
-                  return (
-                    <TableRow
-                      key={repo.id}
-                      onClick={() => navigateToRepo(repo.id)}
-                      className="cursor-pointer group hover:bg-[var(--color-raised)]/50 transition-colors"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          navigateToRepo(repo.id);
-                        }
-                      }}
-                      aria-label={`Open repository ${repo.owner}/${repo.name}`}
-                    >
-                      {/* 1. Repository Name & Visibility */}
-                      <TableCell className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="h-8 w-8 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shrink-0 transition-transform group-hover:scale-105"
-                            aria-hidden="true"
+              return (
+                <div
+                  key={repo.id}
+                  className="rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 flex flex-col justify-between gap-4 hover:border-[var(--color-border-strong)] transition-all group"
+                >
+                  <div className="space-y-3">
+                    {/* Header: Title + Status */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className="h-8 w-8 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shrink-0 group-hover:scale-105 transition-transform"
+                          aria-hidden="true"
+                        >
+                          <MaterialIcon name="folder" size={20} fill={1} color="var(--color-mint-accent, #B9E4D0)" />
+                        </div>
+                        <div className="min-w-0">
+                          <button
+                            onClick={() => navigate(`/repositories/${repo.id}`)}
+                            className="font-semibold text-xs text-[var(--color-text)] group-hover:text-[var(--color-mint-accent,#B9E4D0)] transition-colors truncate block text-left cursor-pointer"
+                            title={`${repo.owner}/${repo.name}`}
                           >
-                            <MaterialIcon name="folder" size={20} fill={1} color="var(--color-mint-accent, #B9E4D0)" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 font-semibold text-[var(--color-text)] group-hover:text-[var(--color-mint-accent,#B9E4D0)] transition-colors">
-                              <span className="text-[var(--color-muted)] font-normal">{repo.owner}/</span>
-                              <span className="truncate">{repo.name}</span>
-                              {repo.is_private ? (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] text-[var(--color-muted)] ml-1">
-                                  <MaterialIcon name="lock" size={13} aria-label="Private repository" />
+                            <span className="text-[var(--color-muted)] font-normal">{repo.owner}/</span>
+                            <span>{repo.name}</span>
+                          </button>
+                          <div className="flex items-center gap-1.5 text-[10px] text-[var(--color-muted)] font-mono">
+                            {repo.is_private ? (
+                              <span className="inline-flex items-center gap-0.5">
+                                <MaterialIcon name="lock" size={11} aria-label="Private repository" />
+                                <span>Private</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5">
+                                <MaterialIcon name="public" size={11} aria-label="Public repository" />
+                                <span>Public</span>
+                              </span>
+                            )}
+                            {activeSha && (
+                              <>
+                                <span>·</span>
+                                <span className="inline-flex items-center gap-0.5">
+                                  <MaterialIcon name="commit" size={11} aria-hidden="true" />
+                                  <span>{shortSha(activeSha)}</span>
                                 </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] text-[var(--color-muted)] ml-1">
-                                  <MaterialIcon name="public" size={13} aria-label="Public repository" />
-                                </span>
-                              )}
-                            </div>
+                              </>
+                            )}
                           </div>
                         </div>
-                      </TableCell>
+                      </div>
 
-                      {/* 2. Branch & Commit */}
-                      <TableCell className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px] text-[var(--color-text-secondary)]">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1 text-[var(--color-text)]">
-                            <MaterialIcon name="call_split" size={14} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
-                            <span>main</span>
-                          </span>
+                      {/* Status Chip */}
+                      <div className="shrink-0">
+                        {isReady && <StatusChip status="READY" />}
+                        {isIndexing && <StatusChip status="INDEXING" />}
+                        {isFailed && <StatusChip status="FAILED" />}
+                        {!isReady && !isIndexing && !isFailed && <StatusChip status="NOT_INDEXED" />}
+                      </div>
+                    </div>
 
-                          {activeSha && (
-                            <span className="inline-flex items-center gap-1 text-[var(--color-muted)]">
-                              <MaterialIcon name="commit" size={14} aria-hidden="true" />
-                              <span>{shortSha(activeSha)}</span>
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-
-                      {/* 3. Indexing State */}
-                      <TableCell className="py-3.5 px-4 whitespace-nowrap">
-                        <RepositoryStatusCell
-                          status={repo.latest_job_status}
-                          shortSha={repo.active_version_short_sha}
-                          failureCode={repo.latest_job_failure_code}
-                          onIndex={() => triggerIndex(repo.id)}
-                          onRetry={() => triggerIndex(repo.id)}
-                        />
-                      </TableCell>
-
-                      {/* 4. Last Indexed */}
-                      <TableCell className="py-3.5 px-4 whitespace-nowrap text-[var(--color-muted)] font-mono text-[11px]">
-                        {repo.latest_job_status &&
-                        ['QUEUED', 'FETCHING', 'INDEXING', 'ANALYZING'].includes(repo.latest_job_status) ? (
-                          <span className="text-[var(--color-warning)] flex items-center gap-1">
-                            <MaterialIcon name="sync" size={14} spin aria-hidden="true" />
-                            <span>In progress...</span>
+                    {/* Metadata strip */}
+                    <div className="flex items-center justify-between text-[11px] text-[var(--color-muted)] pt-1 border-t border-[var(--color-border)]/40">
+                      <span className="inline-flex items-center gap-1 font-mono">
+                        <MaterialIcon name="call_split" size={13} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
+                        <span>main</span>
+                      </span>
+                      <span>
+                        {isIndexing ? (
+                          <span className="text-[var(--color-warning)] inline-flex items-center gap-1">
+                            <MaterialIcon name="sync" size={12} spin aria-hidden="true" />
+                            <span>Indexing...</span>
                           </span>
                         ) : repo.last_indexed_at ? (
-                          formatRelativeTime(repo.last_indexed_at)
+                          <span>Indexed {formatRelativeTime(repo.last_indexed_at)}</span>
                         ) : (
-                          <span className="text-[var(--color-muted)]">Never</span>
+                          <span>Not indexed yet</span>
                         )}
-                      </TableCell>
+                      </span>
+                    </div>
+                  </div>
 
-                      {/* 5. Clear Action to Open Repo + Dropdown */}
-                      <TableCell className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <div
-                          className="inline-flex items-center gap-1.5"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => navigate(`/repositories/${repo.id}`)}
-                            className="h-7 px-2.5 text-xs font-medium gap-1 text-[var(--color-text)] hover:text-[var(--color-mint-accent,#B9E4D0)]"
-                            aria-label={`Open repository ${repo.name}`}
-                          >
-                            <span>Open</span>
-                            <MaterialIcon name="arrow_forward" size={14} aria-hidden="true" />
-                          </Button>
+                  {/* Quick-Launch Capability Buttons — Contextually Gated when Ready */}
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-4 gap-1.5 pt-1">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={!isReady}
+                        onClick={() => navigate(`/repositories/${repo.id}/chat`)}
+                        className="h-7 px-1.5 text-[11px] gap-1 font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-mint-accent,#B9E4D0)] justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isReady ? 'Open AI Chat for this repo' : 'Requires completed indexing before querying'}
+                      >
+                        <MaterialIcon name="chat" size={13} aria-hidden="true" />
+                        <span>Chat</span>
+                      </Button>
 
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                title="Repository options"
-                                aria-label={`Options for ${repo.name}`}
-                                className="h-7 w-7 text-[var(--color-muted)] hover:text-[var(--color-text)]"
-                              >
-                                <MaterialIcon name="more_vert" size={16} aria-hidden="true" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44">
-                              <DropdownMenuItem
-                                onClick={() => triggerIndex(repo.id)}
-                                className="cursor-pointer gap-2 text-xs"
-                              >
-                                <MaterialIcon name="sync" size={16} color="var(--color-mint-accent,#B9E4D0)" aria-hidden="true" />
-                                <span>Re-index repo</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => window.open(`https://github.com/${repo.owner}/${repo.name}`, '_blank')}
-                                className="cursor-pointer gap-2 text-xs"
-                              >
-                                <MaterialIcon name="open_in_new" size={16} aria-hidden="true" />
-                                <span>View on GitHub</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setRepoToDelete(repo)}
-                                destructive
-                                className="cursor-pointer gap-2 text-xs text-[var(--color-error)] focus:text-[var(--color-error)]"
-                              >
-                                <MaterialIcon name="delete" size={16} aria-hidden="true" />
-                                <span>Delete repo</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={!isReady}
+                        onClick={() => navigate(`/repositories/${repo.id}/architecture`)}
+                        className="h-7 px-1.5 text-[11px] gap-1 font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-mint-accent,#B9E4D0)] justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isReady ? 'Open Architecture Graph' : 'Requires completed indexing to visualize syntax graph'}
+                      >
+                        <MaterialIcon name="account_tree" size={13} aria-hidden="true" />
+                        <span>Arch</span>
+                      </Button>
+
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={!isReady}
+                        onClick={() => navigate(`/repositories/${repo.id}/search`)}
+                        className="h-7 px-1.5 text-[11px] gap-1 font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-mint-accent,#B9E4D0)] justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isReady ? 'Semantic & Symbol Search' : 'Requires completed indexing for vector search'}
+                      >
+                        <MaterialIcon name="search" size={13} aria-hidden="true" />
+                        <span>Search</span>
+                      </Button>
+
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={!isReady}
+                        onClick={() => navigate(`/repositories/${repo.id}/files`)}
+                        className="h-7 px-1.5 text-[11px] gap-1 font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-mint-accent,#B9E4D0)] justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isReady ? 'Explore Repository Files' : 'Requires completed repository clone'}
+                      >
+                        <MaterialIcon name="folder_open" size={13} aria-hidden="true" />
+                        <span>Files</span>
+                      </Button>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/repositories/${repo.id}`)}
+                      className="w-full h-7 text-xs font-medium gap-1 text-[var(--color-mint-accent,#B9E4D0)] hover:text-[var(--color-mint-hover,#D0F1E0)] hover:bg-[var(--color-raised)]/60 justify-center cursor-pointer"
+                    >
+                      <span>Open Overview</span>
+                      <MaterialIcon name="arrow_forward" size={13} aria-hidden="true" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
 
-      {/* Recent Activity Section (Only shown when real events exist) */}
+      {/* Recent Activity Section */}
       {!loading && !error && recentActivities.length > 0 && (
         <section aria-labelledby="recent-activity-heading" className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
             <h2 id="recent-activity-heading" className="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
-              Recent Repository Activity
+              Recent Activity
             </h2>
-            <span className="text-[11px] font-mono text-[var(--color-muted)]">
-              Live event log
-            </span>
           </div>
 
           <div className="rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 divide-y divide-[var(--color-border)]/60">
@@ -807,7 +632,7 @@ export function DashboardPage() {
 
                   <div className="min-w-0 flex flex-wrap items-center gap-1.5">
                     <button
-                      onClick={() => navigateToRepo(act.repoId)}
+                      onClick={() => navigate(`/repositories/${act.repoId}`)}
                       className="font-semibold text-[var(--color-text)] hover:text-[var(--color-mint-accent,#B9E4D0)] transition truncate cursor-pointer text-left"
                     >
                       {act.owner}/{act.repoName}
@@ -816,10 +641,10 @@ export function DashboardPage() {
                     <span className="text-[var(--color-muted)]">·</span>
 
                     <span className="text-[var(--color-text-secondary)]">
-                      {act.type === 'INDEXED' && 'Successfully indexed AST vectors'}
-                      {act.type === 'INDEXING' && 'Indexing AST symbols and generating embeddings'}
-                      {act.type === 'FAILED' && `Indexing failed: ${act.failureCode || 'Check logs'}`}
-                      {act.type === 'CONNECTED' && 'Repository connected to workspace'}
+                      {act.type === 'INDEXED' && 'Repository indexed'}
+                      {act.type === 'INDEXING' && 'Indexing in progress'}
+                      {act.type === 'FAILED' && `Indexing failed${act.failureCode ? `: ${act.failureCode}` : ''}`}
+                      {act.type === 'CONNECTED' && 'Repository connected'}
                     </span>
 
                     {act.sha && (
@@ -837,8 +662,8 @@ export function DashboardPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => navigateToRepo(act.repoId)}
-                    className="h-6 px-2 text-[11px] text-[var(--color-mint-accent,#B9E4D0)] hover:text-[var(--color-mint-hover,#D0F1E0)]"
+                    onClick={() => navigate(`/repositories/${act.repoId}`)}
+                    className="h-6 px-2 text-[11px] text-[var(--color-mint-accent,#B9E4D0)] hover:text-[var(--color-mint-hover,#D0F1E0)] cursor-pointer"
                   >
                     View
                   </Button>
@@ -855,65 +680,6 @@ export function DashboardPage() {
         onOpenChange={setConnectOpen}
         onConnected={refetch}
       />
-
-      {/* Delete Repository Confirmation Dialog */}
-      <Dialog open={!!repoToDelete} onOpenChange={(open) => !open && !isDeleting && setRepoToDelete(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-[var(--color-error)]">
-              <MaterialIcon name="warning" size={22} fill={1} className="text-[var(--color-error)]" aria-hidden="true" />
-              <span>Delete repository?</span>
-            </DialogTitle>
-            <DialogDescription className="pt-1.5 text-xs text-[var(--color-text-secondary)] leading-relaxed">
-              Are you sure you want to delete{' '}
-              <span className="font-semibold text-[var(--color-text)] font-mono">
-                {repoToDelete?.owner}/{repoToDelete?.name}
-              </span>
-              ? This will remove the repository from your dashboard and hide its indexed data.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4 gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setRepoToDelete(null)}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={isDeleting}
-              onClick={async () => {
-                if (!repoToDelete) return;
-                try {
-                  setIsDeleting(true);
-                  await deleteRepository(repoToDelete.id);
-                  setRepoToDelete(null);
-                } catch {
-                  // Handled by polling error or boundary
-                } finally {
-                  setIsDeleting(false);
-                }
-              }}
-              className="gap-1.5"
-            >
-              {isDeleting ? (
-                <>
-                  <MaterialIcon name="sync" size={16} spin aria-hidden="true" />
-                  <span>Deleting...</span>
-                </>
-              ) : (
-                <>
-                  <MaterialIcon name="delete" size={16} aria-hidden="true" />
-                  <span>Delete repository</span>
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </AnimatedPage>
   );
 }

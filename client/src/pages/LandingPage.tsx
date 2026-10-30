@@ -223,7 +223,7 @@ export function LandingPage() {
                 </Button>
                 <Button size="lg" variant="secondary" asChild className="w-full sm:w-auto">
                   <a href="#how-it-works">
-                    View inspection traces
+                    See how it works
                   </a>
                 </Button>
               </div>
@@ -231,7 +231,7 @@ export function LandingPage() {
               <div className="flex items-center justify-center gap-4 pt-3 text-[11px] text-[var(--color-muted)] font-mono">
                 <span className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" aria-hidden="true" />
-                  Indexed in-memory
+                  Instant search ready
                 </span>
                 <span>Status: <strong className="text-[var(--color-text-secondary)]">Synchronized</strong></span>
               </div>
@@ -305,7 +305,7 @@ export function LandingPage() {
 
                 {/* AST Path */}
                 <div className="text-[10px] font-mono text-[var(--color-muted)] pt-2 flex items-center justify-between border-t border-[var(--color-border)] mt-2">
-                  <span>AST Path: LedgerEngine → 100% lockTx</span>
+                  <span>Source Reference: LedgerEngine → lockTx</span>
                   <span className="text-[var(--color-text-secondary)]">verified</span>
                 </div>
               </div>
@@ -342,7 +342,7 @@ export function LandingPage() {
                   Engineered for forensic codebase verification.
                 </h2>
                 <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] max-w-xl leading-relaxed">
-                  Zero hallucinated file paths. Every semantic query maps to validated compiler-resolved AST nodes and commit snapshots.
+                  Zero hallucinated file paths. Every query maps to validated source code coordinates and commit snapshots.
                 </p>
               </div>
             </FadeUp>

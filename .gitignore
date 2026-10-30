@@ -40,4 +40,5 @@ Thumbs.db
 
 scratch/
 server/scratch/
-server/eval/query_embeddings_cache.json 
+server/eval/query_embeddings_cache.json
+.impeccable/

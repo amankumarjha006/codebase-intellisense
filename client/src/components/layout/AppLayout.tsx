@@ -17,7 +17,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '../ui/button';
 import { Drawer, DrawerContent } from '../ui/drawer';
 import { SkipToContent } from '../ui/A11y';
-import { SpectralDrape } from '../ui/spectral-drape';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { realApi, RepositoryListItemOut } from '../../lib/api';
@@ -88,10 +87,7 @@ export function AppLayout() {
       }
 
       if (!isInput) {
-        if (e.key === '/') {
-          e.preventDefault();
-          setCommandOpen(true);
-        } else if (e.key === '?') {
+        if (e.key === '?') {
           e.preventDefault();
           setShortcutsOpen((prev) => !prev);
         }
@@ -147,10 +143,10 @@ export function AppLayout() {
   // Back navigation handler: return to repository list or restore context
   const handleBackToRepositories = React.useCallback(() => {
     const navState = location.state as { from?: string; search?: string; filter?: string } | null;
-    if (navState?.from && navState.from.startsWith('/dashboard')) {
+    if (navState?.from) {
       navigate(navState.from, { state: navState });
     } else {
-      navigate('/dashboard');
+      navigate('/repositories');
     }
   }, [location.state, navigate]);
 
@@ -238,55 +234,41 @@ export function AppLayout() {
                 <MaterialIcon name="menu" size={22} />
               </button>
 
-              {/* Back Navigation & Breadcrumbs / Context */}
-              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                {currentRepoId && (
+              {/* Contextual Breadcrumb Navigation */}
+              <nav className="flex items-center gap-2 text-xs min-w-0" aria-label="Breadcrumb">
+                {currentRepoId ? (
                   <>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleBackToRepositories}
-                          className="h-8 px-2 sm:px-2.5 gap-1.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)] border border-transparent hover:border-[var(--color-border)] rounded-[var(--radius-control)] transition-colors focus-visible:ring-1 focus-visible:ring-[var(--color-mint-accent,#B9E4D0)] cursor-pointer shrink-0"
-                          aria-label="Back to repositories"
-                        >
-                          <MaterialIcon name="arrow_back" size={18} aria-hidden="true" />
-                          <span className="hidden sm:inline font-medium">Back to repositories</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="sm:hidden text-xs">
-                        Back to repositories
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <span className="text-[var(--color-border-strong)] hidden sm:inline select-none" aria-hidden="true">|</span>
+                    <button
+                      onClick={handleBackToRepositories}
+                      className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors flex items-center gap-1 shrink-0 font-medium cursor-pointer"
+                      title="Return to repositories dashboard"
+                    >
+                      <MaterialIcon name="arrow_back" size={16} aria-hidden="true" />
+                      <span>Repositories</span>
+                    </button>
+                    <span className="text-[var(--color-border-strong)] select-none" aria-hidden="true">/</span>
+                    <div className="flex items-center gap-1.5 font-medium text-[var(--color-text)] truncate">
+                      <MaterialIcon name="folder" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" className="shrink-0" />
+                      <span className="truncate font-semibold">{currentRepo ? `${currentRepo.owner}/${currentRepo.name}` : 'Repository'}</span>
+                    </div>
+                    {currentRepo?.is_private ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono text-[var(--color-muted)] border border-[var(--color-border)]">
+                        <MaterialIcon name="lock" size={10} aria-hidden="true" />
+                        <span>Private</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono text-[var(--color-muted)] border border-[var(--color-border)]">
+                        <MaterialIcon name="public" size={10} aria-hidden="true" />
+                        <span>Public</span>
+                      </span>
+                    )}
                   </>
+                ) : (
+                  <span className="font-semibold text-sm text-[var(--color-text)] truncate">
+                    {location.pathname === '/dashboard' ? 'Dashboard' : location.pathname.startsWith('/repositories') ? 'Repositories' : 'Codebase Intellisense'}
+                  </span>
                 )}
-
-                <nav className="flex items-center gap-2 text-xs min-w-0" aria-label="Breadcrumb">
-                  {currentRepoId ? (
-                    <>
-                      <Link
-                        to="/dashboard"
-                        state={location.state}
-                        className="text-[var(--color-muted)] hover:text-[var(--color-mint-accent,#B9E4D0)] transition-colors underline-offset-2 hover:underline hidden sm:inline shrink-0"
-                      >
-                        Repositories
-                      </Link>
-                      <span className="text-[var(--color-border-strong)] hidden sm:inline select-none" aria-hidden="true">/</span>
-                      <div className="flex items-center gap-1.5 font-medium text-[var(--color-text)] truncate">
-                        <MaterialIcon name="folder" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" className="shrink-0" />
-                        <span className="truncate">{currentRepo ? `${currentRepo.owner}/${currentRepo.name}` : 'Repository'}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <span className="font-medium text-[var(--color-text)] truncate">
-                      {location.pathname === '/dashboard' ? 'Repository Overview' : 'Codebase Intellisense'}
-                    </span>
-                  )}
-                </nav>
-              </div>
+              </nav>
             </div>
 
             {/* Quick Actions */}
@@ -303,7 +285,7 @@ export function AppLayout() {
                 </kbd>
               </button>
 
-              {location.pathname !== '/dashboard' && (
+              {location.pathname !== '/dashboard' && location.pathname !== '/repositories' && (
                 <Button
                   size="sm"
                   variant="primary"
@@ -325,19 +307,9 @@ export function AppLayout() {
             tabIndex={-1}
             role="main"
           >
-            {/* Ambient Background: Spectral Drape with subtle low brightness */}
-            <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
-              <SpectralDrape
-                backgroundColor="transparent"
-                colors={['#8AB4F8', '#5E97F6']}
-                intensity={0.42}
-                density={0.75}
-                softness={0.7}
-                speed={0.4}
-                flow={0.5}
-                interactive={false}
-                className="w-full h-full opacity-10"
-              />
+            {/* Ambient Background: Subtle gradient mesh */}
+            <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(138,180,248,0.06),transparent_70%),radial-gradient(ellipse_60%_40%_at_85%_10%,rgba(185,228,208,0.035),transparent_60%)]" />
             </div>
 
             <ErrorBoundary>

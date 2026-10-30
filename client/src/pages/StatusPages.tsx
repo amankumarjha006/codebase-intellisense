@@ -57,7 +57,7 @@ export function ServiceUnavailablePage() {
             503 — Service Temporarily Unavailable
           </h1>
           <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
-            The Codebase Intellisense workers or pgvector instances are currently performing maintenance. Please retry in a few moments.
+            The service is currently undergoing brief maintenance. Please retry in a few moments.
           </p>
         </div>
         <div className="pt-2 flex items-center justify-center gap-3">

@@ -15,13 +15,13 @@ import { AnimatedPage } from '../components/ui/AnimatedPage';
 import { LiveRegion } from '../components/ui/A11y';
 
 const SUGGESTED_QUERIES = [
-  'ast_chunker',
-  'retrieval',
-  'repository',
-  'service',
-  'embedding',
-  'auth',
+  'authentication',
+  'database',
+  'api',
+  'handler',
   'config',
+  'service',
+  'utils',
 ];
 
 export function SearchPage() {
@@ -180,7 +180,7 @@ export function SearchPage() {
                 <MaterialIcon name="warning" size={18} fill={1} className="shrink-0 text-[var(--color-warning)]" aria-hidden="true" />
                 <div>
                   <span className="font-semibold">Repository indexing required.</span>{' '}
-                  Code search queries the AST symbol and vector representation of the repository. Current status:{' '}
+                  Code search requires an indexed repository to find symbols and functions. Current status:{' '}
                   <StatusChip status={repository.latest_job_status} size="sm" className="inline-flex ml-1" />
                 </div>
               </div>

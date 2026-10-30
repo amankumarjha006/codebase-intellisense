@@ -68,12 +68,12 @@ export function ArchitecturePage() {
 
   const handleStartGeneration = async () => {
     setGenerating(true);
-    setA11yStatus('Synthesizing system architecture from Tree-sitter AST nodes...');
+    setA11yStatus('Generating repository architecture map...');
     await sleep(1200);
     const archDoc = await api.getArchitectureDocument(repoId || '');
     setDoc(archDoc);
     setGenerating(false);
-    setA11yStatus('Architecture synthesis complete.');
+    setA11yStatus('Architecture map generated.');
     if (archDoc.sections.length > 0 && archDoc.sections[0]) {
       setActiveSectionId(archDoc.sections[0].id);
     }

@@ -4,7 +4,7 @@ Explicitly activates server/.venv before starting backend services.
 
 Usage:
     python dev.py             # Starts backend, frontend, and indexing worker (default)
-    python dev.py --no-worker # Starts backend and frontend without indexing worker
+    python dev.py --no-worker # Starts backend and frontend without docindexing worker
 """
 
 import argparse
