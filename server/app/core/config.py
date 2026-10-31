@@ -50,9 +50,9 @@ class Settings(BaseSettings):
     EMBEDDING_MAX_RETRIES: int = 4
     EMBEDDING_CHARS_PER_TOKEN: int = 3
 
-    # Batch limits (0 delay and 64 items for local fastembed)
-    EMBEDDING_MAX_BATCH_ITEMS: int = 64
-    EMBEDDING_MAX_BATCH_TOKENS: int = 16384
+    # Batch limits (0 delay and 16 items for memory safety on 8GB PC)
+    EMBEDDING_MAX_BATCH_ITEMS: int = 16
+    EMBEDDING_MAX_BATCH_TOKENS: int = 4000
     EMBEDDING_MIN_INTERVAL_SECONDS: float = 0.0
 
     # LLM Configuration
