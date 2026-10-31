@@ -97,7 +97,16 @@ def get_authorized_repository(
     return repository
 
 
-def get_retrieval_service(db: Session = Depends(get_db)):
+def get_embedding_provider_dep():
+    """Dependency for obtaining the configured embedding provider."""
+    from app.services.embedding.factory import get_embedding_provider
+    return get_embedding_provider(settings)
+
+
+def get_retrieval_service(
+    db: Session = Depends(get_db),
+    provider = Depends(get_embedding_provider_dep),
+):
     """Dependency for constructing the hybrid retrieval service."""
     from app.repositories.knowledge import KnowledgeRepository
     from app.services.retrieval import (
@@ -107,14 +116,8 @@ def get_retrieval_service(db: Session = Depends(get_db)):
         HybridRetrievalStrategy,
     )
     from app.services.embedding.service import EmbeddingService
-    from app.services.embedding.gemini import GeminiEmbeddingProvider
 
     knowledge_repo = KnowledgeRepository(db)
-    provider = GeminiEmbeddingProvider(
-        api_key=settings.GEMINI_API_KEY,
-        model=settings.EMBEDDING_MODEL,
-        dimension=settings.EMBEDDING_DIMENSION,
-    )
     embedding_service = EmbeddingService(knowledge_repo, provider)
     semantic_strategy = SemanticRetrievalStrategy(knowledge_repo, embedding_service)
     keyword_strategy = KeywordRetrievalStrategy(knowledge_repo)
@@ -149,4 +152,3 @@ def get_rag_query_service(
         citation_service=citation_service,
         answer_service=answer_service,
     )
-

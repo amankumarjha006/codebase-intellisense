@@ -44,16 +44,16 @@ class Settings(BaseSettings):
     CONTEXT_MAX_CHARS: int = 16000
 
     # Embedding Configuration
-    EMBEDDING_PROVIDER: str = "google"
-    EMBEDDING_MODEL: str = "gemini-embedding-2"
+    EMBEDDING_PROVIDER: str = "fastembed"
+    EMBEDDING_MODEL: str = "nomic-ai/nomic-embed-text-v1.5-Q"
     EMBEDDING_DIMENSION: int = 768
     EMBEDDING_MAX_RETRIES: int = 4
     EMBEDDING_CHARS_PER_TOKEN: int = 3
 
-    # Batch limits tuned for Gemini free tier (30,000 tokens/min limit)
-    EMBEDDING_MAX_BATCH_ITEMS: int = 16
-    EMBEDDING_MAX_BATCH_TOKENS: int = 3000
-    EMBEDDING_MIN_INTERVAL_SECONDS: float = 12.0
+    # Batch limits (0 delay and 64 items for local fastembed)
+    EMBEDDING_MAX_BATCH_ITEMS: int = 64
+    EMBEDDING_MAX_BATCH_TOKENS: int = 16384
+    EMBEDDING_MIN_INTERVAL_SECONDS: float = 0.0
 
     # LLM Configuration
     LLM_PRIMARY_PROVIDER: str = "gemini"

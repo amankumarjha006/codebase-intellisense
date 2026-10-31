@@ -41,7 +41,11 @@ def mock_gemini(mocker):
     from tests.services.test_embedding_service import FakeEmbeddingProvider
     fake_provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
     mocker.patch("app.services.embedding.gemini.GeminiEmbeddingProvider", return_value=fake_provider)
-    return fake_provider
+    from app.api.deps import get_embedding_provider_dep
+    mocker.patch("app.services.embedding.factory.get_embedding_provider", return_value=fake_provider)
+    app.dependency_overrides[get_embedding_provider_dep] = lambda: fake_provider
+    yield fake_provider
+    app.dependency_overrides.pop(get_embedding_provider_dep, None)
 
 @pytest_asyncio.fixture
 async def async_client_integration(db_session, mock_redis, mock_gemini):
