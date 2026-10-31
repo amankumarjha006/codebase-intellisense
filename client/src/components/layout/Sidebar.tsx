@@ -7,6 +7,7 @@ import { cn } from '../../lib/utils';
 import { realApi, RepositoryListItemOut } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { deriveUserDisplay } from '../../lib/user';
+import { usePinnedRepos } from '../../lib/pinnedRepos';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +35,18 @@ export function Sidebar({
   const { user, logout } = useAuth();
   const userDisplay = deriveUserDisplay(user);
   const [repositories, setRepositories] = React.useState<RepositoryListItemOut[]>([]);
+  const { isPinned, unpin, initIfEmpty } = usePinnedRepos();
+
+  // Initialize with connected repositories if no preferences exist yet
+  React.useEffect(() => {
+    if (repositories.length > 0) {
+      initIfEmpty(repositories.map((r) => r.id));
+    }
+  }, [repositories, initIfEmpty]);
+
+  const pinnedRepositories = React.useMemo(() => {
+    return repositories.filter((r) => isPinned(r.id));
+  }, [repositories, isPinned]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -232,101 +245,151 @@ export function Sidebar({
           )}
         </div>
 
-        {/* Connected Repositories Section */}
+        {/* Pinned Repositories Section */}
         {repositories.length > 0 && (
-          <div role="list" aria-label="Connected repositories">
+          <div role="list" aria-label="Pinned repositories">
             {!collapsed && (
               <div className="px-2.5 mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
-                <span>Pinned Repositories</span>
-                <span className="font-mono text-[9px]">{repositories.length}</span>
+                <span className="flex items-center gap-1.5">
+                  <MaterialIcon name="push_pin" size={12} fill={1} color="var(--color-mint-accent,#B9E4D0)" aria-hidden="true" />
+                  <span>Pinned Repositories</span>
+                </span>
+                <span className="font-mono text-[9px] text-[var(--color-mint-accent,#B9E4D0)] font-semibold">{pinnedRepositories.length}</span>
               </div>
             )}
 
-            <div className="space-y-0.5">
-              {repositories.slice(0, 10).map((repo) => {
-                const isSelected = location.pathname.startsWith(`/repositories/${repo.id}`);
-                const isReady = repo.latest_job_status === 'READY' || (repo.active_version_short_sha && !repo.latest_job_status);
-                const isIndexing = repo.latest_job_status === 'INDEXING' || repo.latest_job_status === 'FETCHING' || repo.latest_job_status === 'QUEUED';
-                const isFailed = repo.latest_job_status === 'FAILED';
-
-                const linkElement = (
+            {pinnedRepositories.length === 0 ? (
+              !collapsed && (
+                <div className="px-2.5 py-2.5 mx-1 text-center border border-dashed border-[var(--color-border)] rounded-[var(--radius-control)] space-y-1">
+                  <p className="text-[11px] text-[var(--color-muted)]">No pinned repositories</p>
                   <NavLink
-                    key={repo.id}
-                    to={`/repositories/${repo.id}`}
-                    className={cn(
-                      'group flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
-                      isSelected
-                        ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
-                        : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60',
-                      collapsed && 'justify-center p-2'
-                    )}
+                    to="/repositories"
+                    className="text-[10px] text-[var(--color-mint-accent,#B9E4D0)] hover:underline inline-flex items-center gap-1 font-medium"
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <MaterialIcon
-                        name="folder"
-                        active={isSelected}
-                        size={20}
-                        className={cn(
-                          'shrink-0 transition-colors',
-                          !isSelected && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
-                        )}
-                        aria-hidden={true}
-                      />
-                      {!collapsed && (
-                        <span className={cn('truncate', isSelected && 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]')}>
-                          {repo.name}
-                        </span>
-                      )}
-                    </div>
+                    <span>Pin from catalog</span>
+                    <MaterialIcon name="arrow_forward" size={10} aria-hidden="true" />
+                  </NavLink>
+                </div>
+              )
+            ) : (
+              <div className="space-y-0.5">
+                {pinnedRepositories.slice(0, 10).map((repo) => {
+                  const isSelected = location.pathname.startsWith(`/repositories/${repo.id}`);
+                  const isReady = repo.latest_job_status === 'READY' || (repo.active_version_short_sha && !repo.latest_job_status);
+                  const isIndexing = repo.latest_job_status === 'INDEXING' || repo.latest_job_status === 'FETCHING' || repo.latest_job_status === 'QUEUED';
+                  const isFailed = repo.latest_job_status === 'FAILED';
 
-                    {!collapsed && (
-                      <div className="shrink-0 flex items-center">
-                        {isReady && (
-                          <MaterialIcon
-                            name="check_circle"
-                            size={16}
-                            fill={1}
-                            color="var(--color-mint-accent, #B9E4D0)"
-                            aria-label="Ready"
-                          />
-                        )}
-                        {isIndexing && (
-                          <MaterialIcon
-                            name="sync"
-                            size={16}
-                            spin
-                            color="var(--color-warning)"
-                            aria-label="Indexing"
-                          />
-                        )}
-                        {isFailed && (
-                          <MaterialIcon
-                            name="error"
-                            size={16}
-                            fill={1}
-                            color="var(--color-error)"
-                            aria-label="Failed"
-                          />
+                  const linkElement = (
+                    <NavLink
+                      key={repo.id}
+                      to={`/repositories/${repo.id}`}
+                      className={cn(
+                        'group relative flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
+                        isSelected
+                          ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
+                          : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60',
+                        collapsed && 'justify-center p-2'
+                      )}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <MaterialIcon
+                          name="folder"
+                          active={isSelected}
+                          size={20}
+                          className={cn(
+                            'shrink-0 transition-colors',
+                            !isSelected && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
+                          )}
+                          aria-hidden="true"
+                        />
+                        {!collapsed && (
+                          <span className={cn('truncate', isSelected && 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]')}>
+                            {repo.name}
+                          </span>
                         )}
                       </div>
-                    )}
-                  </NavLink>
-                );
 
-                if (collapsed) {
-                  return (
-                    <Tooltip key={repo.id}>
-                      <TooltipTrigger asChild>{linkElement}</TooltipTrigger>
-                      <TooltipContent side="right">
-                        <span>{repo.owner}/{repo.name}</span>
-                      </TooltipContent>
-                    </Tooltip>
+                      {!collapsed && (
+                        <div className="shrink-0 flex items-center gap-1">
+                          {/* Unpin button appears on hover */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              unpin(repo.id);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--color-muted)] hover:text-[var(--color-error)] transition-all cursor-pointer"
+                            title={`Unpin ${repo.name} from sidebar`}
+                            aria-label={`Unpin ${repo.name} from sidebar`}
+                          >
+                            <MaterialIcon name="push_pin" size={13} fill={1} aria-hidden="true" />
+                          </button>
+
+                          {/* Status Indicator (hidden on hover when unpin button appears) */}
+                          <div className="group-hover:hidden">
+                            {isReady && (
+                              <MaterialIcon
+                                name="check_circle"
+                                size={15}
+                                fill={1}
+                                color="var(--color-mint-accent, #B9E4D0)"
+                                aria-label="Ready"
+                              />
+                            )}
+                            {isIndexing && (
+                              <MaterialIcon
+                                name="sync"
+                                size={15}
+                                spin
+                                color="var(--color-warning)"
+                                aria-label="Indexing"
+                              />
+                            )}
+                            {isFailed && (
+                              <MaterialIcon
+                                name="error"
+                                size={15}
+                                fill={1}
+                                color="var(--color-error)"
+                                aria-label="Failed"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </NavLink>
                   );
-                }
 
-                return linkElement;
-              })}
-            </div>
+                  if (collapsed) {
+                    return (
+                      <Tooltip key={repo.id}>
+                        <TooltipTrigger asChild>{linkElement}</TooltipTrigger>
+                        <TooltipContent side="right">
+                          <div className="flex items-center gap-2">
+                            <span>{repo.owner}/{repo.name}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                unpin(repo.id);
+                              }}
+                              className="text-[var(--color-muted)] hover:text-[var(--color-error)] cursor-pointer"
+                              title="Unpin from sidebar"
+                            >
+                              <MaterialIcon name="push_pin" size={12} fill={1} />
+                            </button>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  }
+
+                  return linkElement;
+                })}
+              </div>
+            )}
           </div>
         )}
 

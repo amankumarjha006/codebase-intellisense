@@ -7,6 +7,7 @@ import { api } from '../../lib/api';
 import { StatusChip } from '../ui/badge';
 import { motion } from 'motion/react';
 import * as React from 'react';
+import { usePinnedRepos } from '../../lib/pinnedRepos';
 
 interface RepositoryHeaderProps {
   repository: Repository;
@@ -21,6 +22,7 @@ export function RepositoryHeader({
 }: RepositoryHeaderProps) {
   const location = useLocation();
   const [reindexing, setReindexing] = React.useState(false);
+  const { isPinned, togglePin } = usePinnedRepos();
 
   const handleReindex = async () => {
     setReindexing(true);
@@ -162,6 +164,26 @@ export function RepositoryHeader({
           </div>
 
           <StatusChip status={repoStatus} size="sm" />
+
+          <Button
+            size="sm"
+            variant={isPinned(repository.id) ? 'secondary' : 'outline'}
+            onClick={() => togglePin(repository.id)}
+            className="h-7 text-xs gap-1.5 cursor-pointer"
+            title={isPinned(repository.id) ? 'Unpin repository from sidebar' : 'Pin repository to sidebar'}
+            aria-label={isPinned(repository.id) ? 'Unpin repository from sidebar' : 'Pin repository to sidebar'}
+          >
+            <MaterialIcon
+              name="push_pin"
+              size={13}
+              fill={isPinned(repository.id) ? 1 : 0}
+              color={isPinned(repository.id) ? 'var(--color-mint-accent,#B9E4D0)' : undefined}
+              aria-hidden="true"
+            />
+            <span className="hidden sm:inline">
+              {isPinned(repository.id) ? 'Pinned' : 'Pin'}
+            </span>
+          </Button>
 
           <a
             href={githubUrl}

@@ -36,6 +36,7 @@ import { useRepositoryPolling } from '../lib/useRepositoryPolling';
 import { AnimatedPage } from '../components/ui/AnimatedPage';
 import { LiveRegion } from '../components/ui/A11y';
 import { useAuth } from '../lib/AuthContext';
+import { usePinnedRepos } from '../lib/pinnedRepos';
 import { motion } from 'motion/react';
 
 type StatusFilter = 'ALL' | 'READY' | 'ACTIVE' | 'FAILED';
@@ -44,6 +45,7 @@ export function RepositoriesPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { markSessionExpired } = useAuth();
+  const { isPinned, togglePin } = usePinnedRepos();
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   // Restore previous search/filter context if returning from repository navigation
@@ -618,6 +620,20 @@ export function RepositoriesPage() {
                               <div className="flex items-center gap-1.5 font-semibold text-xs sm:text-sm text-[var(--color-text)] group-hover:text-[var(--color-mint-accent,#B9E4D0)] transition-colors">
                                 <span className="text-[var(--color-muted)] font-normal font-mono">{repo.owner}/</span>
                                 <span className="truncate">{repo.name}</span>
+                                {isPinned(repo.id) && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      togglePin(repo.id);
+                                    }}
+                                    title="Pinned to sidebar (click to unpin)"
+                                    aria-label={`Unpin ${repo.name}`}
+                                    className="text-[var(--color-mint-accent,#B9E4D0)] hover:text-[var(--color-muted)] transition-colors p-0.5 cursor-pointer inline-flex items-center"
+                                  >
+                                    <MaterialIcon name="push_pin" size={13} fill={1} color="var(--color-mint-accent,#B9E4D0)" aria-hidden="true" />
+                                  </button>
+                                )}
                                 {repo.is_private ? (
                                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono text-[var(--color-muted)] bg-[var(--color-raised)] border border-[var(--color-border)] ml-1">
                                     <MaterialIcon name="lock" size={11} aria-label="Private repository" />
@@ -710,7 +726,21 @@ export function RepositoriesPage() {
                                   <MaterialIcon name="more_vert" size={16} aria-hidden="true" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuContent align="end" className="w-52">
+                                <DropdownMenuItem
+                                  onClick={() => togglePin(repo.id)}
+                                  className="cursor-pointer gap-2 text-xs"
+                                >
+                                  <MaterialIcon
+                                    name="push_pin"
+                                    size={16}
+                                    fill={isPinned(repo.id) ? 1 : 0}
+                                    color={isPinned(repo.id) ? 'var(--color-mint-accent,#B9E4D0)' : 'var(--color-muted)'}
+                                    aria-hidden="true"
+                                  />
+                                  <span>{isPinned(repo.id) ? 'Unpin from sidebar' : 'Pin to sidebar'}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   onClick={() => triggerIndex(repo.id)}
                                   className="cursor-pointer gap-2 text-xs"
