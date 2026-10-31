@@ -1,3 +1,4 @@
+import re
 import logging
 import os
 import hashlib
@@ -268,9 +269,12 @@ def clone_repository(clone_url: str, target_dir: str, branch: str = "main", gith
         env["GIT_CONFIG_VALUE_0"] = header_val
         env["GIT_CONFIG_PARAMETERS"] = f"'http.extraHeader={header_val}'"
 
+    if branch.startswith("-") or not re.match(r"^[a-zA-Z0-9._/-]+$", branch):
+        raise GitError(f"Invalid branch name format: {branch}")
+
     try:
         result = subprocess.run(
-            ["git", "clone", "--depth", "1", "--branch", branch, clone_url, target_dir],
+            ["git", "clone", "--depth", "1", "--branch", branch, "--", clone_url, target_dir],
             capture_output=True,
             text=True,
             timeout=300,

@@ -119,6 +119,7 @@ def main() -> None:
         print(f"  Worker:       Background Indexing Worker (active)")
     else:
         print(f"  Worker:       Disabled (--no-worker)")
+    print("  Note: Worker changes require restarting dev.py (FastAPI auto-reloads)")
     print("  Press Ctrl+C to stop all processes")
     print("=" * 65)
 

@@ -330,6 +330,14 @@ class TestRepositoryAnalyzeRequest:
         with pytest.raises(ValidationError):
             RepositoryAnalyzeRequest(branch="   ")
 
+    def test_branch_starting_with_dash_invalid(self):
+        with pytest.raises(ValidationError):
+            RepositoryAnalyzeRequest(branch="--upload-pack=evil")
+
+    def test_branch_with_shell_characters_invalid(self):
+        with pytest.raises(ValidationError):
+            RepositoryAnalyzeRequest(branch="main; evil_cmd")
+
 
 # ---------------------------------------------------------------------------
 # AnalyzeRepositoryOut

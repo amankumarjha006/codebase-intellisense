@@ -1,3 +1,4 @@
+import redis.asyncio as redis
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -5,6 +6,7 @@ from uuid import UUID
 
 from app.api.deps import (
     get_db,
+    get_redis,
     get_current_user,
     get_authorized_repository,
     get_retrieval_service,
@@ -48,7 +50,7 @@ from app.services.repository import (
     parse_github_url,
 )
 from app.services.github import GithubAuthError
-from app.workers import enqueue_indexing_job
+from app.workers import enqueue_indexing_job, enqueue_indexing_job_async
 
 from app.services.rag_query.service import RAGQueryService
 from app.services.rag_query.models import RAGQueryRequest
@@ -630,7 +632,9 @@ async def analyze_repository(
     current_user: User = Depends(get_current_user),
     repository: Repository = Depends(get_authorized_repository),
     db: Session = Depends(get_db),
-    _: None = Depends(general_rate_limiter),):
+    redis_client: redis.Redis = Depends(get_redis),
+    _: None = Depends(general_rate_limiter),
+):
     github_account = None
     if current_user.github_accounts:
         github_account = next(
@@ -686,7 +690,7 @@ async def analyze_repository(
             repository=repository, branch=branch, commit_sha=commit_sha
         )
         
-        enqueue_indexing_job(job.id)
+        await enqueue_indexing_job_async(job.id, redis_client)
         
         return AnalyzeRepositoryOut(
             job_id=job.id,

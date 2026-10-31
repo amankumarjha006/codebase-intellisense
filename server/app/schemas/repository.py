@@ -1,3 +1,4 @@
+import re
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Any, TYPE_CHECKING
 
@@ -83,8 +84,12 @@ class RepositoryAnalyzeRequest(BaseModel):
     @field_validator("branch")
     @classmethod
     def validate_branch(cls, v: str | None) -> str | None:
-        if v is not None and (not v or not v.strip()):
-            raise ValueError("Branch cannot be empty or whitespace if provided")
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("Branch cannot be empty or whitespace if provided")
+            if v.startswith("-") or not re.match(r"^[a-zA-Z0-9._/-]+$", v):
+                raise ValueError("Invalid branch name format")
         return v
 
 class AnalyzeRepositoryOut(BaseModel):

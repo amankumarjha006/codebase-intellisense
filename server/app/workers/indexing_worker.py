@@ -4,7 +4,7 @@ import sys
 import threading
 import time
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Any
 from uuid import UUID
 
 import redis
@@ -325,9 +325,18 @@ class IndexingWorker:
 
 
 def enqueue_indexing_job(job_id: UUID) -> None:
-    """Add an indexing job to the Redis queue."""
+    """Add an indexing job to the Redis queue synchronously."""
     redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
-    redis_client.rpush(QUEUE_NAME, str(job_id))
+    try:
+        redis_client.rpush(QUEUE_NAME, str(job_id))
+        logger.info(f"Enqueued indexing job {job_id}")
+    finally:
+        redis_client.close()
+
+
+async def enqueue_indexing_job_async(job_id: UUID, redis_client: Any) -> None:
+    """Add an indexing job to the Redis queue asynchronously using an existing async Redis client."""
+    await redis_client.rpush(QUEUE_NAME, str(job_id))
     logger.info(f"Enqueued indexing job {job_id}")
 
 

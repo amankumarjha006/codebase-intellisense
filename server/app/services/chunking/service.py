@@ -49,7 +49,11 @@ class ChunkBuilderService:
         # Assuming we can query them from db.
         # Alternatively, we could fetch them per file.
         from sqlalchemy import select
-        stmt = select(Symbol).where(Symbol.file_id.in_(file_ids))
+        stmt = (
+            select(Symbol)
+            .join(File, Symbol.file_id == File.id)
+            .where(File.repository_version_id == version.id)
+        )
         all_symbols = list(self.knowledge_repo.db.execute(stmt).scalars().all())
         
         symbols_by_file = {}

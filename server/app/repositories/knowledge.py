@@ -19,12 +19,14 @@ class KnowledgeRepository:
 
     def delete_symbols_for_files(self, file_ids: list[UUID]) -> None:
         """
-        Delete all symbols associated with the given file IDs.
+        Delete all symbols associated with the given file IDs in safe batches.
         """
         if not file_ids:
             return
-        stmt = delete(Symbol).where(Symbol.file_id.in_(file_ids))
-        self.db.execute(stmt)
+        for i in range(0, len(file_ids), 1000):
+            batch = file_ids[i : i + 1000]
+            stmt = delete(Symbol).where(Symbol.file_id.in_(batch))
+            self.db.execute(stmt)
         self.db.flush()
 
     def bulk_create_symbols(self, symbols: list[Symbol]) -> list[Symbol]:
@@ -38,12 +40,14 @@ class KnowledgeRepository:
 
     def delete_chunks_for_files(self, file_ids: list[UUID]) -> None:
         """
-        Delete all code chunks associated with the given file IDs.
+        Delete all code chunks associated with the given file IDs in safe batches.
         """
         if not file_ids:
             return
-        stmt = delete(CodeChunk).where(CodeChunk.file_id.in_(file_ids))
-        self.db.execute(stmt)
+        for i in range(0, len(file_ids), 1000):
+            batch = file_ids[i : i + 1000]
+            stmt = delete(CodeChunk).where(CodeChunk.file_id.in_(batch))
+            self.db.execute(stmt)
         self.db.flush()
 
     def bulk_create_code_chunks(self, chunks: list[CodeChunk]) -> list[CodeChunk]:
