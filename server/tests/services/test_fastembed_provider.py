@@ -7,11 +7,11 @@ from app.services.indexing import EmbeddingError
 
 def test_fastembed_provider_init():
     provider = FastEmbedProvider(
-        model_name="nomic-ai/nomic-embed-text-v1.5-Q",
+        model_name="BAAI/bge-base-en-v1.5",
         dimension=768,
         threads=2,
     )
-    assert provider.model_name == "nomic-ai/nomic-embed-text-v1.5-Q"
+    assert provider.model_name == "BAAI/bge-base-en-v1.5"
     assert provider.dimension == 768
     assert provider.threads == 2
 
@@ -22,7 +22,7 @@ def test_fastembed_provider_empty():
 
 
 def test_fastembed_provider_embed_real():
-    provider = FastEmbedProvider(model_name="nomic-ai/nomic-embed-text-v1.5-Q", dimension=768)
+    provider = FastEmbedProvider(model_name="BAAI/bge-base-en-v1.5", dimension=768)
     texts = [
         "def add(a: int, b: int) -> int:\n    return a + b",
         "class KnowledgeRepository:\n    def get_by_id(self, id): pass"
@@ -37,7 +37,7 @@ def test_fastembed_provider_embed_real():
 def test_fastembed_factory():
     settings = Settings(
         EMBEDDING_PROVIDER="fastembed",
-        EMBEDDING_MODEL="nomic-ai/nomic-embed-text-v1.5-Q",
+        EMBEDDING_MODEL="BAAI/bge-base-en-v1.5",
         EMBEDDING_DIMENSION=768,
     )
     provider = get_embedding_provider(settings)
@@ -46,7 +46,7 @@ def test_fastembed_factory():
     # Test alias 'local'
     settings_local = Settings(
         EMBEDDING_PROVIDER="local",
-        EMBEDDING_MODEL="nomic-ai/nomic-embed-text-v1.5-Q",
+        EMBEDDING_MODEL="BAAI/bge-base-en-v1.5",
         EMBEDDING_DIMENSION=768,
     )
     provider_local = get_embedding_provider(settings_local)

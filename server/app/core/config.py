@@ -45,7 +45,7 @@ class Settings(BaseSettings):
 
     # Embedding Configuration
     EMBEDDING_PROVIDER: str = "fastembed"
-    EMBEDDING_MODEL: str = "nomic-ai/nomic-embed-text-v1.5-Q"
+    EMBEDDING_MODEL: str = "BAAI/bge-base-en-v1.5"
     EMBEDDING_DIMENSION: int = 768
     EMBEDDING_MAX_RETRIES: int = 4
     EMBEDDING_CHARS_PER_TOKEN: int = 3

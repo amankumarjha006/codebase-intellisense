@@ -43,7 +43,7 @@ class FastEmbedProvider(EmbeddingProvider):
 
     def __init__(
         self,
-        model_name: str = "nomic-ai/nomic-embed-text-v1.5-Q",
+        model_name: str = "BAAI/bge-base-en-v1.5",
         dimension: int = 768,
         threads: Optional[int] = None,
         batch_size: Optional[int] = None,
