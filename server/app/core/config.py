@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     CHUNK_MAX_CHARS: int = 4096
     
     # Retrieval Configuration
-    CONTEXT_MAX_CHARS: int = 16000
+    CONTEXT_MAX_CHARS: int = 32000
 
     # Embedding Configuration
     EMBEDDING_PROVIDER: str = "fastembed"

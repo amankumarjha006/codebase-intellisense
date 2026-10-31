@@ -7,6 +7,7 @@ from typing import AsyncGenerator
 import redis.asyncio as redis
 
 from app.core.retry import RetryExecutor
+from app.core.config import settings
 
 from app.models.conversation import Message, Citation
 from app.repositories.conversation import ConversationRepository
@@ -167,7 +168,7 @@ class ConversationStreamingService:
             retrieval_req = RetrievalRequest(
                 repository_version_id=version_id,
                 query=retrieval_query,
-                limit=10  # use default or config
+                limit=15  # ensure broad coverage across repository directories
             )
             retrieval_results = self.retrieval_service.search(retrieval_req)
             
@@ -187,7 +188,7 @@ class ConversationStreamingService:
             context_req = ContextRequest(
                 query=retrieval_query,
                 retrieval_results=retrieval_results,
-                max_context_chars=12000
+                max_context_chars=getattr(settings, "CONTEXT_MAX_CHARS", 32000)
             )
             assembled_context = self.context_builder.build(context_req)
 

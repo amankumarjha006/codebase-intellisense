@@ -323,25 +323,29 @@ class KnowledgeRepository:
 
     def search_code_chunks(self, repository_version_id: UUID, query: str, limit: int = 20) -> list[tuple[CodeChunk, File, float]]:
         """
-        Perform a lexical search on CodeChunk contents isolated to a specific repository version.
-        Combines exact substring matching (ILIKE) with PostgreSQL Full-Text Search.
+        Perform a lexical search on CodeChunk contents and file paths isolated to a specific repository version.
+        Combines exact substring matching (ILIKE) with PostgreSQL Full-Text Search across content and normalized file paths.
         """
         escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         
-        tsquery = func.websearch_to_tsquery('english', query)
-        tsvector = func.to_tsvector('english', CodeChunk.content)
+        clean_path_expr = func.replace(func.replace(func.replace(File.file_path, '/', ' '), '_', ' '), '-', ' ')
+        combined_text = func.concat(clean_path_expr, ' ', CodeChunk.content)
         
-        exact_match = CodeChunk.content.ilike(f"%{escaped_query}%", escape="\\")
+        tsquery = func.websearch_to_tsquery('english', query)
+        tsvector = func.to_tsvector('english', combined_text)
+        
+        exact_match = combined_text.ilike(f"%{escaped_query}%", escape="\\")
+        path_match = clean_path_expr.ilike(f"%{escaped_query}%", escape="\\")
         fts_rank = func.ts_rank_cd(tsvector, tsquery)
         
-        score = (case((exact_match, 1.0), else_=0.0) + fts_rank).label("score")
+        score = (case((exact_match, 1.0), else_=0.0) + case((path_match, 0.5), else_=0.0) + fts_rank).label("score")
         
         stmt = (
             select(CodeChunk, File, score)
             .join(File)
             .where(
                 File.repository_version_id == repository_version_id,
-                or_(exact_match, tsvector.op('@@')(tsquery))
+                or_(exact_match, path_match, tsvector.op('@@')(tsquery))
             )
             .order_by(
                 score.desc(),
