@@ -497,12 +497,12 @@ export function ChatPage() {
             {streaming && (
               <div className="flex gap-3 max-w-3xl mx-auto w-full my-6 select-text" aria-live="polite">
                 <div
-                  className="h-7 w-7 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shrink-0 mt-0.5 shadow-sm"
+                  className="h-7 w-7 rounded-lg bg-[var(--color-raised)] border border-[var(--color-mint-accent,#B9E4D0)]/40 flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shrink-0 mt-0.5 shadow-xs"
                   aria-label="Assistant generating"
                 >
                   <MaterialIcon
-                    name="smart_toy"
-                    size={17}
+                    name="terminal"
+                    size={16}
                     fill={1}
                     color="var(--color-mint-accent, #B9E4D0)"
                     className="animate-pulse"
@@ -512,7 +512,11 @@ export function ChatPage() {
 
                 <div className="flex-1 min-w-0 space-y-3">
                   <div className="relative">
-                    <MarkdownRenderer content={streamedText || 'Searching AST symbols & synthesizing response...'} />
+                    <MarkdownRenderer
+                      content={streamedText || 'Searching AST symbols & synthesizing response...'}
+                      citations={streamedCitations}
+                      onSelectCitation={(c) => setSelectedCitation(c)}
+                    />
                     <span className="inline-block w-1.5 h-3.5 bg-[var(--color-mint-accent,#B9E4D0)] animate-pulse ml-0.5 align-middle" />
                   </div>
 

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { duration, ease } from '../../lib/motion';
 
 interface AnimatedPageProps {
@@ -8,15 +8,21 @@ interface AnimatedPageProps {
 }
 
 /**
- * Page transition wrapper. Wraps route content with a fade + vertical shift entrance.
- * Exit animation is handled by AnimatePresence in the parent router.
+ * Page transition wrapper. Provides a gentle, micro-rise fade entrance and exit.
+ * Automatically respects prefers-reduced-motion.
  */
 export function AnimatedPage({ children, className = '' }: AnimatedPageProps) {
+  const shouldReduceMotion = useReducedMotion();
+
+  if (shouldReduceMotion) {
+    return <div className={className}>{children}</div>;
+  }
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
+      exit={{ opacity: 0, y: -2 }}
       transition={{ duration: duration.page, ease: ease.out }}
       className={className}
     >

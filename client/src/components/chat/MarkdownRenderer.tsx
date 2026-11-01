@@ -2,12 +2,37 @@ import * as React from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CodeBlock } from './CodeBlock';
+import { MaterialIcon } from '../ui/MaterialIcon';
+import { Citation } from '../../lib/types';
 
 interface MarkdownRendererProps {
   content: string;
+  citations?: Citation[];
+  onSelectCitation?: (citation: Citation) => void;
 }
 
-export function MarkdownRenderer({ content }: MarkdownRendererProps) {
+export function MarkdownRenderer({
+  content,
+  citations = [],
+  onSelectCitation,
+}: MarkdownRendererProps) {
+  // Pre-process citation markers like [C1] or [C1, C2] into interactive anchor links
+  const processedContent = React.useMemo(() => {
+    if (!content) return '';
+    return content.replace(/\[((?:C?\d+\s*,\s*)*C?\d+)\]/g, (match, inner) => {
+      const items = inner.split(',').map((s: string) => s.trim());
+      const isCitationList = items.every((item: string) => /^C?\d+$/i.test(item));
+      if (!isCitationList) return match;
+      return items
+        .map((item: string) => {
+          const num = item.replace(/^C/i, '');
+          const label = item.toUpperCase().startsWith('C') ? item.toUpperCase() : `C${item}`;
+          return `[${label}](#cite-${num})`;
+        })
+        .join(' ');
+    });
+  }, [content]);
+
   return (
     <div className="chat-prose select-text space-y-3">
       <Markdown
@@ -96,6 +121,27 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             return <td className="px-3.5 py-2 text-[var(--color-text)] font-sans">{children}</td>;
           },
           a({ href, children }) {
+            if (href?.startsWith('#cite-')) {
+              const num = parseInt(href.replace('#cite-', ''), 10);
+              const citation = citations[num - 1];
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (citation && onSelectCitation) {
+                      onSelectCitation(citation);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] bg-[var(--color-raised)] hover:bg-[var(--color-mint-selected-bg,#1B332A)] border border-[var(--color-border)] hover:border-[var(--color-mint-accent,#B9E4D0)] text-[var(--color-mint-accent,#B9E4D0)] font-mono text-[11px] font-semibold transition-all cursor-pointer mx-0.5 align-baseline active:scale-95 shadow-2xs"
+                  title={citation ? `View source citation: ${citation.path} (L${citation.start_line}–${citation.end_line})` : `Citation ${children}`}
+                >
+                  <span>{children}</span>
+                  <MaterialIcon name="arrow_outward" size={10} aria-hidden="true" />
+                </button>
+              );
+            }
+
             return (
               <a
                 href={href}
@@ -109,7 +155,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
           },
         }}
       >
-        {content}
+        {processedContent}
       </Markdown>
     </div>
   );

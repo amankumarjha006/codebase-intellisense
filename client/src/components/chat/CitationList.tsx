@@ -4,6 +4,7 @@ import { MaterialIcon } from '../ui/MaterialIcon';
 import { Citation } from '../../lib/types';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { toast } from '../ui/sonner';
 
 interface CitationListProps {
   citations: Citation[];
@@ -25,6 +26,7 @@ export function CitationList({
     e.stopPropagation();
     navigator.clipboard.writeText(path);
     setCopiedPath(path);
+    toast.success(`Copied path: ${path}`);
     setTimeout(() => setCopiedPath(null), 2000);
   };
 
@@ -63,6 +65,7 @@ export function CitationList({
             const pathParts = c.path.split('/');
             const fileName = pathParts.pop() || c.path;
             const dirPath = pathParts.join('/');
+            const citLabel = `C${idx + 1}`;
 
             const hasValidLineRange = c.start_line > 0 && c.end_line >= c.start_line;
             const lineText = hasValidLineRange
@@ -83,18 +86,19 @@ export function CitationList({
                     onSelectCitation(c);
                   }
                 }}
-                className={`group relative flex items-center justify-between p-2 rounded-[var(--radius-control)] border text-left cursor-pointer transition ${
+                className={`group relative flex items-center justify-between p-2 rounded-[var(--radius-control)] border text-left cursor-pointer transition select-none ${
                   isSelected
-                    ? 'border-[var(--color-mint-accent,#B9E4D0)] bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] shadow-sm'
+                    ? 'border-[var(--color-mint-accent,#B9E4D0)] bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] shadow-xs'
                     : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[rgba(185,228,208,0.4)] hover:bg-[var(--color-raised)]/60 text-[var(--color-text)]'
                 }`}
               >
                 <div className="flex items-center gap-2 min-w-0 pr-2">
+                  <span className="shrink-0 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--color-raised)] border border-[var(--color-border)] text-[var(--color-mint-accent,#B9E4D0)]">
+                    {citLabel}
+                  </span>
                   <MaterialIcon
-                    name="description"
-                    size={16}
-                    fill={isSelected ? 1 : 0}
-                    color={isSelected ? 'var(--color-mint-accent, #B9E4D0)' : undefined}
+                    name="code"
+                    size={15}
                     className="shrink-0 text-[var(--color-muted)] group-hover:text-[var(--color-mint-accent,#B9E4D0)] transition-colors"
                     aria-hidden="true"
                   />

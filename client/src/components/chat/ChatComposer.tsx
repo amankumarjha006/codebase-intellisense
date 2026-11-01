@@ -20,7 +20,7 @@ export function ChatComposer({
   onStopStreaming,
   streaming,
   disabled = false,
-  placeholder = 'Ask a question about this repository... (Enter to send, Shift+Enter for newline)',
+  placeholder = 'Ask a question about this codebase... (Enter to send, Shift+Enter for newline)',
 }: ChatComposerProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -30,6 +30,8 @@ export function ChatComposer({
       if (!streaming && inputText.trim() && !disabled) {
         onSendMessage();
       }
+    } else if (e.key === 'Escape') {
+      textareaRef.current?.blur();
     }
   };
 
@@ -46,7 +48,7 @@ export function ChatComposer({
     <div className="p-3 sm:p-4 border-t border-[var(--color-border)] bg-[var(--color-surface)]">
       <form
         onSubmit={handleFormSubmit}
-        className="max-w-3xl mx-auto rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-page)] focus-within:border-[var(--color-mint-accent,#B9E4D0)] transition-colors shadow-sm overflow-hidden"
+        className="max-w-3xl mx-auto rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-page)] focus-within:border-[var(--color-mint-accent,#B9E4D0)]/70 focus-within:ring-1 focus-within:ring-[var(--color-mint-accent,#B9E4D0)]/30 transition-all shadow-sm overflow-hidden"
       >
         <Textarea
           ref={textareaRef}
@@ -56,13 +58,17 @@ export function ChatComposer({
           disabled={disabled}
           placeholder={placeholder}
           aria-label="Ask a question about this codebase"
-          className="min-h-[72px] max-h-36 border-0 bg-transparent resize-none p-3.5 text-xs sm:text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus-visible:ring-0 rounded-none"
+          className="min-h-[72px] max-h-36 border-0 bg-transparent resize-none p-3.5 text-xs sm:text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus-visible:ring-0 rounded-none leading-relaxed"
         />
 
         {/* Composer bottom bar */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-[var(--color-border)]/50 bg-[var(--color-raised)]/30 text-[11px] text-[var(--color-muted)] select-none">
+        <div className="flex items-center justify-between px-3.5 py-2 border-t border-[var(--color-border)]/50 bg-[var(--color-raised)]/25 text-[11px] text-[var(--color-muted)] select-none">
           <div className="flex items-center gap-2 font-mono text-[10px] sm:text-[11px] text-[var(--color-muted)]">
-            <span>Enter to send, Shift+Enter for newline</span>
+            <span className="hidden sm:inline">↵ to send</span>
+            <span className="hidden sm:inline text-[var(--color-border-strong)]">·</span>
+            <span className="hidden sm:inline">Shift + ↵ for newline</span>
+            <span className="hidden sm:inline text-[var(--color-border-strong)]">·</span>
+            <span>Esc to unfocus</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -72,7 +78,7 @@ export function ChatComposer({
                 size="sm"
                 variant="secondary"
                 onClick={onStopStreaming}
-                className="h-7 px-3 text-xs flex items-center gap-1.5 border-[var(--color-border)] hover:bg-[var(--color-raised)]"
+                className="h-7 px-3 text-xs flex items-center gap-1.5 border-[var(--color-border)] hover:bg-[var(--color-raised)] cursor-pointer"
                 aria-label="Stop generating response"
               >
                 <MaterialIcon name="stop_circle" size={15} fill={1} className="text-[var(--color-error)]" aria-hidden="true" />
@@ -84,11 +90,11 @@ export function ChatComposer({
                 size="sm"
                 variant="primary"
                 disabled={isSendDisabled}
-                className="h-7 px-3.5 text-xs flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-7 px-3.5 text-xs flex items-center gap-1.5 disabled:opacity-35 disabled:cursor-not-allowed transition-all cursor-pointer"
                 aria-label="Send message to codebase intelligence"
               >
                 <span>Send</span>
-                <MaterialIcon name="send" size={14} fill={1} aria-hidden="true" />
+                <MaterialIcon name="send" size={13} fill={1} aria-hidden="true" />
               </Button>
             )}
           </div>

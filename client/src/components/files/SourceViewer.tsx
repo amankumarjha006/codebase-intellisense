@@ -2,6 +2,7 @@ import * as React from 'react';
 import { MaterialIcon } from '../ui/MaterialIcon';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { toast } from '../ui/sonner';
 
 interface Token {
   content: string;
@@ -54,7 +55,7 @@ export function SourceViewer({
       .then(async (shiki) => {
         try {
           const res = await shiki.codeToTokens(code, {
-            lang: cleanLang as any,
+            lang: cleanLang,
             theme: 'github-dark',
           });
           if (!cancelled && res.tokens) {
@@ -94,12 +95,14 @@ export function SourceViewer({
   const handleCopyLine = (lineNum: number, lineText: string) => {
     navigator.clipboard.writeText(lineText);
     setCopiedLine(lineNum);
+    toast.success(`Copied line ${lineNum}`);
     setTimeout(() => setCopiedLine(null), 1500);
   };
 
   const handleCopyAll = () => {
     navigator.clipboard.writeText(code);
     setCopiedAll(true);
+    toast.success(`Copied entire file: ${filePath}`);
     setTimeout(() => setCopiedAll(false), 2000);
   };
 

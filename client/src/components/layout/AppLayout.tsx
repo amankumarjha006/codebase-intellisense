@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
-import { MotionConfig, motion } from 'motion/react';
+import { MotionConfig, motion, AnimatePresence } from 'motion/react';
+import { Toaster } from '../ui/sonner';
 import { MaterialIcon } from '../ui/MaterialIcon';
 import { Sidebar } from './Sidebar';
 import { ConnectDrawer } from '../repository/ConnectDrawer';
@@ -17,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '../ui/button';
 import { Drawer, DrawerContent } from '../ui/drawer';
 import { SkipToContent } from '../ui/A11y';
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
+import { TooltipProvider } from '../ui/tooltip';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { realApi, RepositoryListItemOut } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
@@ -104,6 +105,15 @@ export function AppLayout() {
   const currentRepo = currentRepoId
     ? repositories.find((r) => r.id === currentRepoId) || null
     : null;
+
+  const currentSubView = React.useMemo(() => {
+    if (!currentRepoId) return null;
+    if (location.pathname.includes('/chat')) return { label: 'Chat', icon: 'chat' };
+    if (location.pathname.includes('/architecture')) return { label: 'Architecture', icon: 'account_tree' };
+    if (location.pathname.includes('/search')) return { label: 'Search', icon: 'find_in_page' };
+    if (location.pathname.includes('/files')) return { label: 'Files', icon: 'folder_open' };
+    return { label: 'Overview', icon: 'description' };
+  }, [currentRepoId, location.pathname]);
 
   // If navigating directly to a repository, load its details if missing from initial list
   React.useEffect(() => {
@@ -247,10 +257,13 @@ export function AppLayout() {
                       <span>Repositories</span>
                     </button>
                     <span className="text-[var(--color-border-strong)] select-none" aria-hidden="true">/</span>
-                    <div className="flex items-center gap-1.5 font-medium text-[var(--color-text)] truncate">
+                    <Link
+                      to={`/repositories/${currentRepoId}`}
+                      className="flex items-center gap-1.5 font-medium text-[var(--color-text)] hover:text-[var(--color-mint-accent,#B9E4D0)] transition-colors truncate"
+                    >
                       <MaterialIcon name="folder" size={18} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" className="shrink-0" />
                       <span className="truncate font-semibold">{currentRepo ? `${currentRepo.owner}/${currentRepo.name}` : 'Repository'}</span>
-                    </div>
+                    </Link>
                     {currentRepo?.is_private ? (
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono text-[var(--color-muted)] border border-[var(--color-border)]">
                         <MaterialIcon name="lock" size={10} aria-hidden="true" />
@@ -261,6 +274,15 @@ export function AppLayout() {
                         <MaterialIcon name="public" size={10} aria-hidden="true" />
                         <span>Public</span>
                       </span>
+                    )}
+                    {currentSubView && currentSubView.label !== 'Overview' && (
+                      <>
+                        <span className="text-[var(--color-border-strong)] select-none" aria-hidden="true">/</span>
+                        <span className="text-[var(--color-mint-accent,#B9E4D0)] font-medium flex items-center gap-1 shrink-0">
+                          <MaterialIcon name={currentSubView.icon} size={15} active aria-hidden="true" />
+                          <span>{currentSubView.label}</span>
+                        </span>
+                      </>
                     )}
                   </>
                 ) : (
@@ -314,7 +336,18 @@ export function AppLayout() {
 
             <ErrorBoundary>
               <div className="h-full relative z-10">
-                <Outlet />
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={location.pathname}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
+                    className="h-full"
+                  >
+                    <Outlet />
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </ErrorBoundary>
           </main>
@@ -417,11 +450,13 @@ export function AppLayout() {
 
             <div className="space-y-3 pt-2 text-xs" role="list" aria-label="Keyboard shortcuts">
               {[
-                { action: 'Command palette', keys: 'Cmd + K / Ctrl + K' },
-                { action: 'Quick search', keys: '/' },
-                { action: 'Send message', keys: 'Enter' },
-                { action: 'New line in prompt', keys: 'Shift + Enter' },
-                { action: 'Open this cheatsheet', keys: '?' },
+                { action: 'Command palette', keys: '⌘K / Ctrl+K' },
+                { action: 'Quick search & filter', keys: '/' },
+                { action: 'Tabs 1–5 (Overview..Files)', keys: '1 – 5' },
+                { action: 'Send message in Chat', keys: 'Enter' },
+                { action: 'New line in Chat', keys: 'Shift + Enter' },
+                { action: 'Close panel or modal', keys: 'Esc' },
+                { action: 'Toggle this cheat-sheet', keys: '?' },
               ].map((shortcut) => (
                 <div key={shortcut.action} className="flex items-center justify-between py-1 border-b border-[var(--color-border)] last:border-0" role="listitem">
                   <span className="text-[var(--color-text)]">{shortcut.action}</span>
@@ -433,6 +468,7 @@ export function AppLayout() {
             </div>
           </DialogContent>
         </Dialog>
+        <Toaster />
       </div>
       </TooltipProvider>
     </MotionConfig>

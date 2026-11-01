@@ -7,12 +7,13 @@ import { RepositoryHeader } from '../components/repository/RepositoryHeader';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge, StatusChip } from '../components/ui/badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
+import { Card } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
 import { Skeleton } from '../components/ui/skeleton';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../components/ui/tooltip';
 import { AnimatedPage } from '../components/ui/AnimatedPage';
 import { LiveRegion } from '../components/ui/A11y';
+import { toast } from '../components/ui/sonner';
 
 const SUGGESTED_QUERIES = [
   'authentication',
@@ -131,6 +132,7 @@ export function SearchPage() {
   const handleCopy = (path: string) => {
     navigator.clipboard.writeText(path);
     setCopiedPath(path);
+    toast.success(`Copied path: ${path}`);
     setA11yStatus(`Copied path ${path}`);
     setTimeout(() => setCopiedPath(null), 2000);
   };

@@ -13,6 +13,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from '../components/ui/table';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../components/ui/tooltip';
 import { AnimatedPage } from '../components/ui/AnimatedPage';
+import { toast } from '../components/ui/sonner';
 import { RepositoryAnalyticsCharts } from '../components/repository/RepositoryAnalyticsCharts';
 
 export function RepositoryOverviewPage() {
@@ -30,6 +31,7 @@ export function RepositoryOverviewPage() {
   const handleCopySha = (sha: string) => {
     navigator.clipboard.writeText(sha);
     setCopiedSha(sha);
+    toast.success(`Copied commit SHA: ${shortSha(sha)}`);
     setTimeout(() => {
       setCopiedSha((cur) => (cur === sha ? null : cur));
     }, 2000);
@@ -75,8 +77,10 @@ export function RepositoryOverviewPage() {
     setReindexing(true);
     try {
       await api.reindexRepository(id);
+      toast.success('Indexing pipeline triggered successfully');
       await loadData();
     } catch (err) {
+      toast.error('Failed to trigger re-index');
       console.error('Failed to trigger re-index:', err);
     } finally {
       setTimeout(() => setReindexing(false), 800);

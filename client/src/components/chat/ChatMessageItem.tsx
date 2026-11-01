@@ -6,6 +6,7 @@ import { CitationList } from './CitationList';
 import { Button } from '../ui/button';
 import { formatRelativeTime } from '../../lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { toast } from '../ui/sonner';
 
 interface ChatMessageItemProps {
   message: ChatMessage;
@@ -29,6 +30,7 @@ export function ChatMessageItem({
   const handleCopyAnswer = () => {
     navigator.clipboard.writeText(message.content);
     setCopied(true);
+    toast.success('Answer copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -51,18 +53,22 @@ export function ChatMessageItem({
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex gap-3 max-w-3xl mx-auto w-full my-6 select-text group">
-        {/* Assistant Avatar */}
+        {/* Assistant Avatar: Clean developer-grade emblem */}
         <div
-          className="h-7 w-7 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shrink-0 mt-0.5 select-none shadow-sm"
-          aria-label="Codebase intelligence assistant"
+          className="h-7 w-7 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shrink-0 mt-0.5 select-none shadow-2xs group-hover:border-[var(--color-mint-accent,#B9E4D0)]/40 transition-colors"
+          aria-label="Codebase intelligence engine"
         >
-          <MaterialIcon name="smart_toy" size={17} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
+          <MaterialIcon name="terminal" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
         </div>
 
         {/* Assistant Content Stream */}
         <div className="flex-1 min-w-0 space-y-3">
-          {/* Markdown Content */}
-          <MarkdownRenderer content={message.content} />
+          {/* Markdown Content with interactive citation chips */}
+          <MarkdownRenderer
+            content={message.content}
+            citations={message.citations || []}
+            onSelectCitation={onSelectCitation}
+          />
 
           {/* Citations List */}
           <CitationList
@@ -81,7 +87,7 @@ export function ChatMessageItem({
                     variant="ghost"
                     size="sm"
                     onClick={handleCopyAnswer}
-                    className="h-6 px-2 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)] flex items-center gap-1"
+                    className="h-6 px-2 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)] flex items-center gap-1 cursor-pointer"
                     aria-label="Copy full answer"
                   >
                     {copied ? (
@@ -109,7 +115,7 @@ export function ChatMessageItem({
                       variant="ghost"
                       size="sm"
                       onClick={onRegenerate}
-                      className="h-6 px-2 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-mint-accent,#B9E4D0)] flex items-center gap-1"
+                      className="h-6 px-2 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-mint-accent,#B9E4D0)] flex items-center gap-1 cursor-pointer"
                       aria-label="Regenerate answer"
                     >
                       <MaterialIcon name="refresh" size={14} aria-hidden="true" />

@@ -368,16 +368,9 @@ export function ArchitectureGraphCanvas({
               const x2 = target.x;
               const y2 = target.y + target.height / 2;
 
-              let d = '';
-              if (x2 > x1) {
-                // Forward cubic Bézier curve
-                const dx = (x2 - x1) * 0.5;
-                d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
-              } else {
-                // Backward loop-around curve
-                const offset = 40;
-                d = `M ${x1} ${y1} C ${x1 + offset} ${y1}, ${x2 - offset} ${y2}, ${x2} ${y2}`;
-              }
+              const d = x2 > x1
+                ? `M ${x1} ${y1} C ${x1 + (x2 - x1) * 0.5} ${y1}, ${x2 - (x2 - x1) * 0.5} ${y2}, ${x2} ${y2}`
+                : `M ${x1} ${y1} C ${x1 + 40} ${y1}, ${x2 - 40} ${y2}, ${x2} ${y2}`;
 
               let strokeColor = 'rgba(255,255,255,0.14)';
               let strokeWidth = 1.5;

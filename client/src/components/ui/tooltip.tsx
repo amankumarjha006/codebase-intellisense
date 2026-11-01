@@ -43,14 +43,14 @@ export const TooltipTrigger = React.forwardRef<
 >(({ asChild, children, ...props }, ref) => {
   const ctx = React.useContext(TooltipContext);
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children as React.ReactElement<any>, {
+    return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
       ref,
       'aria-describedby': ctx?.open ? ctx.id : undefined,
       ...props,
     });
   }
   return (
-    <span ref={ref as any} aria-describedby={ctx?.open ? ctx.id : undefined} {...props}>
+    <span ref={ref as React.Ref<HTMLSpanElement>} aria-describedby={ctx?.open ? ctx.id : undefined} {...props}>
       {children}
     </span>
   );

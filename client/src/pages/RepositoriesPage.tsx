@@ -37,6 +37,7 @@ import { AnimatedPage } from '../components/ui/AnimatedPage';
 import { LiveRegion } from '../components/ui/A11y';
 import { useAuth } from '../lib/AuthContext';
 import { usePinnedRepos } from '../lib/pinnedRepos';
+import { toast } from '../components/ui/sonner';
 import { motion } from 'motion/react';
 
 type StatusFilter = 'ALL' | 'READY' | 'ACTIVE' | 'FAILED';
@@ -728,7 +729,15 @@ export function RepositoriesPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-52">
                                 <DropdownMenuItem
-                                  onClick={() => togglePin(repo.id)}
+                                  onClick={() => {
+                                    const willPin = !isPinned(repo.id);
+                                    togglePin(repo.id);
+                                    if (willPin) {
+                                      toast.success(`Pinned ${repo.owner}/${repo.name} to sidebar`);
+                                    } else {
+                                      toast(`Unpinned ${repo.owner}/${repo.name}`);
+                                    }
+                                  }}
                                   className="cursor-pointer gap-2 text-xs"
                                 >
                                   <MaterialIcon
@@ -742,7 +751,14 @@ export function RepositoriesPage() {
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                  onClick={() => triggerIndex(repo.id)}
+                                  onClick={async () => {
+                                    try {
+                                      await triggerIndex(repo.id);
+                                      toast.success(`Indexing started for ${repo.name}`);
+                                    } catch (err: unknown) {
+                                      toast.error(err instanceof Error ? err.message : 'Failed to trigger index');
+                                    }
+                                  }}
                                   className="cursor-pointer gap-2 text-xs"
                                 >
                                   <MaterialIcon name="sync" size={16} color="var(--color-mint-accent,#B9E4D0)" aria-hidden="true" />

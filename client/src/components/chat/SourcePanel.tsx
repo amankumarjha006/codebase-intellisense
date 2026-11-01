@@ -6,6 +6,7 @@ import { Citation, FileContent } from '../../lib/types';
 import { api } from '../../lib/api';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { toast } from '../ui/sonner';
 
 interface SourcePanelProps {
   citation: Citation | null;
@@ -19,6 +20,18 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
   const [fileContent, setFileContent] = React.useState<FileContent | null>(null);
   const [loading, setLoading] = React.useState(false);
   const firstCitedLineRef = React.useRef<HTMLDivElement>(null);
+
+  // Close panel on Esc key
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   React.useEffect(() => {
     if (!citation) return;
@@ -48,6 +61,7 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
     const textToCopy = citation.snippet || fileContent?.content || '';
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
+    toast.success('Source code snippet copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -68,7 +82,7 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
         initial={{ x: 60, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: 60, opacity: 0 }}
-        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         className="flex flex-col h-full bg-[var(--color-surface)] border-l border-[var(--color-border)] w-full md:w-[480px] lg:w-[540px] z-20 shrink-0 select-text shadow-2xl"
       >
         {/* Panel Header */}
@@ -78,7 +92,7 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
               variant="ghost"
               size="icon-sm"
               onClick={onClose}
-              title="Back to conversation"
+              title="Back to conversation (Esc)"
               aria-label="Back to conversation"
               className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
             >
@@ -102,7 +116,7 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
                   variant="ghost"
                   size="icon-sm"
                   onClick={handleCopyCode}
-                  className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
+                  className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] cursor-pointer"
                   aria-label="Copy citation snippet"
                 >
                   {copied ? (
@@ -126,7 +140,7 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
                     const lineQuery = citation.start_line > 0 ? `&start_line=${citation.start_line}&end_line=${citation.end_line}` : '';
                     navigate(`/repositories/${repoId}/files?path=${encodeURIComponent(citation.path)}${lineQuery}`);
                   }}
-                  className="text-[var(--color-text-secondary)] hover:text-[var(--color-mint-accent,#B9E4D0)]"
+                  className="text-[var(--color-text-secondary)] hover:text-[var(--color-mint-accent,#B9E4D0)] cursor-pointer"
                   aria-label="Open in full file viewer"
                 >
                   <MaterialIcon name="open_in_new" size={16} aria-hidden="true" />
@@ -137,60 +151,59 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
               </TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={onClose}
-                  className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
-                  aria-label="Close source panel"
-                >
-                  <MaterialIcon name="close" size={18} aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                Close Panel
-              </TooltipContent>
-            </Tooltip>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onClose}
+              className="text-[var(--color-muted)] hover:text-[var(--color-text)] cursor-pointer ml-1"
+              title="Close panel (Esc)"
+              aria-label="Close citation drawer"
+            >
+              <MaterialIcon name="close" size={18} aria-hidden="true" />
+            </Button>
           </div>
         </div>
 
-        {/* Code Viewer Body */}
-        <div
-          className="flex-1 overflow-y-auto p-2 font-mono text-xs leading-5 bg-[var(--color-page)] no-scrollbar"
-          tabIndex={0}
-          role="region"
-          aria-label="Citation code lines"
-        >
+        {/* Panel Code Content */}
+        <div className="flex-1 overflow-y-auto p-4 font-mono text-xs leading-5 bg-[#0e0e0d]">
           {loading ? (
-            <div className="p-8 text-center text-xs text-[var(--color-muted)] flex flex-col items-center gap-2">
-              <MaterialIcon name="sync" size={20} spin className="text-[var(--color-mint-accent,#B9E4D0)]" aria-hidden="true" />
-              <span>Loading repository file lines...</span>
+            <div className="space-y-2 py-4">
+              <div className="h-4 bg-[var(--color-raised)] rounded animate-pulse w-3/4" />
+              <div className="h-4 bg-[var(--color-raised)] rounded animate-pulse w-1/2" />
+              <div className="h-4 bg-[var(--color-raised)] rounded animate-pulse w-5/6" />
+              <div className="h-4 bg-[var(--color-raised)] rounded animate-pulse w-2/3" />
             </div>
           ) : (
-            <div className="table w-full">
-              {lines.map((lineText, idx) => {
-                const lineNum = idx + 1;
-                const isCited = lineNum >= citation.start_line && lineNum <= citation.end_line;
-                const isFirstCited = lineNum === citation.start_line;
+            <div className="table w-full border-collapse">
+              {lines.map((line, index) => {
+                const lineNum = index + 1;
+                const isTargetLine = hasLineRange && lineNum >= citation.start_line && lineNum <= citation.end_line;
+                const isFirstTarget = hasLineRange && lineNum === citation.start_line;
 
                 return (
                   <div
-                    key={lineNum}
-                    ref={isFirstCited ? firstCitedLineRef : undefined}
+                    key={index}
+                    ref={isFirstTarget ? firstCitedLineRef : undefined}
                     className={`table-row transition-colors ${
-                      isCited
-                        ? 'bg-[var(--color-mint-selected-bg,#253A32)]/80 border-l-2 border-[var(--color-mint-accent,#B9E4D0)] font-medium text-[var(--color-text)]'
-                        : 'hover:bg-[var(--color-raised)]/40 text-[var(--color-text-secondary)]'
+                      isTargetLine
+                        ? 'bg-[var(--color-mint-selected-bg,#1B332A)]/40 text-[var(--color-text)] font-semibold'
+                        : 'hover:bg-[var(--color-raised)]/30 text-[var(--color-text-secondary)]'
                     }`}
                   >
-                    <span className="table-cell select-none pr-4 pl-2 text-right text-[11px] text-[var(--color-muted)] w-10 border-r border-[var(--color-border)]/40">
+                    <div
+                      className={`table-cell pr-4 pl-2 py-0.5 select-none text-right font-mono text-[11px] tabular-nums border-r border-[var(--color-border)]/40 w-12 ${
+                        isTargetLine ? 'text-[var(--color-mint-accent,#B9E4D0)] font-bold' : 'text-[var(--color-muted)]'
+                      }`}
+                    >
                       {lineNum}
-                    </span>
-                    <span className="table-cell pl-3 whitespace-pre overflow-x-auto text-[var(--color-text)]">
-                      {lineText || ' '}
-                    </span>
+                    </div>
+                    <div
+                      className={`table-cell pl-4 py-0.5 whitespace-pre font-mono overflow-x-auto ${
+                        isTargetLine ? 'border-l-2 border-[var(--color-mint-accent,#B9E4D0)] pl-3.5' : ''
+                      }`}
+                    >
+                      {line || ' '}
+                    </div>
                   </div>
                 );
               })}
@@ -198,25 +211,13 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
           )}
         </div>
 
-        {/* Footer info */}
-        <div className="p-3 border-t border-[var(--color-border)] bg-[var(--color-surface)] flex items-center justify-between text-[11px] text-[var(--color-muted)] font-mono">
-          <div className="flex items-center gap-1.5 text-[var(--color-mint-accent,#B9E4D0)]">
-            <MaterialIcon name="description" size={14} aria-hidden="true" />
-            <span>Source Reference</span>
+        {/* Panel Footer */}
+        <div className="p-3 border-t border-[var(--color-border)] bg-[var(--color-raised)]/30 flex items-center justify-between text-xs text-[var(--color-muted)] font-mono">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-[var(--color-mint-accent,#B9E4D0)]" aria-hidden="true" />
+            <span>Verified repository evidence</span>
           </div>
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-7 text-xs font-sans"
-            onClick={() => {
-              const lineQuery = citation.start_line > 0 ? `&start_line=${citation.start_line}&end_line=${citation.end_line}` : '';
-              navigate(`/repositories/${repoId}/files?path=${encodeURIComponent(citation.path)}${lineQuery}`);
-            }}
-            aria-label="View complete file in browser"
-          >
-            <span>View Full File</span>
-            <MaterialIcon name="chevron_right" size={14} aria-hidden="true" />
-          </Button>
+          <span className="text-[11px] text-[var(--color-text-secondary)]">Press Esc to close</span>
         </div>
       </motion.aside>
     </TooltipProvider>

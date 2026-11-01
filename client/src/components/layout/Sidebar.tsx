@@ -8,6 +8,7 @@ import { realApi, RepositoryListItemOut } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { deriveUserDisplay } from '../../lib/user';
 import { usePinnedRepos } from '../../lib/pinnedRepos';
+import { toast } from '../ui/sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -318,6 +319,7 @@ export function Sidebar({
                               e.preventDefault();
                               e.stopPropagation();
                               unpin(repo.id);
+                              toast(`Unpinned ${repo.owner}/${repo.name} from sidebar`);
                             }}
                             className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--color-muted)] hover:text-[var(--color-error)] transition-all cursor-pointer"
                             title={`Unpin ${repo.name} from sidebar`}

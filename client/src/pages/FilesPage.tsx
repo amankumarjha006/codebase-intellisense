@@ -130,9 +130,10 @@ export function FilesPage() {
       const content = await api.getFileContent(repoId, path);
       setFileContent(content);
       setA11yStatus(`Viewing file ${path}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
       setFileContent(null);
-      setContentError(err?.message || `File '${path}' could not be loaded.`);
+      setContentError(errorMsg || `File '${path}' could not be loaded.`);
       setA11yStatus(`Error loading file ${path}`);
     } finally {
       setLoadingContent(false);
