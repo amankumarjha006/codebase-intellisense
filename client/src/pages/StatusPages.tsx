@@ -5,6 +5,7 @@ import { GithubIcon } from '../components/ui/GithubIcon';
 import { Button } from '../components/ui/button';
 import { AnimatedPage } from '../components/ui/AnimatedPage';
 import { useAuth } from '../lib/AuthContext';
+import { API_URL } from '../lib/api';
 
 export function NotFoundPage() {
   const navigate = useNavigate();
@@ -257,10 +258,30 @@ export function SessionExpiredStatusPage() {
 
 export function ServerUnreachableStatusPage() {
   const navigate = useNavigate();
+  const [testingConnection, setTestingConnection] = React.useState(false);
+  const [pingResult, setPingResult] = React.useState<string | null>(null);
+
+  const handleCheckConnection = async () => {
+    setTestingConnection(true);
+    setPingResult(null);
+    try {
+      const res = await fetch(`${API_URL}/auth/me`, { method: 'GET' });
+      if (res.ok || res.status === 401) {
+        setPingResult('Backend is reachable! Reloading...');
+        setTimeout(() => window.location.reload(), 700);
+      } else {
+        setPingResult(`HTTP ${res.status}: Server returned unexpected status.`);
+      }
+    } catch {
+      setPingResult('Connection refused. Verify your FastAPI server is running on port 8000.');
+    } finally {
+      setTestingConnection(false);
+    }
+  };
 
   return (
     <AnimatedPage className="min-h-screen bg-[var(--color-page)] flex items-center justify-center p-6 text-center">
-      <main id="main-content" role="alert" aria-live="assertive" className="max-w-md space-y-5">
+      <main id="main-content" role="alert" aria-live="assertive" className="max-w-md w-full space-y-5">
         <div
           className="h-16 w-16 rounded-2xl bg-[var(--color-error-tint)] border border-[var(--color-error-border)] flex items-center justify-center text-[var(--color-error)] mx-auto"
           aria-hidden="true"
@@ -273,6 +294,20 @@ export function ServerUnreachableStatusPage() {
             Unable to connect to the backend server. Please verify your network connection or server status.
           </p>
         </div>
+
+        {/* Diagnostic Panel */}
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 text-left font-mono text-[11px] space-y-2">
+          <div className="flex items-center justify-between text-[var(--color-muted)]">
+            <span>Target API:</span>
+            <span className="text-[var(--color-text)] truncate max-w-[240px]">{API_URL}</span>
+          </div>
+          {pingResult && (
+            <div className={`pt-1 border-t border-[var(--color-border)]/50 text-[11px] leading-relaxed ${pingResult.includes('reachable') ? 'text-[var(--color-mint-accent,#B9E4D0)]' : 'text-[var(--color-error)]'}`}>
+              {pingResult}
+            </div>
+          )}
+        </div>
+
         <div className="pt-2 flex items-center justify-center gap-3">
           <Button
             variant="secondary"
@@ -283,11 +318,13 @@ export function ServerUnreachableStatusPage() {
           </Button>
           <Button
             variant="primary"
-            onClick={() => window.location.reload()}
-            aria-label="Retry connection"
+            onClick={handleCheckConnection}
+            disabled={testingConnection}
+            aria-label="Check server connection"
+            className="gap-1.5"
           >
-            <MaterialIcon name="restart_alt" size={16} aria-hidden="true" />
-            <span>Retry</span>
+            <MaterialIcon name="sync" size={16} spin={testingConnection} aria-hidden="true" />
+            <span>{testingConnection ? 'Testing...' : 'Check Connection'}</span>
           </Button>
         </div>
       </main>

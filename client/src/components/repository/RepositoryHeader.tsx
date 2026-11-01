@@ -154,7 +154,7 @@ export function RepositoryHeader({
         {/* Navigation Tabs */}
         <nav
           aria-label="Repository sections"
-          className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5"
+          className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 [mask-image:linear-gradient(to_right,white_85%,transparent)] sm:[mask-image:none]"
         >
           {navItems.map((item) => (
             <Link

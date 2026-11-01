@@ -92,7 +92,7 @@ export function LandingPage() {
           </nav>
 
           <div className="flex items-center gap-2.5">
-            <Button size="sm" variant="primary" onClick={handleSignIn}>
+            <Button size="sm" variant={scrolled ? "primary" : "secondary"} onClick={handleSignIn}>
               <GithubIcon size={14} />
               <span>Sign in with GitHub</span>
             </Button>
@@ -172,22 +172,22 @@ export function LandingPage() {
           <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
             <InterferenceRibbons
               backgroundColor="#0F0F0E"
-              colors={['#8AB4F8', '#d3ebff']}
-              wires={72}
-              lineWidth={1.8}
-              ribbonWidth={0.28}
-              amplitude={0.65}
+              colors={['#74B298', '#B9E4D0']}
+              wires={54}
+              lineWidth={1.6}
+              ribbonWidth={0.25}
+              amplitude={0.6}
               waveLength={1.1}
               angle={38}
-              twist={1.6}
-              curl={0.25}
-              stripes={2.4}
-              glow={0.38}
-              intensity={0.8}
-              speed={0.6}
-              spin={0.3}
+              twist={1.5}
+              curl={0.22}
+              stripes={2.2}
+              glow={0.32}
+              intensity={0.7}
+              speed={0.5}
+              spin={0.25}
               interactive={true}
-              className="w-full h-full opacity-50"
+              className="w-full h-full opacity-35"
             />
           </div>
 
@@ -287,12 +287,12 @@ export function LandingPage() {
                 </div>
 
                 {/* Citation Chip */}
-                <div className="pt-1">
+                <div className="pt-1 flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => setActiveCitation(!activeCitation)}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-mono transition border ${
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-mono transition border cursor-pointer ${
                       activeCitation
-                        ? 'bg-[var(--color-accent)] text-[var(--color-page)] border-[var(--color-accent)] font-semibold'
+                        ? 'bg-[var(--color-accent)] text-[var(--color-page)] border-[var(--color-accent)] font-semibold shadow-xs'
                         : 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] border-[var(--color-accent-border)] hover:bg-[var(--color-accent)]/20'
                     }`}
                     aria-pressed={activeCitation}
@@ -301,6 +301,9 @@ export function LandingPage() {
                     <MaterialIcon name="link" size={14} aria-hidden="true" />
                     <span>src/payments/idempotency.ts:42-58</span>
                   </button>
+                  <span className="text-[10px] text-[var(--color-muted)] font-sans">
+                    (Click to inspect source coordinates)
+                  </span>
                 </div>
 
                 {/* AST Path */}

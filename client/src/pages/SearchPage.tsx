@@ -42,6 +42,7 @@ export function SearchPage() {
   const [hasSearched, setHasSearched] = React.useState(!!urlQuery);
   const [searchError, setSearchError] = React.useState<string | null>(null);
   const [copiedPath, setCopiedPath] = React.useState<string | null>(null);
+  const [inputFocused, setInputFocused] = React.useState(false);
   const [a11yStatus, setA11yStatus] = React.useState('');
 
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -218,6 +219,8 @@ export function SearchPage() {
                       handleClear();
                     }
                   }}
+                  onFocus={() => setInputFocused(true)}
+                  onBlur={() => setInputFocused(false)}
                   aria-label="Code search query"
                   placeholder="Search functions, classes, AST symbols, identifiers, or keywords..."
                   className="pl-10 pr-20 h-11 text-xs sm:text-sm bg-[var(--color-surface)] border-[var(--color-border)] shadow-xs focus-visible:border-[var(--color-accent)]"
@@ -235,9 +238,11 @@ export function SearchPage() {
                       <MaterialIcon name="close" size={16} aria-hidden="true" />
                     </button>
                   )}
-                  <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-[var(--color-muted)] bg-[var(--color-raised)] border border-[var(--color-border)] rounded select-none">
-                    /
-                  </kbd>
+                  {!inputFocused && !query && (
+                    <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-[var(--color-muted)] bg-[var(--color-raised)] border border-[var(--color-border)] rounded select-none">
+                      /
+                    </kbd>
+                  )}
                 </div>
               </div>
 
@@ -602,7 +607,7 @@ export function SearchPage() {
                               const lineNum = (result.start_line || 1) + lIdx;
                               return (
                                 <tr key={lIdx} className="hover:bg-[var(--color-raised)]/30 transition-colors">
-                                  <td className="w-10 select-none pr-3 text-right text-[11px] text-[var(--color-muted)] font-mono opacity-60">
+                                  <td className="w-12 select-none pr-3 pl-2 text-right text-[11px] text-[var(--color-muted)] font-mono opacity-70 sticky left-0 bg-[var(--color-page)] border-r border-[var(--color-border)]/40 z-10">
                                     {lineNum}
                                   </td>
                                   <td className="pl-3 text-[var(--color-text)] whitespace-pre font-mono">

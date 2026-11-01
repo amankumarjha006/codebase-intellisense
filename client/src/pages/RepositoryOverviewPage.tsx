@@ -26,7 +26,6 @@ export function RepositoryOverviewPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [copiedSha, setCopiedSha] = React.useState<string | null>(null);
-  const [reindexing, setReindexing] = React.useState(false);
 
   const handleCopySha = (sha: string) => {
     navigator.clipboard.writeText(sha);
@@ -72,20 +71,6 @@ export function RepositoryOverviewPage() {
     }
   }, [id]);
 
-  const handleReindex = async () => {
-    if (!id) return;
-    setReindexing(true);
-    try {
-      await api.reindexRepository(id);
-      toast.success('Indexing pipeline triggered successfully');
-      await loadData();
-    } catch (err) {
-      toast.error('Failed to trigger re-index');
-      console.error('Failed to trigger re-index:', err);
-    } finally {
-      setTimeout(() => setReindexing(false), 800);
-    }
-  };
 
   const isIndexing = Boolean(
     repository?.latest_job_status &&
@@ -203,31 +188,15 @@ export function RepositoryOverviewPage() {
             </Card>
           )}
 
-          {/* Failure Alert Banner (shown when latest indexing failed) */}
-          {isFailed && (
-            <Card className="border-[rgba(248,113,113,0.35)] bg-[var(--color-error-tint)] p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <MaterialIcon name="error" size={22} fill={1} className="text-[var(--color-error)] shrink-0 mt-0.5" aria-hidden="true" />
-                <div>
-                  <h3 className="text-sm font-semibold text-[var(--color-error)]">
-                    Latest Indexing Job Failed
-                  </h3>
-                  <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                    {indexJob?.failure_message || 'An error occurred during repository ingestion. You can retry indexing or query previously indexed commits.'}
-                  </p>
-                </div>
+          {/* Concise Failure Diagnostic (avoids duplicating the header's retry action) */}
+          {isFailed && indexJob?.failure_message && (
+            <div className="p-3.5 px-4 rounded-lg border border-[rgba(248,113,113,0.35)] bg-[var(--color-error-tint)] flex items-start gap-3 text-xs text-[var(--color-error)]">
+              <MaterialIcon name="error" size={18} fill={1} className="shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="space-y-0.5 min-w-0">
+                <span className="font-semibold text-[var(--color-text)]">Indexing Failure Details:</span>{' '}
+                <span className="text-[var(--color-text-secondary)]">{indexJob.failure_message}</span>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleReindex}
-                disabled={reindexing}
-                className="shrink-0 border-[rgba(248,113,113,0.4)] text-[var(--color-text)] hover:bg-[var(--color-error-tint)] gap-1.5"
-              >
-                <MaterialIcon name="sync" size={16} spin={reindexing} aria-hidden="true" />
-                <span>Retry Indexing</span>
-              </Button>
-            </Card>
+            </div>
           )}
 
           {/* Repository Context Strip (Lightweight metadata, no duplicate headings or buttons) */}

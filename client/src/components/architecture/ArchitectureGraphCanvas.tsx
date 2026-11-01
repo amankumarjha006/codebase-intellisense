@@ -2,7 +2,6 @@ import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MaterialIcon } from '../ui/MaterialIcon';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { ArchitectureGraphNode, ArchitectureGraphRelationship } from '../../lib/types';
 
@@ -189,6 +188,38 @@ export function ArchitectureGraphCanvas({
     const timer = setTimeout(fitView, 50);
     return () => clearTimeout(timer);
   }, [fitView]);
+
+  // Center selected node smoothly away from the right details panel
+  React.useEffect(() => {
+    if (!selectedNodeId || !containerRef.current) return;
+    const node = layoutNodes.find((n) => n.id === selectedNodeId);
+    if (!node) return;
+
+    const container = containerRef.current.getBoundingClientRect();
+    if (container.width === 0 || container.height === 0) return;
+
+    const nodeCenterX = node.x + node.width / 2;
+    const nodeCenterY = node.y + node.height / 2;
+
+    const currentScreenX = nodeCenterX * transform.scale + transform.x;
+    const currentScreenY = nodeCenterY * transform.scale + transform.y;
+
+    const isComfortable =
+      currentScreenX > 70 &&
+      currentScreenX < container.width * 0.65 &&
+      currentScreenY > 70 &&
+      currentScreenY < container.height - 70;
+
+    if (!isComfortable) {
+      const targetViewportX = container.width * 0.42;
+      const targetViewportY = container.height * 0.5;
+      setTransform((prev) => ({
+        ...prev,
+        x: targetViewportX - nodeCenterX * prev.scale,
+        y: targetViewportY - nodeCenterY * prev.scale,
+      }));
+    }
+  }, [selectedNodeId, layoutNodes]);
 
   // Pan event handlers
   const handlePointerDown = (e: React.PointerEvent) => {

@@ -195,7 +195,7 @@ export function RepositoriesPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text)] font-sans">
               Repositories
             </h1>
-            {!loading && !error && repositories.length > 0 && (
+            {!loading && !error && (repositories.length > 0 || Boolean(debouncedSearch)) && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-[var(--color-mint-selected-bg,#1B332A)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.25)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-mint-accent,#B9E4D0)] animate-pulse" aria-hidden="true" />
                 <span>{total} {total === 1 ? 'codebase' : 'codebases'}</span>
@@ -338,7 +338,7 @@ export function RepositoriesPage() {
       )}
 
       {/* Meaningful Empty State: 0 Repositories Connected */}
-      {!loading && !error && repositories.length === 0 && (
+      {!loading && !error && total === 0 && !debouncedSearch && (
         <section
           role="status"
           aria-label="No repositories connected"

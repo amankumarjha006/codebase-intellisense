@@ -526,12 +526,15 @@ export function DashboardPage() {
                   </p>
                 </div>
                 {primaryReadyRepo && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-mono text-[var(--color-muted)]">
-                    <span>Active:</span>
-                    <span className="text-[var(--color-mint-accent,#B9E4D0)] font-semibold">
-                      {primaryReadyRepo.owner}/{primaryReadyRepo.name}
-                    </span>
-                  </span>
+                  <button
+                    onClick={() => navigate(`/repositories/${primaryReadyRepo.id}`)}
+                    className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--color-mint-selected-bg,#1B332A)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.25)] hover:bg-[var(--color-mint-accent,#B9E4D0)]/20 transition cursor-pointer"
+                    title="Open active repository overview"
+                  >
+                    <MaterialIcon name="folder_open" size={14} aria-hidden="true" />
+                    <span>Active: {primaryReadyRepo.owner}/{primaryReadyRepo.name}</span>
+                    <MaterialIcon name="arrow_forward" size={12} aria-hidden="true" />
+                  </button>
                 )}
               </div>
 

@@ -275,15 +275,7 @@ export function AppLayout() {
                         <span>Public</span>
                       </span>
                     )}
-                    {currentSubView && currentSubView.label !== 'Overview' && (
-                      <>
-                        <span className="text-[var(--color-border-strong)] select-none" aria-hidden="true">/</span>
-                        <span className="text-[var(--color-mint-accent,#B9E4D0)] font-medium flex items-center gap-1 shrink-0">
-                          <MaterialIcon name={currentSubView.icon} size={15} active aria-hidden="true" />
-                          <span>{currentSubView.label}</span>
-                        </span>
-                      </>
-                    )}
+
                   </>
                 ) : (
                   <span className="font-semibold text-sm text-[var(--color-text)] truncate">

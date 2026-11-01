@@ -42,6 +42,8 @@ export function ChatPage() {
   const [newerVersionDismissed, setNewerVersionDismissed] = React.useState(false);
   const [a11yStatus, setA11yStatus] = React.useState('');
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const isUserScrolledUpRef = React.useRef(false);
 
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const isStreamingRef = React.useRef(false);
@@ -110,7 +112,8 @@ export function ChatPage() {
       });
   }, [activeConvId]);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = React.useCallback((force = false) => {
+    if (!force && isUserScrolledUpRef.current) return;
     setTimeout(() => {
       if (scrollRef.current) {
         scrollRef.current.scrollTo({
@@ -119,13 +122,22 @@ export function ChatPage() {
         });
       }
     }, 50);
-  };
+  }, []);
 
   const handleScroll = () => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 120;
-    setShowScrollBottom(!isAtBottom);
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    const isScrolledUp = distanceFromBottom > 90;
+    isUserScrolledUpRef.current = isScrolledUp;
+    setShowScrollBottom(isScrolledUp);
+  };
+
+  const handleSelectCitation = (citation: Citation) => {
+    setSelectedCitation(citation);
+    if (typeof window !== 'undefined' && window.innerWidth < 1440) {
+      setSidebarCollapsed(true);
+    }
   };
 
   const handleSelectConversation = (id: string) => {
@@ -212,7 +224,8 @@ export function ChatPage() {
     setStreamedCitations([]);
     setErrorInfo(null);
     setA11yStatus('Synthesizing verified answer from repository AST nodes...');
-    scrollToBottom();
+    isUserScrolledUpRef.current = false;
+    scrollToBottom(true);
 
     isStreamingRef.current = true;
     try {
@@ -351,14 +364,16 @@ export function ChatPage() {
       {/* Main Chat Workspace: Sidebar + Conversation Feed + Source Drawer */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* Desktop Left Sidebar: Conversation History */}
-        <ConversationSidebar
-          conversations={conversations}
-          activeConvId={activeConvId}
-          onSelectConv={handleSelectConversation}
-          onNewChat={handleNewChat}
-          onDeleteConv={handleDeleteConversation}
-          loading={loadingConversations}
-        />
+        {!sidebarCollapsed && (
+          <ConversationSidebar
+            conversations={conversations}
+            activeConvId={activeConvId}
+            onSelectConv={handleSelectConversation}
+            onNewChat={handleNewChat}
+            onDeleteConv={handleDeleteConversation}
+            loading={loadingConversations}
+          />
+        )}
 
         {/* Mobile Slide-over Drawer for Conversations */}
         {mobileSidebarOpen && (
@@ -406,6 +421,18 @@ export function ChatPage() {
                 aria-label="Open conversation history"
               >
                 <MaterialIcon name="menu" size={18} aria-hidden="true" />
+              </Button>
+
+              {/* Desktop toggle button for conversation list */}
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="hidden md:flex text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                aria-label={sidebarCollapsed ? 'Show conversation history' : 'Hide conversation history'}
+                title={sidebarCollapsed ? 'Show conversation history' : 'Hide conversation history'}
+              >
+                <MaterialIcon name={sidebarCollapsed ? 'dock_to_right' : 'dock_to_left'} size={18} aria-hidden="true" />
               </Button>
 
               <div className="min-w-0 flex items-center gap-2">
@@ -485,7 +512,7 @@ export function ChatPage() {
                     key={msg.id}
                     message={msg}
                     repoId={repository.id}
-                    onSelectCitation={(c) => setSelectedCitation(c)}
+                    onSelectCitation={handleSelectCitation}
                     selectedCitation={selectedCitation}
                     onRegenerate={isLatestAssistant ? handleRegenerateLast : undefined}
                     isLatestAssistant={isLatestAssistant}
@@ -515,7 +542,7 @@ export function ChatPage() {
                     <MarkdownRenderer
                       content={streamedText || 'Searching AST symbols & synthesizing response...'}
                       citations={streamedCitations}
-                      onSelectCitation={(c) => setSelectedCitation(c)}
+                      onSelectCitation={handleSelectCitation}
                     />
                     <span className="inline-block w-1.5 h-3.5 bg-[var(--color-mint-accent,#B9E4D0)] animate-pulse ml-0.5 align-middle" />
                   </div>
@@ -524,7 +551,7 @@ export function ChatPage() {
                     <CitationList
                       citations={streamedCitations}
                       repoId={repository.id}
-                      onSelectCitation={(c) => setSelectedCitation(c)}
+                      onSelectCitation={handleSelectCitation}
                       selectedCitation={selectedCitation}
                     />
                   )}
@@ -577,12 +604,21 @@ export function ChatPage() {
           {/* Jump to bottom button when user scrolls up */}
           {showScrollBottom && (
             <button
-              onClick={scrollToBottom}
+              onClick={() => {
+                isUserScrolledUpRef.current = false;
+                scrollToBottom(true);
+              }}
               aria-label="Jump to latest message"
-              className="absolute bottom-24 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border-strong)] text-xs text-[var(--color-text)] shadow-xl flex items-center gap-1.5 hover:bg-[var(--color-raised)] hover:border-[var(--color-mint-accent,#B9E4D0)] transition z-10"
+              className="absolute bottom-24 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border-strong)] text-xs text-[var(--color-text)] shadow-xl flex items-center gap-2 hover:bg-[var(--color-raised)] hover:border-[var(--color-mint-accent,#B9E4D0)] transition z-20 cursor-pointer"
             >
               <MaterialIcon name="arrow_downward" size={15} className="text-[var(--color-mint-accent,#B9E4D0)]" aria-hidden="true" />
               <span>Jump to latest</span>
+              {streaming && (
+                <span className="flex items-center gap-1 text-[10px] text-[var(--color-mint-accent,#B9E4D0)] font-mono">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-mint-accent,#B9E4D0)] animate-pulse" />
+                  generating
+                </span>
+              )}
             </button>
           )}
 

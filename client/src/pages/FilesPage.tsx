@@ -10,7 +10,7 @@ import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip';
-import { shortSha } from '../lib/utils';
+import { cn, shortSha } from '../lib/utils';
 import { AnimatedPage } from '../components/ui/AnimatedPage';
 import { LiveRegion } from '../components/ui/A11y';
 import { FileTree, getFileIcon } from '../components/files/FileTree';
@@ -59,6 +59,7 @@ export function FilesPage() {
   const [a11yStatus, setA11yStatus] = React.useState('');
   const [filterQuery, setFilterQuery] = React.useState('');
   const [isTreeCollapsed, setIsTreeCollapsed] = React.useState(false);
+  const [mobileView, setMobileView] = React.useState<'tree' | 'source'>('source');
 
   // Recently viewed files history
   const [recentFiles, setRecentFiles] = React.useState<string[]>([
@@ -154,6 +155,7 @@ export function FilesPage() {
       return prev;
     });
 
+    setMobileView('source');
     // Update URL params
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('path', path);
@@ -229,7 +231,10 @@ export function FilesPage() {
         {!isTreeCollapsed ? (
           <aside
             aria-label="Repository file tree"
-            className="w-64 sm:w-72 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col shrink-0 overflow-hidden select-none z-10 shadow-sm"
+            className={cn(
+              "w-full sm:w-72 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col shrink-0 overflow-hidden select-none z-10 shadow-sm",
+              mobileView === 'source' && 'hidden sm:flex'
+            )}
           >
             {/* Tree Header */}
             <div className="px-3 py-2.5 border-b border-[var(--color-border)] flex items-center justify-between gap-2 shrink-0 bg-[var(--color-raised)]/40">
@@ -350,7 +355,10 @@ export function FilesPage() {
         <main
           id="main-content"
           aria-label="Source code viewer"
-          className="flex-1 flex flex-col overflow-hidden bg-[var(--color-page)]"
+          className={cn(
+            "flex-1 flex flex-col overflow-hidden bg-[var(--color-page)]",
+            mobileView === 'tree' && 'hidden sm:flex'
+          )}
         >
           {/* Recently Viewed Files Tabs */}
           {recentFiles.length > 0 && (
@@ -441,6 +449,36 @@ export function FilesPage() {
                 </div>
               )}
             </nav>
+
+            {/* Mobile View Toggle */}
+            <div className="flex sm:hidden items-center p-0.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-raised)]/80 text-[11px] shrink-0">
+              <button
+                type="button"
+                onClick={() => setMobileView('tree')}
+                className={cn(
+                  'px-2.5 py-1 rounded-md font-medium transition cursor-pointer',
+                  mobileView === 'tree'
+                    ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] font-semibold shadow-xs'
+                    : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
+                )}
+                aria-label="Show file tree"
+              >
+                Files
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileView('source')}
+                className={cn(
+                  'px-2.5 py-1 rounded-md font-medium transition cursor-pointer',
+                  mobileView === 'source'
+                    ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] font-semibold shadow-xs'
+                    : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
+                )}
+                aria-label="Show source code"
+              >
+                Source
+              </button>
+            </div>
 
             {/* Code Actions (Copy Path, Copy Code, GitHub Link) */}
             <div className="flex items-center gap-1.5 shrink-0">
