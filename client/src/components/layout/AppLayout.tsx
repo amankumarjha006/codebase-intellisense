@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
-import { MotionConfig, motion, AnimatePresence } from 'motion/react';
+import { MotionConfig, motion } from 'motion/react';
 import { Toaster } from '../ui/sonner';
 import { MaterialIcon } from '../ui/MaterialIcon';
 import { Sidebar } from './Sidebar';
@@ -336,18 +336,7 @@ export function AppLayout() {
 
             <ErrorBoundary>
               <div className="h-full relative z-10">
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
-                    key={location.pathname}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
-                    className="h-full"
-                  >
-                    <Outlet />
-                  </motion.div>
-                </AnimatePresence>
+                <Outlet />
               </div>
             </ErrorBoundary>
           </main>

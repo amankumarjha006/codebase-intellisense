@@ -13,13 +13,11 @@ import { usePinnedRepos } from '../../lib/pinnedRepos';
 interface RepositoryHeaderProps {
   repository: Repository;
   onRefresh?: () => void;
-  hideRepoInfo?: boolean;
 }
 
 export function RepositoryHeader({
   repository,
   onRefresh,
-  hideRepoInfo = false,
 }: RepositoryHeaderProps) {
   const location = useLocation();
   const [reindexing, setReindexing] = React.useState(false);
@@ -91,35 +89,30 @@ export function RepositoryHeader({
       name: 'Overview',
       path: basePath,
       iconName: 'description',
-      shortcut: '1',
       isActive: currentPath === basePath || currentPath === `${basePath}/`,
     },
     {
       name: 'Chat',
       path: `${basePath}/chat`,
       iconName: 'chat',
-      shortcut: '2',
       isActive: currentPath.startsWith(`${basePath}/chat`),
     },
     {
       name: 'Architecture',
       path: `${basePath}/architecture`,
       iconName: 'account_tree',
-      shortcut: '3',
       isActive: currentPath.startsWith(`${basePath}/architecture`),
     },
     {
       name: 'Search',
       path: `${basePath}/search`,
       iconName: 'find_in_page',
-      shortcut: '4',
       isActive: currentPath.startsWith(`${basePath}/search`),
     },
     {
       name: 'Files',
       path: `${basePath}/files`,
       iconName: 'folder_open',
-      shortcut: '5',
       isActive: currentPath.startsWith(`${basePath}/files`),
     },
   ];
@@ -179,11 +172,11 @@ export function RepositoryHeader({
               {item.isActive && (
                 <motion.div
                   layoutId="active-repo-tab-pill"
-                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 32 }}
                   className="absolute inset-0 rounded-lg bg-[var(--color-mint-selected-bg,#1B332A)] border border-[rgba(185,228,208,0.25)] shadow-xs"
                 />
               )}
-              <span className="relative z-10 flex items-center gap-1.5">
+              <span className="relative z-10 flex items-center gap-2">
                 <MaterialIcon
                   name={item.iconName}
                   active={item.isActive}
@@ -195,9 +188,6 @@ export function RepositoryHeader({
                   aria-hidden="true"
                 />
                 <span>{item.name}</span>
-                <kbd className="hidden xl:inline-flex items-center justify-center h-4 min-w-[14px] px-1 rounded bg-[var(--color-surface)]/60 text-[9px] font-mono text-[var(--color-muted)] border border-[var(--color-border)] opacity-60 group-hover:opacity-100 transition-opacity">
-                  {item.shortcut}
-                </kbd>
               </span>
             </Link>
           ))}

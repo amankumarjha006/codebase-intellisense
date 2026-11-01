@@ -29,7 +29,6 @@ export function SourceViewer({
 }: SourceViewerProps) {
   const [tokens, setTokens] = React.useState<Token[][] | null>(null);
   const [copiedLine, setCopiedLine] = React.useState<number | null>(null);
-  const [copiedAll, setCopiedAll] = React.useState(false);
   const targetLineRef = React.useRef<HTMLTableRowElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -55,7 +54,7 @@ export function SourceViewer({
       .then(async (shiki) => {
         try {
           const res = await shiki.codeToTokens(code, {
-            lang: cleanLang,
+            lang: cleanLang as Parameters<typeof shiki.codeToTokens>[1]['lang'],
             theme: 'github-dark',
           });
           if (!cancelled && res.tokens) {
@@ -99,12 +98,6 @@ export function SourceViewer({
     setTimeout(() => setCopiedLine(null), 1500);
   };
 
-  const handleCopyAll = () => {
-    navigator.clipboard.writeText(code);
-    setCopiedAll(true);
-    toast.success(`Copied entire file: ${filePath}`);
-    setTimeout(() => setCopiedAll(false), 2000);
-  };
 
   const hasTarget = Boolean(targetStartLine && targetStartLine > 0);
   const displayEnd = targetEndLine && targetEndLine >= (targetStartLine || 1) ? targetEndLine : targetStartLine;

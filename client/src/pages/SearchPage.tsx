@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
-import { api } from '../lib/api';
+import { api, getCachedRepository } from '../lib/api';
 import { Repository, SearchResult, SearchFilters } from '../lib/types';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
 import { Button } from '../components/ui/button';
@@ -31,7 +31,7 @@ export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const urlQuery = searchParams.get('q') || '';
-  const [repository, setRepository] = React.useState<Repository | null>(null);
+  const [repository, setRepository] = React.useState<Repository | null>(() => (repoId ? getCachedRepository(repoId) : null));
   const [query, setQuery] = React.useState(urlQuery);
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [filters, setFilters] = React.useState<SearchFilters | null>(null);

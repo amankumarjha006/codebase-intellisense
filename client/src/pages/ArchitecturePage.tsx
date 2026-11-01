@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
-import { api } from '../lib/api';
+import { api, getCachedRepository } from '../lib/api';
 import {
   Repository,
   ArchitectureDocument,
@@ -27,9 +27,8 @@ import { ArchitectureDetailsPanel } from '../components/architecture/Architectur
 
 export function ArchitecturePage() {
   const { id: repoId } = useParams<{ id: string }>();
-  const navigate = useNavigate();
 
-  const [repository, setRepository] = React.useState<Repository | null>(null);
+  const [repository, setRepository] = React.useState<Repository | null>(() => (repoId ? getCachedRepository(repoId) : null));
   const [doc, setDoc] = React.useState<ArchitectureDocument | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [generating, setGenerating] = React.useState(false);

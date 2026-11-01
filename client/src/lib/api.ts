@@ -266,6 +266,12 @@ export async function fetchWrapper<T>(endpoint: string, options: RequestInit = {
   }
 }
 
+const repositoryCache = new Map<string, Repository>();
+
+export function getCachedRepository(id: string): Repository | null {
+  return repositoryCache.get(id) || null;
+}
+
 /** Real API client communicating with FastAPI backend */
 export const realApi = {
   // Auth
@@ -451,66 +457,80 @@ export const realApi = {
   // --- Page Component Compatibility Adapters ---
 
   getRepository: async (id: string, options: RequestInit = {}): Promise<Repository> => {
-    const detail = await realApi.getRepositoryDetail(id, options);
-    const shortSha = detail.active_version?.commit_sha ? detail.active_version.commit_sha.slice(0, 7) : null;
+    const cached = repositoryCache.get(id);
 
-    let versions: RepositoryVersionSummary[];
-    try {
-      versions = await realApi.getRepositoryVersions(id, options);
-    } catch {
-      versions = [];
-    }
+    const fetchFresh = async (): Promise<Repository> => {
+      const detail = await realApi.getRepositoryDetail(id, options);
+      const shortSha = detail.active_version?.commit_sha ? detail.active_version.commit_sha.slice(0, 7) : null;
 
-    const linesOfCode = detail.lines_of_code ?? 0;
-    const astNodes = detail.ast_nodes ?? 0;
-    const language = detail.primary_language || 'TypeScript';
+      let versions: RepositoryVersionSummary[];
+      try {
+        versions = await realApi.getRepositoryVersions(id, options);
+      } catch {
+        versions = [];
+      }
 
-    const index_history: IndexHistoryEntry[] = versions.length > 0
-      ? versions.map((v, idx) => ({
-          sha: v.commit_sha,
-          status: (v.status === 'SUCCESS' ? 'READY' : v.status === 'PENDING' ? 'INDEXING' : 'FAILED') as JobStatus,
-          label: idx === 0 ? 'Active' : null,
-          timestamp: v.indexed_at || detail.active_version?.indexed_at || new Date().toISOString(),
-          commit_message: `Commit ${v.commit_sha.slice(0, 7)} (${v.branch})`,
-          symbols_indexed: idx === 0 ? (astNodes || null) : null,
-        }))
-      : detail.active_version
-      ? [
-          {
-            sha: detail.active_version.commit_sha,
-            status: (detail.active_version.status === 'SUCCESS' ? 'READY' : detail.active_version.status === 'PENDING' ? 'INDEXING' : 'FAILED') as JobStatus,
-            label: 'Active',
-            timestamp: detail.active_version.indexed_at || new Date().toISOString(),
-            commit_message: `Commit ${detail.active_version.commit_sha.slice(0, 7)} (${detail.active_version.branch})`,
-            symbols_indexed: astNodes || null,
-          },
-        ]
-      : [];
+      const linesOfCode = detail.lines_of_code ?? 0;
+      const astNodes = detail.ast_nodes ?? 0;
+      const language = detail.primary_language || 'TypeScript';
 
-    return {
-      id: detail.id,
-      name: detail.name,
-      owner: detail.owner,
-      full_name: `${detail.owner}/${detail.name}`,
-      description: '',
-      is_private: detail.is_private,
-      language,
-      default_branch: detail.active_version?.branch || 'main',
-      latest_job_status: (detail.active_version?.status as JobStatus) || null,
-      latest_job_failure_code: null,
-      active_version_short_sha: shortSha,
-      indexed_commit: detail.active_version?.commit_sha || null,
-      last_indexed_at: detail.active_version?.indexed_at || null,
-      lines_of_code: linesOfCode,
-      ast_nodes: astNodes,
-      codebase_volume: {
+      const index_history: IndexHistoryEntry[] = versions.length > 0
+        ? versions.map((v, idx) => ({
+            sha: v.commit_sha,
+            status: (v.status === 'SUCCESS' ? 'READY' : v.status === 'PENDING' ? 'INDEXING' : 'FAILED') as JobStatus,
+            label: idx === 0 ? 'Active' : null,
+            timestamp: v.indexed_at || detail.active_version?.indexed_at || new Date().toISOString(),
+            commit_message: `Commit ${v.commit_sha.slice(0, 7)} (${v.branch})`,
+            symbols_indexed: idx === 0 ? (astNodes || null) : null,
+          }))
+        : detail.active_version
+        ? [
+            {
+              sha: detail.active_version.commit_sha,
+              status: (detail.active_version.status === 'SUCCESS' ? 'READY' : detail.active_version.status === 'PENDING' ? 'INDEXING' : 'FAILED') as JobStatus,
+              label: 'Active',
+              timestamp: detail.active_version.indexed_at || new Date().toISOString(),
+              commit_message: `Commit ${detail.active_version.commit_sha.slice(0, 7)} (${detail.active_version.branch})`,
+              symbols_indexed: astNodes || null,
+            },
+          ]
+        : [];
+
+      const result: Repository = {
+        id: detail.id,
+        name: detail.name,
+        owner: detail.owner,
+        full_name: `${detail.owner}/${detail.name}`,
+        description: '',
+        is_private: detail.is_private,
+        language,
+        default_branch: detail.active_version?.branch || 'main',
+        latest_job_status: (detail.active_version?.status as JobStatus) || null,
+        latest_job_failure_code: null,
+        active_version_short_sha: shortSha,
+        indexed_commit: detail.active_version?.commit_sha || null,
+        last_indexed_at: detail.active_version?.indexed_at || null,
         lines_of_code: linesOfCode,
         ast_nodes: astNodes,
-        language,
-      },
-      verification_scope: 'Full repository',
-      index_history,
+        codebase_volume: {
+          lines_of_code: linesOfCode,
+          ast_nodes: astNodes,
+          language,
+        },
+        verification_scope: 'Full repository',
+        index_history,
+      };
+      repositoryCache.set(id, result);
+      return result;
     };
+
+    if (cached && !options.signal) {
+      // Instant tab switch: return cached repository immediately, refresh in background
+      fetchFresh().catch(() => {});
+      return cached;
+    }
+
+    return fetchFresh();
   },
 
   reindexRepository: async (repoId: string, options: RequestInit = {}): Promise<IndexJob> => {

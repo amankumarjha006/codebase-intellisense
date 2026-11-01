@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
-import { api } from '../lib/api';
+import { api, getCachedRepository } from '../lib/api';
 import {
   Repository,
   Conversation,
@@ -25,7 +25,7 @@ export function ChatPage() {
   const { id: repoId, conversationId } = useParams<{ id: string; conversationId?: string }>();
   const navigate = useNavigate();
 
-  const [repository, setRepository] = React.useState<Repository | null>(null);
+  const [repository, setRepository] = React.useState<Repository | null>(() => (repoId ? getCachedRepository(repoId) : null));
   const [repoFiles, setRepoFiles] = React.useState<string[]>([]);
   const [conversations, setConversations] = React.useState<Conversation[]>([]);
   const [loadingConversations, setLoadingConversations] = React.useState(true);

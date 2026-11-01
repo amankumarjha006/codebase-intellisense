@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
-import { api } from '../lib/api';
+import { api, getCachedRepository } from '../lib/api';
 import { Repository, IndexJob } from '../lib/types';
 import { IN_PROGRESS_STATUSES } from '../lib/status';
 import { formatNumber, formatRelativeTime, shortSha } from '../lib/utils';
@@ -20,7 +20,7 @@ export function RepositoryOverviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [repository, setRepository] = React.useState<Repository | null>(null);
+  const [repository, setRepository] = React.useState<Repository | null>(() => (id ? getCachedRepository(id) : null));
   const [indexJob, setIndexJob] = React.useState<IndexJob | null>(null);
   const [filesCount, setFilesCount] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -153,11 +153,7 @@ export function RepositoryOverviewPage() {
   const isFailed = repository.latest_job_status === 'FAILED';
   const progressPercent = indexJob?.progress?.percent ?? 64;
   const activeSha = repository.indexed_commit || repository.active_version_short_sha || '';
-  const repoStatus =
-    repository.latest_job_status ||
-    (activeSha ? 'READY' : 'NOT_INDEXED');
 
-  const githubUrl = `https://github.com/${repository.owner}/${repository.name}`;
 
   return (
     <AnimatedPage className="min-h-full">

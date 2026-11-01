@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
-import { api } from '../lib/api';
+import { api, getCachedRepository } from '../lib/api';
 import { Repository, FileTreeNode, FileContent } from '../lib/types';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
 import { Button } from '../components/ui/button';
@@ -21,7 +21,7 @@ export function FilesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
 
-  const [repository, setRepository] = React.useState<Repository | null>(null);
+  const [repository, setRepository] = React.useState<Repository | null>(() => (repoId ? getCachedRepository(repoId) : null));
   const [fileTree, setFileTree] = React.useState<FileTreeNode | null>(null);
   const [loadingTree, setLoadingTree] = React.useState(true);
 
@@ -217,7 +217,6 @@ export function FilesPage() {
 
   // Path breadcrumb segments
   const pathSegments = activeFilePath.split('/');
-  const fileName = pathSegments[pathSegments.length - 1];
 
   return (
     <AnimatedPage className="flex flex-col h-full bg-[var(--color-page)] overflow-hidden">
