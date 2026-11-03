@@ -132,20 +132,8 @@ All endpoints reading or modifying a specific repository (i.e. `/api/v1/reposito
 }
 ```
 
-## 8. Get Architecture
-**Endpoint:** `GET /api/v1/repositories/{repository_id}/architecture`
-**Auth Required:** Yes
-**Response (200 OK):**
-```json
-{
-  "analysis_type": "ARCHITECTURE",
-  "repository_version_id": "version-uuid",
-  "payload": {
-    "components": [...],
-    "relationships": [...]
-  }
-}
-```
+## 8. Get Architecture (Pending Architecture v2)
+*(Note: Old endpoint removed in Stage 1 removal. Replaced by evidence-based Architecture v2 endpoint with schema_version: 2).*
 
 ## 9. Browse Files
 **Endpoint:** `GET /api/v1/repositories/{repository_id}/files`
