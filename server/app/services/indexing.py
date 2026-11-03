@@ -818,4 +818,12 @@ class IndexingService:
         )
         self.db.add(overview)
 
+        if repo_path:
+            try:
+                from app.services.architecture.service import ArchitectureService
+                arch_service = ArchitectureService(self.db)
+                arch_service.analyze_repository_version(version.id, repo_path)
+            except Exception:
+                logger.exception("Failed to run architecture analysis pipeline during indexing")
+
         self.db.commit()

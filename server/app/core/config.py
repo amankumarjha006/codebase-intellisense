@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     GEMINI_LLM_MODEL_PRIMARY: str = "gemini-2.5-flash"
     GEMINI_LLM_MODEL_FALLBACK_1: Optional[str] = "gemini-3.8-flash"
     GEMINI_LLM_MODEL_FALLBACK_2: Optional[str] = None
+    ARCHITECTURE_LLM_ENRICHMENT_ENABLED: bool = True
     OPENROUTER_API_KEY: Optional[str] = None
     OPENROUTER_FALLBACK_MODEL: str = "openrouter/free"
     

@@ -15,6 +15,7 @@ from app.api.deps import (
 from app.core.rate_limit import general_rate_limiter, rag_rate_limiter
 from app.models.user import User
 from app.models.repository import Repository
+from app.models.knowledge import File
 from app.repositories.repository import RepositoryRepository
 from app.repositories.knowledge import KnowledgeRepository
 from app.services.retrieval import RetrievalService, RetrievalRequest
@@ -53,6 +54,11 @@ from app.services.github import GithubAuthError
 from app.workers import enqueue_indexing_job, enqueue_indexing_job_async
 
 from app.services.rag_query.service import RAGQueryService
+from app.services.architecture.schemas import (
+    ArchitectureOut,
+    ComponentFilesOut,
+    ComponentFileItem,
+)
 from app.services.rag_query.models import RAGQueryRequest
 from app.services.rag_query.exceptions import (
     InvalidQueryError,
@@ -537,6 +543,134 @@ def get_repository_technology_stack(
         )
         
     return AnalysisResultOut.model_validate(tech_stack)
+
+
+@router.get(
+    "/{repository_id}/architecture",
+    response_model=ArchitectureOut,
+    summary="Get Repository Architecture V2",
+)
+def get_repository_architecture(
+    repository_id: UUID,
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+    _: None = Depends(general_rate_limiter),
+):
+    """Retrieve the Architecture V2 analysis for the active version of a repository."""
+    repo_repo = RepositoryRepository(db)
+    active_version = repo_repo.get_active_version(repository.id)
+    if not active_version:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No active version found for this repository.",
+                }
+            },
+        )
+
+    knowledge_repo = KnowledgeRepository(db)
+    arch_result = knowledge_repo.get_analysis_result(active_version.id, "ARCHITECTURE")
+    if not arch_result:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "ANALYSIS_NOT_FOUND",
+                    "message": "Architecture analysis not found for the active version.",
+                }
+            },
+        )
+
+    return ArchitectureOut.model_validate(arch_result.payload)
+
+
+@router.get(
+    "/{repository_id}/architecture/components/{component_id}/files",
+    response_model=ComponentFilesOut,
+    summary="Get Component Files",
+)
+def get_component_files(
+    repository_id: UUID,
+    component_id: str,
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(50, ge=1, description="Items per page (capped at 150)"),
+    repository: Repository = Depends(get_authorized_repository),
+    db: Session = Depends(get_db),
+    _: None = Depends(general_rate_limiter),
+):
+    """Retrieve paginated list of files belonging to an architectural component."""
+    limit = min(limit, 150)
+    repo_repo = RepositoryRepository(db)
+    active_version = repo_repo.get_active_version(repository.id)
+    if not active_version:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "No active version found for this repository.",
+                }
+            },
+        )
+
+    knowledge_repo = KnowledgeRepository(db)
+    arch_result = knowledge_repo.get_analysis_result(active_version.id, "ARCHITECTURE")
+    if not arch_result:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "ANALYSIS_NOT_FOUND",
+                    "message": "Architecture analysis not found for the active version.",
+                }
+            },
+        )
+
+    payload = arch_result.payload
+    components = payload.get("components", [])
+    target_comp = next((c for c in components if c.get("id") == component_id), None)
+    if not target_comp:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "COMPONENT_NOT_FOUND",
+                    "message": f"Component '{component_id}' not found in active architecture analysis.",
+                }
+            },
+        )
+
+    prefix = target_comp.get("path_prefix", "")
+    query = db.query(File).filter(File.repository_version_id == active_version.id)
+    if prefix:
+        query = query.filter(
+            (File.file_path == prefix) | File.file_path.startswith(prefix + "/")
+        )
+    else:
+        query = query.filter(~File.file_path.contains("/"))
+
+    total_files = query.count()
+    offset = (page - 1) * limit
+    files_page = query.order_by(File.file_path).offset(offset).limit(limit).all()
+
+    file_items = [
+        ComponentFileItem(
+            path=f.file_path,
+            language=f.language,
+            size_bytes=f.size_bytes,
+        )
+        for f in files_page
+    ]
+
+    return ComponentFilesOut(
+        component_id=component_id,
+        total=total_files,
+        page=page,
+        limit=limit,
+        files=file_items,
+    )
 
 
 @router.post("/{repository_id}/analyze", response_model=AnalyzeRepositoryOut, status_code=status.HTTP_202_ACCEPTED, summary="Analyze Repository")
