@@ -88,30 +88,6 @@ describe('Real API Adapters for Page Components', () => {
     expect(srcChildNames).toContain('utils');
   });
 
-  it('maps getArchitectureDocument(repoId) to getRepositoryArchitecture and formats ArchitectureDocument', async () => {
-    vi.spyOn(realApi, 'getRepositoryArchitecture').mockResolvedValue({
-      analysis_type: 'ARCHITECTURE',
-      repository_version_id: 'ver-1',
-      payload: {
-        nodes: [
-          { id: 'file_1', type: 'file', name: 'main.py', path: 'server/app/main.py' },
-          { id: 'file_2', type: 'file', name: 'auth.py', path: 'server/app/auth.py' },
-        ],
-        relationships: [
-          { source: 'file_1', target: 'file_2', type: 'IMPORTS' },
-        ],
-      },
-    });
-
-    const doc = await api.getArchitectureDocument('repo-123');
-
-    expect(realApi.getRepositoryArchitecture).toHaveBeenCalledWith('repo-123', undefined, 300, {});
-    expect(doc).toBeDefined();
-    expect(doc.repository_id).toBe('repo-123');
-    expect(doc.sections).toBeInstanceOf(Array);
-    expect(doc.pipeline_diagram).toBeInstanceOf(Array);
-  });
-
   it('maps getConversations and getMessages to conversation endpoints', async () => {
     vi.spyOn(realApi, 'listConversations').mockResolvedValue({
       items: [

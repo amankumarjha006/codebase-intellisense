@@ -7,7 +7,6 @@ import {
   FileContent,
   SearchResult,
   SearchFilters,
-  ArchitectureDocument,
   User,
   IndexJob,
   ConnectResponse,
@@ -23,7 +22,6 @@ import {
   mockFileContents,
   mockSearchResults,
   mockSearchFilters,
-  mockArchitectureDocument,
 } from './data';
 import { sleep, randomHex } from '../lib/utils';
 import { getStoredScenarios } from '../lib/scenarios';
@@ -417,23 +415,5 @@ export function initializeModule() {
 }
 `,
     };
-  },
-
-  /** Get architecture document */
-  async getArchitectureDocument(repoId: string): Promise<ArchitectureDocument> {
-    await sleep(200);
-    const scenarios = getStoredScenarios();
-
-    if (scenarios.architecture === 'empty') {
-      return {
-        repository_id: repoId,
-        sha: '3a8f1c2',
-        generated_at: new Date().toISOString(),
-        sections: [],
-        pipeline_diagram: null,
-      };
-    }
-
-    return mockArchitectureDocument;
   },
 };

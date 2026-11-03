@@ -7,7 +7,6 @@ import {
   DashboardScenario,
   RepoScenario,
   ChatScenario,
-  ArchitectureScenario,
 } from '../../lib/scenarios';
 import { isMockEnabled } from '../../lib/api';
 
@@ -33,7 +32,6 @@ export function ScenarioSwitcher() {
       dashboard: 'populated',
       repo: 'ready',
       chat: 'normal',
-      architecture: 'completed',
     };
     setScenarios(defaults);
     saveStoredScenarios(defaults);
@@ -132,26 +130,6 @@ export function ScenarioSwitcher() {
                     }`}
                   >
                     {st.replace(/_/g, ' ')}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Architecture State */}
-            <div>
-              <label className="text-[var(--color-muted)] block mb-1 font-medium">Architecture State</label>
-              <div className="grid grid-cols-3 gap-1">
-                {(['completed', 'generating', 'empty'] as ArchitectureScenario[]).map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => updateScenario('architecture', st)}
-                    className={`px-2 py-1 rounded text-left capitalize transition border truncate ${
-                      scenarios.architecture === st
-                        ? 'bg-[var(--color-accent-tint)] border-[var(--color-accent)] text-[var(--color-accent)] font-medium'
-                        : 'border-[var(--color-border)] bg-[var(--color-raised)] text-[var(--color-text-secondary)] hover:bg-[var(--color-raised)]/80'
-                    }`}
-                  >
-                    {st}
                   </button>
                 ))}
               </div>

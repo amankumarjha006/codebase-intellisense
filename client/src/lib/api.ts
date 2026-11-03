@@ -8,9 +8,6 @@ import type {
   SearchFilters,
   FileTreeNode,
   FileContent,
-  ArchitectureDocument,
-  ArchitectureSection,
-  PipelineDiagramNode,
   Conversation,
   ChatMessage,
   Citation,
@@ -373,14 +370,6 @@ export const realApi = {
   getRepositoryTechStack: (id: string, options: RequestInit = {}) =>
     fetchWrapper<AnalysisResultOut>(`/repositories/${id}/technology-stack`, options),
 
-  getRepositoryArchitecture: (id: string, level?: 'file', maxNodes?: number, options: RequestInit = {}) => {
-    const params = new URLSearchParams();
-    if (level) params.append('level', level);
-    if (maxNodes !== undefined) params.append('max_nodes', maxNodes.toString());
-    const queryStr = params.toString() ? `?${params.toString()}` : '';
-    return fetchWrapper<AnalysisResultOut>(`/repositories/${id}/architecture${queryStr}`, options);
-  },
-
   getRepositoryFiles: (id: string, limit?: number, offset?: number, q?: string, options: RequestInit = {}) => {
     const params = new URLSearchParams();
     if (limit !== undefined) params.append('limit', limit.toString());
@@ -681,60 +670,6 @@ export const realApi = {
       last_commit_message: 'Verified repository snapshot',
       last_commit_author: 'Automated Indexer',
       last_commit_date: new Date().toISOString(),
-    };
-  },
-
-  getArchitectureDocument: async (repoId: string, options: RequestInit = {}): Promise<ArchitectureDocument> => {
-    const arch = await realApi.getRepositoryArchitecture(repoId, undefined, 300, options);
-    const payload = arch.payload || {};
-    const nodes = (payload.nodes as Array<{ id: string; name?: string; path?: string; type?: string }>) || [];
-    const relationships = (payload.relationships as Array<{ source: string; target: string; type: string }>) || [];
-
-    const fileNodes = nodes.filter((n) => n.type === 'file');
-    const symbolNodes = nodes.filter((n) => n.type === 'symbol');
-
-    const sections: ArchitectureSection[] = [
-      {
-        id: 'overview',
-        number: 1,
-        title: 'System Architecture & Top-Level Modules',
-        status: 'verified',
-        content: `### Top-Level Modules\n\nThe repository contains **${fileNodes.length} indexed files** and **${symbolNodes.length} symbols**.\n\n` +
-          fileNodes.slice(0, 15).map((f) => `- \`${f.path || f.name}\``).join('\n'),
-        citations: [],
-      },
-      {
-        id: 'dependencies',
-        number: 2,
-        title: 'Module Dependency Graph',
-        status: 'verified',
-        content: `### Cross-Module Connections\n\nDerived **${relationships.length} relationships** across files and AST call-trees.`,
-        citations: [],
-      },
-    ];
-
-    const pipelineDiagram: PipelineDiagramNode[] = fileNodes.slice(0, 10).map((f) => ({
-      id: f.id,
-      label: f.name || f.path || f.id,
-      sublabel: f.path || 'file',
-      connections: relationships
-        .filter((r) => r.source === f.id)
-        .map((r) => r.target)
-        .slice(0, 5),
-    }));
-
-    return {
-      repository_id: repoId,
-      sha: arch.repository_version_id || 'active',
-      generated_at: new Date().toISOString(),
-      sections,
-      pipeline_diagram: pipelineDiagram,
-      graph: {
-        nodes,
-        relationships,
-        truncated: Boolean(payload.truncated),
-        total_nodes: typeof payload.total_nodes === 'number' ? payload.total_nodes : nodes.length,
-      },
     };
   },
 
