@@ -25,6 +25,8 @@ import {
 } from './data';
 import { sleep, randomHex } from '../lib/utils';
 import { getStoredScenarios } from '../lib/scenarios';
+import { mockArchitectureFixture, mockComponentFilesFixture } from './architectureFixture';
+import type { ArchitectureOut, ComponentFilesOut } from '../lib/architecture/types';
 
 // In-memory clones to allow mutable interactions in the session
 const repositories: Repository[] = JSON.parse(JSON.stringify(mockRepositories));
@@ -377,6 +379,16 @@ export const mockApi = {
   },
 
   /** Get file content */
+  async getRepositoryArchitecture(_id: string): Promise<ArchitectureOut> {
+    await sleep(150);
+    return mockArchitectureFixture;
+  },
+
+  async getComponentFiles(_id: string, componentId: string, page = 1, limit = 50): Promise<ComponentFilesOut> {
+    await sleep(100);
+    return mockComponentFilesFixture(componentId, page, limit);
+  },
+
   async getFileContent(repoId: string, path: string): Promise<FileContent> {
     await sleep(120);
     if (mockFileContents[path]) {

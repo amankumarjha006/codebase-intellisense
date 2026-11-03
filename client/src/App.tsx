@@ -1,10 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { LandingPage } from './pages/LandingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RepositoriesPage } from './pages/RepositoriesPage';
 import { RepositoryOverviewPage } from './pages/RepositoryOverviewPage';
 import { ChatPage } from './pages/ChatPage';
-import { ArchitecturePage } from './pages/ArchitecturePage';
+const ArchitecturePage = lazy(() => import('./pages/ArchitecturePage').then((m) => ({ default: m.ArchitecturePage })));
 import { SearchPage } from './pages/SearchPage';
 import { FilesPage } from './pages/FilesPage';
 import { AppLayout } from './components/layout/AppLayout';
@@ -37,7 +38,7 @@ export function App() {
               <Route path="/repositories/:id" element={<RepositoryOverviewPage />} />
               <Route path="/repositories/:id/chat" element={<ChatPage />} />
               <Route path="/repositories/:id/chat/:conversationId" element={<ChatPage />} />
-              <Route path="/repositories/:id/architecture" element={<ArchitecturePage />} />
+              <Route path="/repositories/:id/architecture" element={<Suspense fallback={<div className="min-h-screen bg-[#0F0F0E]" />}><ArchitecturePage /></Suspense>} />
               <Route path="/repositories/:id/search" element={<SearchPage />} />
               <Route path="/repositories/:id/files" element={<FilesPage />} />
             </Route>

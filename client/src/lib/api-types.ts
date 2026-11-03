@@ -44,6 +44,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/dev-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dev Environment Auto-Login
+         * @description Provisions or loads a development user and sets a real session cookie.
+         */
+        get: operations["dev_login_api_v1_auth_dev_login_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/github/callback": {
         parameters: {
             query?: never;
@@ -142,7 +162,11 @@ export interface paths {
         get: operations["get_repository_api_v1_repositories__repository_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Archive Repository
+         * @description Archives a repository so it is hidden from the user interface without deleting its data.
+         */
+        delete: operations["delete_repository_api_v1_repositories__repository_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -297,10 +321,30 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Architecture
-         * @description Retrieve the architecture analysis for the active version of a repository.
+         * Get Repository Architecture V2
+         * @description Retrieve the Architecture V2 analysis for the active version of a repository.
          */
         get: operations["get_repository_architecture_api_v1_repositories__repository_id__architecture_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/repositories/{repository_id}/architecture/components/{component_id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Component Files
+         * @description Retrieve paginated list of files belonging to an architectural component.
+         */
+        get: operations["get_component_files_api_v1_repositories__repository_id__architecture_components__component_id__files_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -318,10 +362,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Analyze Repository
-         * @description Queues a background job to analyze the repository.
-         */
+        /** Analyze Repository */
         post: operations["analyze_repository_api_v1_repositories__repository_id__analyze_post"];
         delete?: never;
         options?: never;
@@ -670,6 +711,36 @@ export interface components {
             /** Message */
             message: string;
         };
+        /**
+         * ArchitectureOut
+         * @description Complete evidence-based Architecture V2 analysis payload.
+         */
+        ArchitectureOut: {
+            /**
+             * Schema Version
+             * @default 2
+             */
+            schema_version: number;
+            /**
+             * Status
+             * @default ready
+             * @enum {string}
+             */
+            status: "ready" | "partial" | "failed";
+            system?: components["schemas"]["SystemMapOut"];
+            /** Components */
+            components?: components["schemas"]["ComponentOut"][];
+            /** Edges */
+            edges?: components["schemas"]["GraphEdgeOut"][];
+            /** Flows */
+            flows?: components["schemas"]["DataFlowOut"][];
+            coverage: components["schemas"]["CoverageOut"];
+            limits?: components["schemas"]["LimitsOut"];
+            /** Generated At */
+            generated_at?: string;
+            /** Error */
+            error?: string | null;
+        };
         /** CitationOut */
         "CitationOut-Input": {
             /** Citation Id */
@@ -691,6 +762,59 @@ export interface components {
             start_line: number;
             /** End Line */
             end_line: number;
+        };
+        /**
+         * ComponentFileItem
+         * @description File belonging to an architectural component.
+         */
+        ComponentFileItem: {
+            /** Path */
+            path: string;
+            /** Language */
+            language: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /**
+         * ComponentFilesOut
+         * @description Paginated list of files belonging to a component.
+         */
+        ComponentFilesOut: {
+            /** Component Id */
+            component_id: string;
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Limit */
+            limit: number;
+            /** Files */
+            files?: components["schemas"]["ComponentFileItem"][];
+        };
+        /**
+         * ComponentOut
+         * @description A logical component aggregating files by directory.
+         */
+        ComponentOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Path Prefix */
+            path_prefix: string;
+            /** File Count */
+            file_count: number;
+            /** Language Mix */
+            language_mix: {
+                [key: string]: number;
+            };
+            /**
+             * Layer
+             * @default 0
+             */
+            layer: number;
+            /** Summary */
+            summary?: string | null;
         };
         /** ConversationCreate */
         ConversationCreate: {
@@ -762,6 +886,57 @@ export interface components {
              */
             message_count: number;
         };
+        /**
+         * CoverageOut
+         * @description Resolution coverage statistics.
+         */
+        CoverageOut: {
+            /** Internal Imports Total */
+            internal_imports_total: number;
+            /** Resolved */
+            resolved: number;
+            /** Ratio */
+            ratio: number;
+            /** Languages Analyzed */
+            languages_analyzed?: string[];
+            /** Languages Not Analyzed */
+            languages_not_analyzed?: components["schemas"]["CoverageUnanalyzedLanguage"][];
+        };
+        /**
+         * CoverageUnanalyzedLanguage
+         * @description File count for a language that lacks an import resolver.
+         */
+        CoverageUnanalyzedLanguage: {
+            /** Language */
+            language: string;
+            /** Files */
+            files: number;
+        };
+        /**
+         * DataFlowOut
+         * @description A traced data flow through architectural components.
+         */
+        DataFlowOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            entry: components["schemas"]["FlowEntry"];
+            /** Steps */
+            steps?: components["schemas"]["FlowStep"][];
+        };
+        /**
+         * EvidenceItem
+         * @description Citation evidence for a dependency edge between components.
+         */
+        EvidenceItem: {
+            /** Source Path */
+            source_path: string;
+            /** Target Path */
+            target_path: string;
+            /** Line */
+            line: number;
+        };
         /** FileDetailOut */
         FileDetailOut: {
             /**
@@ -819,12 +994,76 @@ export interface components {
             /** Sha256 */
             sha256: string;
         };
+        /**
+         * FlowCitation
+         * @description Code citation for a step in a data flow.
+         */
+        FlowCitation: {
+            /** File Path */
+            file_path: string;
+            /** Start Line */
+            start_line: number;
+            /** End Line */
+            end_line: number;
+        };
+        /**
+         * FlowEntry
+         * @description Entrypoint trigger for a data flow.
+         */
+        FlowEntry: {
+            /** Kind */
+            kind: string;
+            /** Method */
+            method: string;
+            /** Path */
+            path: string;
+            /** File */
+            file: string;
+            /** Line */
+            line: number;
+        };
+        /**
+         * FlowStep
+         * @description A step in an end-to-end data flow.
+         */
+        FlowStep: {
+            /** Component Id */
+            component_id: string;
+            /** Caption */
+            caption?: string | null;
+            /** Citations */
+            citations?: components["schemas"]["FlowCitation"][];
+        };
         /** GithubIdentityOut */
         GithubIdentityOut: {
             /** Username */
             username: string;
             /** Github User Id */
             github_user_id: string;
+        };
+        /**
+         * GraphEdgeOut
+         * @description Aggregated resolved dependency edge between two components.
+         */
+        GraphEdgeOut: {
+            /** Source */
+            source: string;
+            /** Target */
+            target: string;
+            /** Weight */
+            weight: number;
+            /**
+             * Kind
+             * @default internal
+             */
+            kind: string;
+            /**
+             * Cycle
+             * @default false
+             */
+            cycle: boolean;
+            /** Evidence */
+            evidence?: components["schemas"]["EvidenceItem"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -858,6 +1097,22 @@ export interface components {
             failure_code?: string | null;
             /** Failure Message */
             failure_message?: string | null;
+        };
+        /**
+         * LimitsOut
+         * @description Graph and component limits applied during analysis.
+         */
+        LimitsOut: {
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
+            /**
+             * Max Components
+             * @default 40
+             */
+            max_components: number;
         };
         /** MessageCitationOut */
         MessageCitationOut: {
@@ -972,6 +1227,8 @@ export interface components {
         RepositoryCreate: {
             /** Url */
             url: string;
+            /** Account Id */
+            account_id?: string | null;
         };
         /** RepositoryDetailOut */
         RepositoryDetailOut: {
@@ -987,6 +1244,21 @@ export interface components {
             /** Is Private */
             is_private: boolean;
             active_version: components["schemas"]["RepositoryVersionSummary"] | null;
+            /**
+             * Lines Of Code
+             * @default 0
+             */
+            lines_of_code: number;
+            /**
+             * Ast Nodes
+             * @default 0
+             */
+            ast_nodes: number;
+            /**
+             * Primary Language
+             * @default TypeScript
+             */
+            primary_language: string;
         };
         /**
          * RepositoryListItemOut
@@ -1106,6 +1378,48 @@ export interface components {
             /** Score */
             score: number;
         };
+        /**
+         * SystemEdge
+         * @description A dependency edge in the system map.
+         */
+        SystemEdge: {
+            /** Source */
+            source: string;
+            /** Target */
+            target: string;
+            /** Label */
+            label?: string | null;
+        };
+        /**
+         * SystemMapOut
+         * @description System map showing what runs and what it talks to.
+         */
+        SystemMapOut: {
+            /** Nodes */
+            nodes?: components["schemas"]["SystemNode"][];
+            /** Edges */
+            edges?: components["schemas"]["SystemEdge"][];
+        };
+        /**
+         * SystemNode
+         * @description A node in the system map derived from manifests.
+         */
+        SystemNode: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Source File */
+            source_file: string;
+            /** Line Number */
+            line_number: number;
+        };
         /** UserOut */
         UserOut: {
             /**
@@ -1158,6 +1472,26 @@ export interface operations {
         };
     };
     login_github_api_v1_auth_github_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    dev_login_api_v1_auth_dev_login_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1340,6 +1674,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RepositoryDetailOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_repository_api_v1_repositories__repository_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repository_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1580,12 +1943,7 @@ export interface operations {
     };
     get_repository_architecture_api_v1_repositories__repository_id__architecture_get: {
         parameters: {
-            query?: {
-                /** @description Level filter, e.g. 'file' */
-                level?: string | null;
-                /** @description Max nodes to return (default 300 when level or max_nodes specified) */
-                max_nodes?: number | null;
-            };
+            query?: never;
             header?: never;
             path: {
                 repository_id: string;
@@ -1600,7 +1958,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnalysisResultOut"];
+                    "application/json": components["schemas"]["ArchitectureOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_component_files_api_v1_repositories__repository_id__architecture_components__component_id__files_get: {
+        parameters: {
+            query?: {
+                /** @description Page number */
+                page?: number;
+                /** @description Items per page (capped at 150) */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                repository_id: string;
+                component_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComponentFilesOut"];
                 };
             };
             /** @description Validation Error */

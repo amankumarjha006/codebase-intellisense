@@ -1,5 +1,6 @@
 import { parseRetryAfter } from './retryAfter';
 import { parseSSEEvents } from './sse';
+import type { ArchitectureOut, ComponentFilesOut } from './architecture/types';
 import type {
   Repository,
   JobStatus,
@@ -311,6 +312,26 @@ export const realApi = {
 
   getRepositoryActiveVersion: (id: string, options: RequestInit = {}) =>
     fetchWrapper<RepositoryVersionSummary>(`/repositories/${id}/versions/active`, options),
+
+  getRepositoryArchitecture: (id: string, options: RequestInit = {}) =>
+    fetchWrapper<ArchitectureOut>(`/repositories/${id}/architecture`, options),
+
+  getComponentFiles: (
+    id: string,
+    componentId: string,
+    page = 1,
+    limit = 50,
+    options: RequestInit = {}
+  ) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    return fetchWrapper<ComponentFilesOut>(
+      `/repositories/${id}/architecture/components/${encodeURIComponent(componentId)}/files?${params.toString()}`,
+      options
+    );
+  },
 
   analyzeRepository: (id: string, branch?: string | null, options: RequestInit = {}) =>
     fetchWrapper<AnalyzeRepositoryOut>(`/repositories/${id}/analyze`, {
@@ -825,6 +846,23 @@ export const realApi = {
 export const isMockEnabled = false;
 
 type MockApiType = typeof import('../mock/mockApi').mockApi;
+
+export async function getRepositoryArchitecture(
+  id: string,
+  signal?: AbortSignal
+): Promise<ArchitectureOut> {
+  return realApi.getRepositoryArchitecture(id, { signal });
+}
+
+export async function getComponentFiles(
+  id: string,
+  componentId: string,
+  page = 1,
+  limit = 50,
+  signal?: AbortSignal
+): Promise<ComponentFilesOut> {
+  return realApi.getComponentFiles(id, componentId, page, limit, { signal });
+}
 
 export const api = realApi as unknown as MockApiType & typeof realApi;
 
