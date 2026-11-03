@@ -83,16 +83,7 @@ class Symbol(Base):
 
     file: Mapped[File] = relationship(back_populates="symbols")
     code_chunks: Mapped[list[CodeChunk]] = relationship(back_populates="symbol")
-    source_relationships: Mapped[list[SymbolRelationship]] = relationship(
-        back_populates="source_symbol",
-        foreign_keys="SymbolRelationship.source_symbol_id",
-        passive_deletes=True,
-    )
-    target_relationships: Mapped[list[SymbolRelationship]] = relationship(
-        back_populates="target_symbol",
-        foreign_keys="SymbolRelationship.target_symbol_id",
-        passive_deletes=True,
-    )
+
 
 
 class CodeChunk(Base):
@@ -153,41 +144,6 @@ class Embedding(Base):
     dimension: Mapped[int] = mapped_column(Integer, nullable=False, default=768)
 
     code_chunk: Mapped[CodeChunk] = relationship(back_populates="embeddings")
-
-
-class SymbolRelationship(Base):
-    __tablename__ = "symbol_relationships"
-    __table_args__ = (
-        CheckConstraint(
-            "relationship_type IN ('CALLS', 'REFERENCES', 'INHERITS', 'IMPLEMENTS')",
-            name="ck_symbol_relationships_type",
-        ),
-        Index("ix_symbol_relationships_repository_version_id", "repository_version_id"),
-        Index("ix_symbol_relationships_source_symbol_id", "source_symbol_id"),
-        Index("ix_symbol_relationships_target_symbol_id", "target_symbol_id"),
-    )
-
-    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    repository_version_id: Mapped[UUID] = mapped_column(
-        ForeignKey("repository_versions.id", ondelete="CASCADE"), nullable=False
-    )
-    source_symbol_id: Mapped[UUID] = mapped_column(
-        ForeignKey("symbols.id", ondelete="CASCADE"), nullable=False
-    )
-    target_symbol_id: Mapped[UUID] = mapped_column(
-        ForeignKey("symbols.id", ondelete="CASCADE"), nullable=False
-    )
-    relationship_type: Mapped[str] = mapped_column(String(32), nullable=False)
-
-    repository_version: Mapped[RepositoryVersion] = relationship(
-        back_populates="symbol_relationships"
-    )
-    source_symbol: Mapped[Symbol] = relationship(
-        back_populates="source_relationships", foreign_keys=[source_symbol_id]
-    )
-    target_symbol: Mapped[Symbol] = relationship(
-        back_populates="target_relationships", foreign_keys=[target_symbol_id]
-    )
 
 
 class FileRelationship(Base):

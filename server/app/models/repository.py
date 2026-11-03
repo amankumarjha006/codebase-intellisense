@@ -28,7 +28,6 @@ if TYPE_CHECKING:
         AnalysisResult,
         File,
         FileRelationship,
-        SymbolRelationship,
     )
     from app.models.user import GithubInstallation, User, UserRepository
 
@@ -120,9 +119,6 @@ class RepositoryVersion(Base):
         back_populates="repository_version", cascade="all, delete-orphan", passive_deletes=True
     )
     files: Mapped[list[File]] = relationship(
-        back_populates="repository_version", cascade="all, delete-orphan", passive_deletes=True
-    )
-    symbol_relationships: Mapped[list[SymbolRelationship]] = relationship(
         back_populates="repository_version", cascade="all, delete-orphan", passive_deletes=True
     )
     file_relationships: Mapped[list[FileRelationship]] = relationship(

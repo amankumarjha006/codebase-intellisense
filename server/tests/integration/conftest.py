@@ -118,10 +118,11 @@ def _create_test_database():
 
     # Clean database before running alembic
     schema_engine = create_engine(_TEST_DATABASE_URL)
-    Base.metadata.drop_all(bind=schema_engine)
     with schema_engine.connect() as conn:
-        conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        conn.execute(text("DROP TABLE IF EXISTS symbol_relationships CASCADE"))
+        conn.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
         conn.commit()
+    Base.metadata.drop_all(bind=schema_engine)
     schema_engine.dispose()
 
     env = os.environ.copy()
@@ -170,7 +171,6 @@ _TRUNCATABLE_TABLES = [
     "code_chunks",
     "symbols",
     "file_relationships",
-    "symbol_relationships",
     "analysis_results",
     "files",
     "index_jobs",

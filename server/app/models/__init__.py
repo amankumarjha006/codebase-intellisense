@@ -7,7 +7,6 @@ from app.models.knowledge import (
     File,
     FileRelationship,
     Symbol,
-    SymbolRelationship,
 )
 from app.models.repository import IndexJob, Repository, RepositoryVersion, UserRepository
 from app.models.user import GithubAccount, GithubInstallation, User
@@ -29,7 +28,6 @@ __all__ = [
     "Repository",
     "RepositoryVersion",
     "Symbol",
-    "SymbolRelationship",
     "User",
     "UserRepository",
 ]

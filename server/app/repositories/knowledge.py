@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import delete, select, func, case, or_
 from uuid import UUID
 from typing import Any
-from app.models.knowledge import File, Symbol, CodeChunk, AnalysisResult, FileRelationship, SymbolRelationship, Embedding
+from app.models.knowledge import File, Symbol, CodeChunk, AnalysisResult, FileRelationship, Embedding
 
 class KnowledgeRepository:
     def __init__(self, db: Session):
