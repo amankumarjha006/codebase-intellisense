@@ -91,6 +91,18 @@ User Question
 15. Do not introduce technologies merely because they are popular.
 16. Keep MVP implementation separate from future agent/autonomous coding functionality.
 
+
+### Architecture V2 Engine (Evidence-Based Architecture Analysis)
+The architecture analysis pipeline (`server/app/services/architecture/`) replaces legacy heuristic graphs with an evidence-grounded engine:
+- **Resolvers (`resolvers/`):** Pure import resolvers for Python (AST-based) and TypeScript/JavaScript (Tree-sitter-based with path aliases and workspaces).
+- **Deterministic Components (`components.py`):** Groups files deterministically by directory prefix (target 8-20, max 40), shuffle-invariant.
+- **Architecture Graph (`graph.py`):** Aggregates cross-component imports with code citations, identifies cycles using Tarjan's SCC, layers components, and enforces a 400-edge cap.
+- **System Map (`manifests.py`):** Safely parses deployment manifests (Dockerfile, docker-compose, .env.example keys) into system nodes and edges.
+- **Data Flows (`flows.py`):** Detects route handlers (FastAPI, Flask, Express, Next.js) and traces layer-descending flow steps.
+- **LLM Enrichment (`enrichment.py`):** Exactly ONE LLM call per repository version during the Analyzing stage to enrich component summaries and step captions; prompt-injection safe and non-fatal on failure.
+- **Storage & API:** Stored idempotently in `AnalysisResult(analysis_type="ARCHITECTURE")` (schema version 2); served via `GET /repositories/{id}/architecture` and `GET /repositories/{id}/architecture/components/{component_id}/files`.
+- **Frontend (`client/src/pages/ArchitecturePage.tsx`):** Lazy-loaded view with `@xyflow/react` and `elkjs` layered layout, System map, Flows tab, and accessible List tab following dark theme design tokens.
+
 ## Before Making Architectural Changes
 
 When a requested change affects multiple components:
