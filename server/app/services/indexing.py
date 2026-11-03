@@ -818,15 +818,4 @@ class IndexingService:
         )
         self.db.add(overview)
 
-        # Generate relationships and architecture
-        knowledge_repo.generate_file_relationships(version.id)
-        arch_data = knowledge_repo.get_architecture_data(version.id)
-
-        architecture = AnalysisResult(
-            repository_version_id=version.id,
-            analysis_type="ARCHITECTURE",
-            payload=arch_data,
-        )
-        self.db.add(architecture)
-
         self.db.commit()

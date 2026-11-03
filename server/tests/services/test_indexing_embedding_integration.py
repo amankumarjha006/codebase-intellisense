@@ -133,21 +133,6 @@ def test_indexing_embedding_integration(db_session, tmp_path, monkeypatch):
     assert tech_stack is not None
     assert tech_stack.payload["frameworks"][0]["name"] == "React"
     
-    # Test ARCHITECTURE analysis generation and relationship creation
-    from app.models.knowledge import FileRelationship
-    frels = db_session.query(FileRelationship).filter(FileRelationship.repository_version_id == version.id).all()
-    assert len(frels) == 1
-    assert frels[0].relationship_type == "IMPORTS"
-    
-    arch = db_session.query(AnalysisResult).filter(
-        AnalysisResult.repository_version_id == version.id,
-        AnalysisResult.analysis_type == "ARCHITECTURE"
-    ).one_or_none()
-    assert arch is not None
-    assert len(arch.payload["nodes"]) > 0
-    assert len(arch.payload["relationships"]) > 0
-
-
     # Test 5 & 6: Idempotency and version isolation
     # Create a new version for the same repo
     version2 = RepositoryVersion(
