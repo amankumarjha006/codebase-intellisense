@@ -5,16 +5,16 @@ import { MaterialIcon } from '../ui/MaterialIcon';
 import { Citation, FileContent } from '../../lib/types';
 import { api } from '../../lib/api';
 import { Button } from '../ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { toast } from '../ui/sonner';
 
 interface SourcePanelProps {
   citation: Citation | null;
   repoId: string;
   onClose: () => void;
+  className?: string;
 }
 
-export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
+export function SourcePanel({ citation, repoId, onClose, className = '' }: SourcePanelProps) {
   const navigate = useNavigate();
   const [copied, setCopied] = React.useState(false);
   const [fileContent, setFileContent] = React.useState<FileContent | null>(null);
@@ -75,151 +75,116 @@ export function SourcePanel({ citation, repoId, onClose }: SourcePanelProps) {
     : 'File Reference';
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <motion.aside
-        role="region"
-        aria-label={`Source code citation for ${citation.path}`}
-        initial={{ x: 60, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: 60, opacity: 0 }}
-        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-        className="flex flex-col h-full bg-[var(--color-surface)] border-l border-[var(--color-border)] w-full md:w-[480px] lg:w-[540px] z-20 shrink-0 select-text shadow-2xl"
-      >
-        {/* Panel Header */}
-        <div className="flex items-center justify-between p-3.5 border-b border-[var(--color-border)] bg-[var(--color-raised)]/40">
-          <div className="flex items-center gap-2 min-w-0">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={onClose}
-              title="Back to conversation (Esc)"
-              aria-label="Back to conversation"
-              className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
-            >
-              <MaterialIcon name="arrow_back" size={18} aria-hidden="true" />
-            </Button>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text)] truncate font-mono">
-                <MaterialIcon name="code" size={16} className="text-[var(--color-mint-accent,#B9E4D0)] shrink-0" aria-hidden="true" />
-                <span className="truncate">{citation.path}</span>
-              </div>
-              <div className="text-[11px] text-[var(--color-mint-accent,#B9E4D0)] font-mono">
-                {lineBadge}
-              </div>
+    <motion.aside
+      role="region"
+      aria-label={`Source citation for ${citation.path}`}
+      initial={{ x: 30, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: 30, opacity: 0 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+      className={`flex flex-col h-full bg-surface-raised border-l border-white/10 select-text ${className}`}
+    >
+      {/* Panel Header */}
+      <div className="flex items-center justify-between p-3 border-b border-white/10 bg-surface-base/50">
+        <div className="flex items-center gap-2 min-w-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="Close citation panel (Esc)"
+            className="h-7 w-7 text-text-tertiary hover:text-text-primary"
+          >
+            <MaterialIcon name="arrow_back" size={16} />
+          </Button>
+
+          <div className="min-w-0 space-y-0.5">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-text-primary truncate font-mono">
+              <MaterialIcon name="code" size={14} className="text-accent shrink-0" />
+              <span className="truncate">{citation.path}</span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleCopyCode}
-                  className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] cursor-pointer"
-                  aria-label="Copy citation snippet"
-                >
-                  {copied ? (
-                    <MaterialIcon name="check" size={16} className="text-[var(--color-mint-accent,#B9E4D0)]" aria-hidden="true" />
-                  ) : (
-                    <MaterialIcon name="content_copy" size={16} aria-hidden="true" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {copied ? 'Copied to clipboard' : 'Copy code snippet'}
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => {
-                    const lineQuery = citation.start_line > 0 ? `&start_line=${citation.start_line}&end_line=${citation.end_line}` : '';
-                    navigate(`/repositories/${repoId}/files?path=${encodeURIComponent(citation.path)}${lineQuery}`);
-                  }}
-                  className="text-[var(--color-text-secondary)] hover:text-[var(--color-mint-accent,#B9E4D0)] cursor-pointer"
-                  aria-label="Open in full file viewer"
-                >
-                  <MaterialIcon name="open_in_new" size={16} aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                Open in Full File Viewer
-              </TooltipContent>
-            </Tooltip>
-
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={onClose}
-              className="text-[var(--color-muted)] hover:text-[var(--color-text)] cursor-pointer ml-1"
-              title="Close panel (Esc)"
-              aria-label="Close citation drawer"
-            >
-              <MaterialIcon name="close" size={18} aria-hidden="true" />
-            </Button>
+            <div className="text-[11px] text-accent font-mono">
+              {lineBadge}
+            </div>
           </div>
         </div>
 
-        {/* Panel Code Content */}
-        <div className="flex-1 overflow-y-auto p-4 font-mono text-xs leading-5 bg-[#0e0e0d]">
-          {loading ? (
-            <div className="space-y-2 py-4">
-              <div className="h-4 bg-[var(--color-raised)] rounded animate-pulse w-3/4" />
-              <div className="h-4 bg-[var(--color-raised)] rounded animate-pulse w-1/2" />
-              <div className="h-4 bg-[var(--color-raised)] rounded animate-pulse w-5/6" />
-              <div className="h-4 bg-[var(--color-raised)] rounded animate-pulse w-2/3" />
-            </div>
-          ) : (
-            <div className="table w-full border-collapse">
-              {lines.map((line, index) => {
-                const lineNum = index + 1;
-                const isTargetLine = hasLineRange && lineNum >= citation.start_line && lineNum <= citation.end_line;
-                const isFirstTarget = hasLineRange && lineNum === citation.start_line;
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleCopyCode}
+            aria-label="Copy snippet"
+            className="h-7 w-7 text-text-tertiary hover:text-text-primary"
+          >
+            <MaterialIcon name={copied ? 'check' : 'content_copy'} size={14} className={copied ? 'text-accent' : ''} />
+          </Button>
 
-                return (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              const lineQuery = citation.start_line > 0 ? `&start_line=${citation.start_line}&end_line=${citation.end_line}` : '';
+              navigate(`/repositories/${repoId}/files?path=${encodeURIComponent(citation.path)}${lineQuery}`);
+            }}
+            aria-label="Open in full file viewer"
+            className="h-7 w-7 text-text-tertiary hover:text-text-primary"
+          >
+            <MaterialIcon name="open_in_new" size={14} />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="Close panel"
+            className="h-7 w-7 text-text-tertiary hover:text-text-primary"
+          >
+            <MaterialIcon name="close" size={16} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Code viewer with highlighted cited lines */}
+      <div className="flex-1 overflow-y-auto p-3 font-mono text-xs leading-5 bg-surface-base">
+        {loading ? (
+          <div className="space-y-2 py-4">
+            <div className="h-4 bg-surface-raised rounded animate-pulse w-3/4" />
+            <div className="h-4 bg-surface-raised rounded animate-pulse w-1/2" />
+            <div className="h-4 bg-surface-raised rounded animate-pulse w-5/6" />
+          </div>
+        ) : (
+          <div className="table w-full border-collapse">
+            {lines.map((line, index) => {
+              const lineNum = index + 1;
+              const isTargetLine = hasLineRange && lineNum >= citation.start_line && lineNum <= citation.end_line;
+              const isFirstTarget = hasLineRange && lineNum === citation.start_line;
+
+              return (
+                <div
+                  key={index}
+                  ref={isFirstTarget ? firstCitedLineRef : undefined}
+                  className={`table-row transition-colors ${
+                    isTargetLine
+                      ? 'bg-accent/15 text-text-primary font-medium'
+                      : 'hover:bg-surface-raised/40 text-text-secondary'
+                  }`}
+                >
                   <div
-                    key={index}
-                    ref={isFirstTarget ? firstCitedLineRef : undefined}
-                    className={`table-row transition-colors ${
-                      isTargetLine
-                        ? 'bg-[var(--color-mint-selected-bg,#1B332A)]/40 text-[var(--color-text)] font-semibold'
-                        : 'hover:bg-[var(--color-raised)]/30 text-[var(--color-text-secondary)]'
+                    className={`table-cell pr-3 pl-1 py-0.5 select-none text-right font-mono text-[11px] tabular-nums border-r border-white/5 w-10 ${
+                      isTargetLine ? 'text-accent font-bold' : 'text-text-tertiary'
                     }`}
                   >
-                    <div
-                      className={`table-cell pr-4 pl-2 py-0.5 select-none text-right font-mono text-[11px] tabular-nums border-r border-[var(--color-border)]/40 w-12 ${
-                        isTargetLine ? 'text-[var(--color-mint-accent,#B9E4D0)] font-bold' : 'text-[var(--color-muted)]'
-                      }`}
-                    >
-                      {lineNum}
-                    </div>
-                    <div
-                      className={`table-cell pl-4 py-0.5 whitespace-pre font-mono overflow-x-auto ${
-                        isTargetLine ? 'border-l-2 border-[var(--color-mint-accent,#B9E4D0)] pl-3.5' : ''
-                      }`}
-                    >
-                      {line || ' '}
-                    </div>
+                    {lineNum}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Panel Footer */}
-        <div className="p-3 border-t border-[var(--color-border)] bg-[var(--color-raised)]/30 flex items-center justify-between text-xs text-[var(--color-muted)] font-mono">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[var(--color-mint-accent,#B9E4D0)]" aria-hidden="true" />
-            <span>Verified repository evidence</span>
+                  <div className="table-cell pl-3 py-0.5 whitespace-pre overflow-x-auto text-[12px]">
+                    {line || ' '}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <span className="text-[11px] text-[var(--color-text-secondary)]">Press Esc to close</span>
-        </div>
-      </motion.aside>
-    </TooltipProvider>
+        )}
+      </div>
+    </motion.aside>
   );
 }

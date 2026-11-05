@@ -112,6 +112,49 @@ const mockFiles = {
   total: 7,
 };
 
+const mockMessages = {
+  items: [
+    {
+      id: 'm1',
+      conversation_id: 'conv-1',
+      role: 'user',
+      content: 'How does dependency injection resolve sub-dependencies in routing?',
+      citations: [],
+      created_at: '2026-03-01T15:20:00Z',
+    },
+    {
+      id: 'm2',
+      conversation_id: 'conv-1',
+      role: 'assistant',
+      content:
+        'In FastAPI, dependency injection is managed through `Depends` and resolved in `fastapi/dependencies/utils.py` [1]. Sub-dependencies are solved topologically using an acyclic dependency graph before invoking endpoint handlers [2].\n\n```python\nasync def solve_dependencies(\n    request: Request,\n    dependant: Dependant,\n    dependency_cache: Optional[Dict[Tuple[Callable, str], Any]] = None,\n) -> Tuple[Dict[str, Any], List[Any], ...]:\n    # Traverse and resolve sub-dependencies topologically\n    values: Dict[str, Any] = {}\n    errors: List[Any] = []\n    ...\n```',
+      citations: [
+        {
+          id: 'c1',
+          file_path: 'fastapi/dependencies/utils.py',
+          start_line: 42,
+          end_line: 56,
+        },
+        {
+          id: 'c2',
+          file_path: 'fastapi/routing.py',
+          start_line: 120,
+          end_line: 138,
+        },
+      ],
+      created_at: '2026-03-01T15:20:05Z',
+    },
+  ],
+  total: 2,
+};
+
+const mockFileContent = {
+  path: 'fastapi/dependencies/utils.py',
+  content: Array.from({ length: 70 }, (_, i) => `def helper_line_${i + 1}():\n    return ${i + 1}`).join('\n'),
+  language: 'python',
+  size: 3420,
+};
+
 async function setupPageRoutes(page) {
   await page.route('**/api/v1/auth/me', (route) => {
     route.fulfill({
@@ -126,6 +169,22 @@ async function setupPageRoutes(page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(mockRepositories),
+    });
+  });
+
+  await page.route('**/api/v1/conversations/*/messages*', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mockMessages),
+    });
+  });
+
+  await page.route('**/api/v1/repositories/repo-fastapi/files/fastapi/**', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mockFileContent),
     });
   });
 

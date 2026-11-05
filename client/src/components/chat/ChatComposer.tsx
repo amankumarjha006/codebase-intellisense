@@ -45,10 +45,10 @@ export function ChatComposer({
   const isSendDisabled = !inputText.trim() || streaming || disabled;
 
   return (
-    <div className="p-3 sm:p-4 border-t border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div className="p-3 sm:p-4 border-t border-white/10 bg-surface-raised">
       <form
         onSubmit={handleFormSubmit}
-        className="max-w-3xl mx-auto rounded-[var(--radius-panel)] border border-[var(--color-border)] bg-[var(--color-page)] focus-within:border-[var(--color-mint-accent,#B9E4D0)]/70 focus-within:ring-1 focus-within:ring-[var(--color-mint-accent,#B9E4D0)]/30 transition-all shadow-sm overflow-hidden"
+        className="max-w-3xl mx-auto rounded-lg border border-white/10 bg-surface-base focus-within:ring-1 focus-within:ring-accent transition-all overflow-hidden"
       >
         <Textarea
           ref={textareaRef}
@@ -58,17 +58,15 @@ export function ChatComposer({
           disabled={disabled}
           placeholder={placeholder}
           aria-label="Ask a question about this codebase"
-          className="min-h-[72px] max-h-36 border-0 bg-transparent resize-none p-3.5 text-xs sm:text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus-visible:ring-0 rounded-none leading-relaxed"
+          className="min-h-[64px] max-h-32 border-0 bg-transparent resize-none p-3 text-xs sm:text-[13px] text-text-primary placeholder:text-text-tertiary focus-visible:ring-0 rounded-none leading-relaxed"
         />
 
         {/* Composer bottom bar */}
-        <div className="flex items-center justify-between px-3.5 py-2 border-t border-[var(--color-border)]/50 bg-[var(--color-raised)]/25 text-[11px] text-[var(--color-muted)] select-none">
-          <div className="flex items-center gap-2 font-mono text-[10px] sm:text-[11px] text-[var(--color-muted)]">
-            <span className="hidden sm:inline">↵ to send</span>
-            <span className="hidden sm:inline text-[var(--color-border-strong)]">·</span>
-            <span className="hidden sm:inline">Shift + ↵ for newline</span>
-            <span className="hidden sm:inline text-[var(--color-border-strong)]">·</span>
-            <span>Esc to unfocus</span>
+        <div className="flex items-center justify-between px-3 py-1.5 border-t border-white/5 bg-surface-raised/40 text-[11px] text-text-tertiary select-none">
+          <div className="flex items-center gap-2 font-mono text-[10px] sm:text-[11px]">
+            <span className="hidden sm:inline">↵ send</span>
+            <span className="hidden sm:inline text-white/10">·</span>
+            <span className="hidden sm:inline">Shift+↵ newline</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -76,12 +74,12 @@ export function ChatComposer({
               <Button
                 type="button"
                 size="sm"
-                variant="secondary"
+                variant="ghost"
                 onClick={onStopStreaming}
-                className="h-7 px-3 text-xs flex items-center gap-1.5 border-[var(--color-border)] hover:bg-[var(--color-raised)] cursor-pointer"
+                className="h-7 px-2.5 text-xs flex items-center gap-1.5 text-status-red hover:bg-status-red/10 border border-status-red/20"
                 aria-label="Stop generating response"
               >
-                <MaterialIcon name="stop_circle" size={15} fill={1} className="text-[var(--color-error)]" aria-hidden="true" />
+                <MaterialIcon name="stop" size={14} className="text-status-red" />
                 <span>Stop</span>
               </Button>
             ) : (
@@ -90,11 +88,11 @@ export function ChatComposer({
                 size="sm"
                 variant="primary"
                 disabled={isSendDisabled}
-                className="h-7 px-3.5 text-xs flex items-center gap-1.5 disabled:opacity-35 disabled:cursor-not-allowed transition-all cursor-pointer"
-                aria-label="Send message to codebase intelligence"
+                className="h-7 px-3 text-xs flex items-center gap-1"
+                aria-label="Send message"
               >
-                <span>Send</span>
-                <MaterialIcon name="send" size={13} fill={1} aria-hidden="true" />
+                <span>Ask</span>
+                <MaterialIcon name="arrow_upward" size={13} />
               </Button>
             )}
           </div>

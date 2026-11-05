@@ -5,7 +5,6 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { CitationList } from './CitationList';
 import { Button } from '../ui/button';
 import { formatRelativeTime } from '../../lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { toast } from '../ui/sonner';
 
 interface ChatMessageItemProps {
@@ -13,8 +12,6 @@ interface ChatMessageItemProps {
   repoId: string;
   onSelectCitation: (citation: Citation) => void;
   selectedCitation?: Citation | null;
-  onRegenerate?: () => void;
-  isLatestAssistant?: boolean;
 }
 
 export function ChatMessageItem({
@@ -22,8 +19,6 @@ export function ChatMessageItem({
   repoId,
   onSelectCitation,
   selectedCitation,
-  onRegenerate,
-  isLatestAssistant = false,
 }: ChatMessageItemProps) {
   const [copied, setCopied] = React.useState(false);
 
@@ -36,12 +31,12 @@ export function ChatMessageItem({
 
   if (message.role === 'user') {
     return (
-      <div className="flex justify-end max-w-3xl mx-auto w-full my-4">
-        <div className="rounded-[var(--radius-panel)] px-4 py-3 bg-[var(--color-surface)] border border-[var(--color-border-strong)] text-[var(--color-text)] max-w-[85%] sm:max-w-[75%] shadow-sm">
-          <p className="chat-user-bubble whitespace-pre-wrap select-text">
+      <div className="flex justify-end max-w-3xl mx-auto w-full my-3 px-4">
+        <div className="rounded-lg px-3.5 py-2.5 bg-surface-raised border border-white/10 text-text-primary max-w-[85%] sm:max-w-[75%] space-y-1">
+          <p className="text-xs whitespace-pre-wrap leading-relaxed select-text font-sans">
             {message.content}
           </p>
-          <div className="mt-1.5 text-[10px] text-[var(--color-muted)] font-mono text-right select-none">
+          <div className="text-[10px] text-text-tertiary tabular-nums font-mono text-right select-none">
             {formatRelativeTime(message.created_at)}
           </div>
         </div>
@@ -51,90 +46,50 @@ export function ChatMessageItem({
 
   // Assistant message
   return (
-    <TooltipProvider delayDuration={200}>
-      <div className="flex gap-3 max-w-3xl mx-auto w-full my-6 select-text group">
-        {/* Assistant Avatar: Clean developer-grade emblem */}
-        <div
-          className="h-7 w-7 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shrink-0 mt-0.5 select-none shadow-2xs group-hover:border-[var(--color-mint-accent,#B9E4D0)]/40 transition-colors"
-          aria-label="Codebase intelligence engine"
-        >
-          <MaterialIcon name="terminal" size={16} fill={1} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
-        </div>
+    <div className="flex gap-3 max-w-3xl mx-auto w-full my-5 px-4 select-text group">
+      {/* Assistant Avatar */}
+      <div
+        className="h-6 w-6 rounded bg-surface-overlay border border-white/10 flex items-center justify-center text-accent shrink-0 mt-0.5 select-none"
+        aria-label="Assistant"
+      >
+        <MaterialIcon name="smart_toy" size={14} />
+      </div>
 
-        {/* Assistant Content Stream */}
-        <div className="flex-1 min-w-0 space-y-3">
-          {/* Markdown Content with interactive citation chips */}
-          <MarkdownRenderer
-            content={message.content}
-            citations={message.citations || []}
-            onSelectCitation={onSelectCitation}
-          />
+      {/* Content Stream */}
+      <div className="flex-1 min-w-0 space-y-3">
+        {/* Markdown Content */}
+        <MarkdownRenderer
+          content={message.content}
+          citations={message.citations || []}
+          onSelectCitation={onSelectCitation}
+        />
 
-          {/* Citations List */}
-          <CitationList
-            citations={message.citations || []}
-            repoId={repoId}
-            onSelectCitation={onSelectCitation}
-            selectedCitation={selectedCitation}
-          />
+        {/* Citations List */}
+        <CitationList
+          citations={message.citations || []}
+          repoId={repoId}
+          onSelectCitation={onSelectCitation}
+          selectedCitation={selectedCitation}
+        />
 
-          {/* Actions Bar */}
-          <div className="pt-2 flex items-center justify-between text-xs text-[var(--color-muted)] select-none">
-            <div className="flex items-center gap-1.5">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCopyAnswer}
-                    className="h-6 px-2 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)] flex items-center gap-1 cursor-pointer"
-                    aria-label="Copy full answer"
-                  >
-                    {copied ? (
-                      <>
-                        <MaterialIcon name="check" size={13} className="text-[var(--color-mint-accent,#B9E4D0)]" aria-hidden="true" />
-                        <span className="text-[var(--color-mint-accent,#B9E4D0)] font-sans">Copied</span>
-                      </>
-                    ) : (
-                      <>
-                        <MaterialIcon name="content_copy" size={13} aria-hidden="true" />
-                        <span className="font-sans">Copy answer</span>
-                      </>
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  Copy markdown response
-                </TooltipContent>
-              </Tooltip>
+        {/* Message Actions */}
+        <div className="pt-1 flex items-center justify-between text-xs text-text-tertiary select-none">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopyAnswer}
+            className="h-6 px-1.5 text-[11px] text-text-tertiary hover:text-text-primary gap-1"
+            aria-label="Copy answer"
+          >
+            <MaterialIcon name={copied ? 'check' : 'content_copy'} size={12} className={copied ? 'text-accent' : ''} />
+            <span>{copied ? 'Copied' : 'Copy'}</span>
+          </Button>
 
-              {isLatestAssistant && onRegenerate && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={onRegenerate}
-                      className="h-6 px-2 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-mint-accent,#B9E4D0)] flex items-center gap-1 cursor-pointer"
-                      aria-label="Regenerate answer"
-                    >
-                      <MaterialIcon name="refresh" size={14} aria-hidden="true" />
-                      <span className="font-sans">Regenerate</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    Re-ask last prompt
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-
-            <div className="text-[10px] font-mono text-[var(--color-muted)]">
-              {formatRelativeTime(message.created_at)}
-            </div>
-          </div>
+          <span className="text-[10px] font-mono tabular-nums">
+            {formatRelativeTime(message.created_at)}
+          </span>
         </div>
       </div>
-    </TooltipProvider>
+    </div>
   );
 }
