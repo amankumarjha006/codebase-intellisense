@@ -1,8 +1,9 @@
 import * as React from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { MaterialIcon } from '../ui/MaterialIcon';
-import { FileTreeNode } from '../../lib/types';
+import type { FileTreeNode } from '../../lib/types';
 
-interface FileTreeProps {
+export interface FileTreeProps {
   tree: FileTreeNode | null;
   activeFilePath: string;
   expandedDirs: Record<string, boolean>;
@@ -49,6 +50,73 @@ export function getFileIcon(fileName: string): string {
   }
 }
 
+interface FlatTreeItem {
+  id: string;
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  depth: number;
+  isExpanded: boolean;
+  language?: string;
+  size?: number;
+}
+
+function matchesFilter(node: FileTreeNode, query: string): boolean {
+  if (!query) return true;
+  if (node.type === 'file') {
+    return node.name.toLowerCase().includes(query) || node.path.toLowerCase().includes(query);
+  }
+  if (node.type === 'directory') {
+    if (node.name.toLowerCase().includes(query)) return true;
+    return (node.children || []).some((child) => matchesFilter(child, query));
+  }
+  return false;
+}
+
+function flattenTree(
+  node: FileTreeNode,
+  expandedDirs: Record<string, boolean>,
+  query: string,
+  depth = 0,
+  result: FlatTreeItem[] = []
+): FlatTreeItem[] {
+  if (!node.children) return result;
+
+  // Sort: directories first, then alphabetically
+  const sorted = [...node.children].sort((a, b) => {
+    if (a.type !== b.type) {
+      return a.type === 'directory' ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  for (const child of sorted) {
+    if (query && !matchesFilter(child, query)) {
+      continue;
+    }
+
+    const isDir = child.type === 'directory';
+    const isExpanded = query ? true : Boolean(expandedDirs[child.path]);
+
+    result.push({
+      id: child.path,
+      name: child.name,
+      path: child.path,
+      type: child.type,
+      depth,
+      isExpanded,
+      language: child.language,
+      size: child.size,
+    });
+
+    if (isDir && isExpanded) {
+      flattenTree(child, expandedDirs, query, depth + 1, result);
+    }
+  }
+
+  return result;
+}
+
 export function FileTree({
   tree,
   activeFilePath,
@@ -58,100 +126,116 @@ export function FileTree({
   onToggleDir,
 }: FileTreeProps) {
   const query = filterQuery.trim().toLowerCase();
+  const parentRef = React.useRef<HTMLDivElement>(null);
 
-  // Helper to check if a node or its children match the query
-  const matchesFilter = React.useCallback(
-    (node: FileTreeNode): boolean => {
-      if (!query) return true;
-      if (node.type === 'file') {
-        return (
-          node.name.toLowerCase().includes(query) ||
-          node.path.toLowerCase().includes(query)
-        );
-      }
-      if (node.type === 'directory') {
-        if (node.name.toLowerCase().includes(query)) return true;
-        return (node.children || []).some((child) => matchesFilter(child));
-      }
-      return false;
-    },
-    [query]
-  );
+  // Flatten tree according to expanded dirs and search query
+  const flatItems = React.useMemo(() => {
+    if (!tree) return [];
+    return flattenTree(tree, expandedDirs, query, 0);
+  }, [tree, expandedDirs, query]);
 
-  const renderNode = (node: FileTreeNode, depth = 0): React.ReactNode => {
-    if (!matchesFilter(node)) return null;
+  // TanStack Virtualizer
+  const rowVirtualizer = useVirtualizer({
+    count: flatItems.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 32,
+    overscan: 10,
+  });
 
-    if (node.type === 'directory') {
-      // If there's an active search query, force expanded so matches are immediately visible
-      const isExpanded = query ? true : !!expandedDirs[node.path];
-
-      return (
-        <div key={node.path || node.name} className="select-none">
-          {node.path && (
-            <button
-              onClick={() => onToggleDir(node.path)}
-              aria-expanded={isExpanded}
-              aria-label={`Folder ${node.name}`}
-              className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 text-left transition group cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-mint-accent,#B9E4D0)]"
-              style={{ paddingLeft: `${depth * 14 + 8}px` }}
-            >
-              <MaterialIcon
-                name={isExpanded ? 'expand_more' : 'chevron_right'}
-                size={16}
-                fill={0}
-                className="text-[var(--color-muted)] shrink-0 transition-transform group-hover:text-[var(--color-text)]"
-                aria-hidden="true"
-              />
-              <MaterialIcon
-                name={isExpanded ? 'folder_open' : 'folder'}
-                size={16}
-                fill={isExpanded ? 1 : 0}
-                className={isExpanded ? 'text-[var(--color-mint-accent,#B9E4D0)] shrink-0' : 'text-[var(--color-muted)] shrink-0 group-hover:text-[var(--color-text)]'}
-                aria-hidden="true"
-              />
-              <span className="truncate">{node.name}</span>
-            </button>
-          )}
-
-          {(!node.path || isExpanded) && node.children && (
-            <div role="group" className="space-y-0.5">
-              {node.children.map((child) => renderNode(child, node.path ? depth + 1 : depth))}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    // File Node
-    const isSelected = activeFilePath === node.path;
-    const iconName = getFileIcon(node.name);
-
+  if (!tree || flatItems.length === 0) {
     return (
-      <button
-        key={node.path}
-        onClick={() => onSelectFile(node.path)}
-        aria-selected={isSelected}
-        aria-label={`File ${node.name}`}
-        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-left transition select-none truncate group cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-mint-accent,#B9E4D0)] ${
-          isSelected
-            ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] font-semibold border-l-2 border-[var(--color-mint-accent,#B9E4D0)] shadow-xs'
-            : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60 border-l-2 border-transparent'
-        }`}
-        style={{ paddingLeft: `${depth * 14 + 20}px` }}
-      >
-        <MaterialIcon
-          name={iconName}
-          size={15}
-          fill={isSelected ? 1 : 0}
-          className={isSelected ? 'text-[var(--color-mint-accent,#B9E4D0)] shrink-0' : 'text-[var(--color-muted)] shrink-0 group-hover:text-[var(--color-text)]'}
-          aria-hidden="true"
-        />
-        <span className="truncate">{node.name}</span>
-      </button>
+      <div className="p-4 text-center text-xs text-text-secondary font-mono italic">
+        {query ? 'No matching files found' : 'No files in repository'}
+      </div>
     );
-  };
+  }
 
-  if (!tree) return null;
+  return (
+    <div
+      ref={parentRef}
+      className="flex-1 overflow-y-auto overflow-x-hidden font-mono text-xs select-none"
+      role="tree"
+      aria-label="Repository files directory tree"
+    >
+      <div
+        style={{
+          height: `${rowVirtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+          const item = flatItems[virtualRow.index];
+          const isFile = item.type === 'file';
+          const isActive = isFile && item.path === activeFilePath;
 
-  return <div className="space-y-0.5 py-1">{renderNode(tree)}</div>;
+          return (
+            <div
+              key={item.id}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              {isFile ? (
+                <button
+                  type="button"
+                  onClick={() => onSelectFile(item.path)}
+                  role="treeitem"
+                  aria-selected={isActive}
+                  aria-label={`File ${item.name}`}
+                  style={{ paddingLeft: `${item.depth * 14 + 10}px` }}
+                  className={`
+                    w-full h-full flex items-center gap-2 pr-2 text-left transition-colors truncate
+                    focus:outline-none focus-visible:ring-1 focus-visible:ring-accent
+                    ${
+                      isActive
+                        ? 'bg-surface-overlay text-text-primary font-medium border-l-2 border-accent'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04] border-l-2 border-transparent'
+                    }
+                  `}
+                >
+                  <MaterialIcon
+                    name={getFileIcon(item.name)}
+                    size={14}
+                    className={`shrink-0 ${isActive ? 'text-accent' : 'text-text-tertiary'}`}
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">{item.name}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onToggleDir(item.path)}
+                  role="treeitem"
+                  aria-expanded={item.isExpanded}
+                  aria-label={`Folder ${item.name}`}
+                  style={{ paddingLeft: `${item.depth * 14 + 6}px` }}
+                  className="w-full h-full flex items-center gap-1.5 pr-2 text-left text-text-secondary hover:text-text-primary hover:bg-white/[0.03] transition-colors truncate focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                >
+                  <MaterialIcon
+                    name={item.isExpanded ? 'expand_more' : 'chevron_right'}
+                    size={16}
+                    className="shrink-0 text-text-tertiary"
+                    aria-hidden="true"
+                  />
+                  <MaterialIcon
+                    name={item.isExpanded ? 'folder_open' : 'folder'}
+                    size={15}
+                    className="shrink-0 text-accent/80"
+                    aria-hidden="true"
+                  />
+                  <span className="font-medium truncate text-text-primary">{item.name}</span>
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }

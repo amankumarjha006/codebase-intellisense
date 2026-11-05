@@ -98,28 +98,26 @@ export function SourceViewer({
     setTimeout(() => setCopiedLine(null), 1500);
   };
 
-
   const hasTarget = Boolean(targetStartLine && targetStartLine > 0);
   const displayEnd = targetEndLine && targetEndLine >= (targetStartLine || 1) ? targetEndLine : targetStartLine;
-
   const totalLines = tokens ? tokens.length : rawLines.length;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--color-page)] select-text">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-surface-base select-text font-mono text-xs">
       {/* Targeted Line Range Banner (if navigated from citation or search) */}
       {hasTarget && (
         <div
           role="status"
           aria-live="polite"
-          className="px-4 py-2 bg-[var(--color-mint-selected-bg,#253A32)] border-b border-[rgba(185,228,208,0.25)] flex items-center justify-between text-xs select-none shrink-0"
+          className="px-4 py-2 bg-surface-overlay border-b border-white/10 flex items-center justify-between text-xs select-none shrink-0"
         >
-          <div className="flex items-center gap-2 text-[var(--color-mint-accent,#B9E4D0)] font-medium">
-            <MaterialIcon name="pin_drop" size={16} fill={1} aria-hidden="true" />
+          <div className="flex items-center gap-2 text-text-primary font-medium">
+            <MaterialIcon name="pin_drop" size={16} className="text-accent" aria-hidden="true" />
             <span>
-              Targeted line reference: {targetStartLine}
-              {displayEnd && displayEnd !== targetStartLine ? `–${displayEnd}` : ''}
+              Targeted line reference: L{targetStartLine}
+              {displayEnd && displayEnd !== targetStartLine ? `–L${displayEnd}` : ''}
             </span>
-            <span className="text-[10px] text-[var(--color-muted)] font-mono">
+            <span className="text-xs text-text-secondary font-mono">
               ({(displayEnd || 1) - (targetStartLine || 1) + 1} lines highlighted)
             </span>
           </div>
@@ -131,17 +129,17 @@ export function SourceViewer({
               onClick={() => {
                 targetLineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }}
-              className="h-6 px-2 text-[11px] text-[var(--color-mint-accent,#B9E4D0)] hover:bg-[var(--color-mint-accent,#B9E4D0)]/20"
+              className="h-6 px-2 text-xs text-accent hover:bg-accent/10"
               aria-label="Scroll to highlighted lines"
             >
-              Scroll to Lines
+              Scroll to lines
             </Button>
             {onClearTarget && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onClearTarget}
-                className="h-6 px-2 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)]"
+                className="h-6 px-2 text-xs text-text-secondary hover:text-text-primary"
                 aria-label="Clear line highlighting"
               >
                 Clear
@@ -157,7 +155,7 @@ export function SourceViewer({
         tabIndex={0}
         role="region"
         aria-label={`Source code content for ${filePath}`}
-        className="flex-1 overflow-auto p-2 sm:p-4 font-mono text-xs leading-6 bg-[var(--color-page)] focus:outline-none"
+        className="flex-1 overflow-auto p-2 sm:p-4 font-mono text-xs leading-6 bg-surface-base focus:outline-none"
       >
         <table className="w-full border-collapse" aria-label="Code lines table">
           <tbody>
@@ -179,25 +177,26 @@ export function SourceViewer({
                   ref={isFirstTarget ? targetLineRef : undefined}
                   className={`group transition-colors ${
                     isTargeted
-                      ? 'bg-[var(--color-mint-selected-bg,#253A32)]/80 border-l-2 border-[var(--color-mint-accent,#B9E4D0)]'
-                      : 'hover:bg-[var(--color-raised)]/40 border-l-2 border-transparent'
+                      ? 'bg-accent/15 border-l-2 border-accent text-text-primary'
+                      : 'hover:bg-white/[0.03] border-l-2 border-transparent'
                   }`}
                 >
                   {/* Line Number Column */}
-                  <td className="w-12 select-none pr-3 pl-2 text-right text-[11px] font-mono border-r border-[var(--color-border)]/40 shrink-0">
+                  <td className="w-12 select-none pr-3 pl-2 text-right text-xs font-mono border-r border-white/10 shrink-0">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
+                          type="button"
                           onClick={() => handleCopyLine(lineNum, plainLine)}
-                          className={`cursor-pointer transition ${
+                          className={`cursor-pointer transition focus:outline-none focus-visible:underline ${
                             isTargeted
-                              ? 'text-[var(--color-mint-accent,#B9E4D0)] font-bold'
-                              : 'text-[var(--color-muted)] group-hover:text-[var(--color-text-secondary)]'
+                              ? 'text-accent font-bold'
+                              : 'text-text-tertiary group-hover:text-text-secondary'
                           }`}
                           aria-label={`Line ${lineNum}. Click to copy line.`}
                         >
                           {copiedLine === lineNum ? (
-                            <MaterialIcon name="check" size={12} fill={1} className="text-[var(--color-mint-accent,#B9E4D0)] inline" aria-hidden="true" />
+                            <MaterialIcon name="check" size={12} className="text-accent inline" aria-hidden="true" />
                           ) : (
                             lineNum
                           )}
@@ -208,7 +207,7 @@ export function SourceViewer({
                   </td>
 
                   {/* Code Tokens Column */}
-                  <td className="pl-4 pr-6 whitespace-pre font-mono text-xs leading-6 text-[var(--color-text)] overflow-x-auto">
+                  <td className="pl-4 pr-6 whitespace-pre font-mono text-xs leading-6 text-text-primary overflow-x-auto">
                     {lineTokens ? (
                       lineTokens.length > 0 ? (
                         lineTokens.map((t, tIdx) => (
