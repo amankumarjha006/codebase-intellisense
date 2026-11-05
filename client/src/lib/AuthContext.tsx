@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { realApi, API_URL, ApiError, type CurrentUser } from './api';
 import { classifyAuthError, buildSignInUrl } from './auth';
+import { registerSessionExpiredHandler } from './queryClient';
 
 // On startup, delete any legacy cached user
 try {
@@ -39,11 +40,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err: unknown) {
       const errorKind = classifyAuthError(err);
       if (errorKind === 'unauthenticated') {
-        // 401 means not signed in
         setUser(null);
         setError(null);
       } else {
-        // Network errors, 5xx, or unreachable backend kept in error state
         setUser(null);
         setError(err instanceof ApiError || err instanceof Error ? err : new Error('Network error'));
       }
@@ -53,14 +52,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  React.useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
-
   const markSessionExpired = React.useCallback(() => {
     setUser(null);
     navigate('/', { replace: true });
   }, [navigate]);
+
+  React.useEffect(() => {
+    registerSessionExpiredHandler(markSessionExpired);
+  }, [markSessionExpired]);
+
+  React.useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
 
   const signIn = React.useCallback(() => {
     window.location.href = buildSignInUrl(API_URL);

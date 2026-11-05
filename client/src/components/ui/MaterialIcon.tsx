@@ -1,69 +1,25 @@
 import * as React from 'react';
 import { cn } from '../../lib/utils';
+import { ICON_MAP } from './icons';
 
-export interface MaterialIconProps extends React.HTMLAttributes<HTMLSpanElement> {
-  /**
-   * The official Google Material Symbols glyph name (e.g. 'dashboard', 'folder', 'chat', 'search').
-   */
+export interface MaterialIconProps extends Omit<React.SVGProps<SVGSVGElement>, 'fill'> {
   name: string;
-  /**
-   * Icon size in pixels. Standard sizes: 16 (chips), 18-20 (controls), 20-22 (dock/actions), 22-24 (sidebar).
-   * @default 20
-   */
   size?: number;
-  /**
-   * Explicit fill state (0 = outline, 1 = filled).
-   * Overrides `active` if set.
-   */
-  fill?: 0 | 1 | boolean;
-  /**
-   * Whether this icon represents an active navigation tab or state.
-   * When true, defaults FILL = 1 and color = #B9E4D0 (pastel mint).
-   * When false, defaults FILL = 0 and color = #929A94 (inactive gray).
-   */
+  fill?: 0 | 1 | boolean | string;
   active?: boolean;
-  /**
-   * Font weight axis (100..700).
-   * @default 400
-   */
-  weight?: number;
-  /**
-   * Grade axis (-50..200).
-   * @default 0
-   */
-  grade?: number;
-  /**
-   * Optical size axis (20..48). If omitted, automatically derived from `size`.
-   */
-  opticalSize?: number;
-  /**
-   * Whether the icon should spin continuously (e.g. for loading / refresh indicators).
-   */
   spin?: boolean;
-  /**
-   * Custom CSS class name.
-   */
   className?: string;
-  /**
-   * Explicit color override (takes precedence over active/inactive defaults).
-   */
   color?: string;
-  /**
-   * Accessible label for non-decorative icons.
-   */
   'aria-label'?: string;
 }
 
-export const MaterialIcon = React.forwardRef<HTMLSpanElement, MaterialIconProps>(
+export const MaterialIcon = React.forwardRef<SVGSVGElement, MaterialIconProps>(
   (
     {
       name,
       size = 20,
       fill,
       active,
-      weight = 400,
-      grade = 0,
-      opticalSize,
       spin = false,
       className,
       color,
@@ -74,54 +30,37 @@ export const MaterialIcon = React.forwardRef<HTMLSpanElement, MaterialIconProps>
     },
     ref
   ) => {
-    // Determine effective fill: explicit fill prop wins; otherwise active ? 1 : 0
-    let fillValue = 0;
-    if (fill !== undefined) {
-      fillValue = typeof fill === 'boolean' ? (fill ? 1 : 0) : fill;
-    } else if (active !== undefined) {
-      fillValue = active ? 1 : 0;
+    // Choose filled variant if requested (e.g. keep-fill for pinned)
+    let glyphKey = name;
+    const isFilled = fill === 1 || fill === true || (active === true && fill === undefined);
+    if (isFilled && `${name}-fill` in ICON_MAP) {
+      glyphKey = `${name}-fill`;
     }
 
-    // Determine optical size (20, 24, 40, or 48)
-    const opsz = opticalSize ?? (size <= 20 ? 20 : size <= 28 ? 24 : size <= 44 ? 40 : 48);
-
-    // Color derivation: explicit color > active mint (#B9E4D0) > inactive (#929A94 if active===false) > currentColor
-    let resolvedColor = color;
-    if (!resolvedColor) {
-      if (active === true) {
-        resolvedColor = 'var(--color-mint-accent, #B9E4D0)';
-      } else if (active === false) {
-        resolvedColor = 'var(--color-icon-inactive, #929A94)';
-      }
-    }
-
+    const SvgComponent = ICON_MAP[glyphKey] || ICON_MAP[name] || ICON_MAP.description;
     const isDecorative = ariaHidden !== undefined ? ariaHidden : !ariaLabel;
 
     return (
-      <span
+      <SvgComponent
         ref={ref}
+        width={size}
+        height={size}
         role={isDecorative ? undefined : 'img'}
         aria-label={ariaLabel}
         aria-hidden={isDecorative ? true : undefined}
         className={cn(
-          'material-symbols-rounded select-none shrink-0',
-          active === true && 'icon-active',
-          active === false && 'icon-inactive',
+          'inline-block shrink-0 select-none fill-current transition-colors',
           spin && 'animate-spin',
           className
         )}
         style={{
-          fontSize: `${size}px`,
           width: `${size}px`,
           height: `${size}px`,
-          fontVariationSettings: `'FILL' ${fillValue}, 'wght' ${weight}, 'GRAD' ${grade}, 'opsz' ${opsz}`,
-          ...(resolvedColor ? { color: resolvedColor } : {}),
+          ...(color ? { color } : {}),
           ...style,
         }}
         {...props}
-      >
-        {name}
-      </span>
+      />
     );
   }
 );

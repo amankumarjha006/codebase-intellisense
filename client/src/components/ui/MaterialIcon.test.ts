@@ -4,55 +4,55 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MaterialIcon } from './MaterialIcon';
 
 describe('MaterialIcon', () => {
-  it('renders outlined glyph (FILL 0) and inactive color when inactive', () => {
+  it('renders SVG icon with specified dimensions and fill-current class', () => {
     const html = renderToStaticMarkup(
       React.createElement(MaterialIcon, { name: 'dashboard', active: false, size: 22 })
     );
 
-    expect(html).toContain('dashboard');
-    expect(html).toContain("font-variation-settings:&#x27;FILL&#x27; 0, &#x27;wght&#x27; 400, &#x27;GRAD&#x27; 0, &#x27;opsz&#x27; 24");
-    expect(html).toContain('font-size:22px');
-    expect(html).toContain('width:22px');
-    expect(html).toContain('height:22px');
-    expect(html).toContain('var(--color-icon-inactive, #929A94)');
-    expect(html).toContain('icon-inactive');
+    expect(html).toContain('<svg');
+    expect(html).toContain('viewBox="0 -960 960 960"');
+    expect(html).toContain('width="22"');
+    expect(html).toContain('height="22"');
+    expect(html).toContain('fill-current');
     expect(html).toContain('aria-hidden="true"');
   });
 
-  it('renders solid filled glyph (FILL 1) and pastel mint color when active', () => {
+  it('supports custom color and styles', () => {
     const html = renderToStaticMarkup(
-      React.createElement(MaterialIcon, { name: 'dashboard', active: true, size: 24 })
+      React.createElement(MaterialIcon, { name: 'dashboard', color: '#8AB4F8', size: 24 })
     );
 
-    expect(html).toContain('dashboard');
-    expect(html).toContain("font-variation-settings:&#x27;FILL&#x27; 1, &#x27;wght&#x27; 400, &#x27;GRAD&#x27; 0, &#x27;opsz&#x27; 24");
-    expect(html).toContain('var(--color-mint-accent, #B9E4D0)');
-    expect(html).toContain('icon-active');
+    expect(html).toContain('color:#8AB4F8');
+    expect(html).toContain('width:24px');
+    expect(html).toContain('height:24px');
   });
 
-  it('supports explicit fill override (fill=1 when active=false)', () => {
-    const html = renderToStaticMarkup(
-      React.createElement(MaterialIcon, { name: 'folder', fill: 1, active: false })
+  it('supports filled glyph variant for icons with fill counterpart', () => {
+    const outlinedHtml = renderToStaticMarkup(
+      React.createElement(MaterialIcon, { name: 'keep', fill: 0 })
+    );
+    const filledHtml = renderToStaticMarkup(
+      React.createElement(MaterialIcon, { name: 'keep', fill: 1 })
     );
 
-    expect(html).toContain("font-variation-settings:&#x27;FILL&#x27; 1");
+    expect(outlinedHtml).toContain('<svg');
+    expect(filledHtml).toContain('<svg');
+    // Outlined and filled paths should differ
+    expect(outlinedHtml).not.toEqual(filledHtml);
   });
 
-  it('sets opticalSize correctly according to icon size', () => {
+  it('sets width and height attributes according to size prop', () => {
     const small = renderToStaticMarkup(
       React.createElement(MaterialIcon, { name: 'search', size: 16 })
     );
-    expect(small).toContain("&#x27;opsz&#x27; 20");
-
-    const medium = renderToStaticMarkup(
-      React.createElement(MaterialIcon, { name: 'search', size: 22 })
-    );
-    expect(medium).toContain("&#x27;opsz&#x27; 24");
+    expect(small).toContain('width="16"');
+    expect(small).toContain('height="16"');
 
     const large = renderToStaticMarkup(
       React.createElement(MaterialIcon, { name: 'search', size: 36 })
     );
-    expect(large).toContain("&#x27;opsz&#x27; 40");
+    expect(large).toContain('width="36"');
+    expect(large).toContain('height="36"');
   });
 
   it('supports accessible labels and img role', () => {

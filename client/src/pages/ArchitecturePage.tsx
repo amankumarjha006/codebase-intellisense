@@ -115,7 +115,7 @@ export function ArchitecturePage() {
   };
 
   return (
-    <AnimatedPage className="min-h-screen bg-[#0F0F0E] text-white/90 flex flex-col font-['Google_Sans_Flex']">
+    <AnimatedPage className="min-h-screen bg-[#0B0D10] text-[var(--color-text)] flex flex-col font-sans">
       {repository && <RepositoryHeader repository={repository} />}
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
