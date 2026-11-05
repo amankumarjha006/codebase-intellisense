@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
-    "gen:api": "node scripts/gen-api.js"
+    "gen:api": "node scripts/gen-api.js",
+    "test:smoke": "node scripts/smoke-test.cjs"
   },
   "dependencies": {
     "@fontsource-variable/google-sans-code": "^5.3.1",
