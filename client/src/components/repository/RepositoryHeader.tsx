@@ -1,256 +1,303 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { toast } from '../ui/sonner';
-import { Repository } from '../../lib/types';
-import { Button } from '../ui/button';
-import { MaterialIcon } from '../ui/MaterialIcon';
-import { shortSha, cn } from '../../lib/utils';
-import { api } from '../../lib/api';
-import { StatusChip } from '../ui/badge';
-import { motion } from 'motion/react';
 import * as React from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { MaterialIcon } from '../ui/MaterialIcon';
+import { StatusDot } from '../ui/StatusDot';
+import { Button } from '../ui/button';
+import { shortSha } from '../../lib/utils';
+import { isInputFocused } from '../../lib/keyboard';
 import { usePinnedRepos } from '../../lib/pinnedRepos';
+import { getRepositoryStatusCategory } from '../../lib/repositoryTableUtils';
+import { toast } from '../ui/sonner';
+
+export interface HeaderRepository {
+  id: string;
+  owner: string;
+  name: string;
+  is_private?: boolean;
+  active_version?: {
+    branch?: string;
+    commit_sha?: string;
+    status?: string;
+    indexed_at?: string | null;
+  } | null;
+  indexed_commit?: string | null;
+  active_version_short_sha?: string | null;
+  latest_job_status?: string | null;
+  default_branch?: string | null;
+}
 
 interface RepositoryHeaderProps {
-  repository: Repository;
+  repository: HeaderRepository;
+  onReindex?: () => Promise<void>;
   onRefresh?: () => void;
 }
 
 export function RepositoryHeader({
   repository,
+  onReindex,
   onRefresh,
 }: RepositoryHeaderProps) {
   const location = useLocation();
-  const [reindexing, setReindexing] = React.useState(false);
-  const { isPinned, togglePin } = usePinnedRepos();
-
   const navigate = useNavigate();
+  const { isPinned, togglePin } = usePinnedRepos();
+  const [isReindexing, setIsReindexing] = React.useState(false);
+
   const basePath = `/repositories/${repository.id}`;
+  const currentPath = location.pathname;
 
-  const handleReindex = async () => {
-    setReindexing(true);
-    try {
-      await api.reindexRepository(repository.id);
-      toast.success('Indexing pipeline triggered successfully');
-      onRefresh?.();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to re-index repository');
-    } finally {
-      setTimeout(() => setReindexing(false), 800);
-    }
-  };
+  // Derive commit and branch info safely
+  const activeVersion = repository.active_version;
+  const commitSha =
+    activeVersion?.commit_sha ||
+    repository.active_version_short_sha ||
+    repository.indexed_commit ||
+    '';
+  const branchName = activeVersion?.branch || repository.default_branch || 'main';
 
-  const handleTogglePin = () => {
-    const willPin = !isPinned(repository.id);
-    togglePin(repository.id);
-    if (willPin) {
-      toast.success(`Pinned ${repository.owner}/${repository.name} to sidebar`);
-    } else {
-      toast('Unpinned repository from sidebar');
-    }
-  };
-
+  // Keyboard navigation shortcuts 1-5 guarded by isInputFocused
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const isInput =
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable;
+      if (isInputFocused() || e.metaKey || e.ctrlKey || e.altKey) {
+        return;
+      }
 
-      if (!isInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        if (e.key === '1') {
+      switch (e.key) {
+        case '1':
           e.preventDefault();
           navigate(basePath);
-        } else if (e.key === '2') {
-          e.preventDefault();
-          navigate(`${basePath}/chat`);
-        } else if (e.key === '3') {
+          break;
+        case '2':
           e.preventDefault();
           navigate(`${basePath}/architecture`);
-        } else if (e.key === '4') {
+          break;
+        case '3':
+          e.preventDefault();
+          navigate(`${basePath}/chat`);
+          break;
+        case '4':
           e.preventDefault();
           navigate(`${basePath}/search`);
-        } else if (e.key === '5') {
+          break;
+        case '5':
           e.preventDefault();
           navigate(`${basePath}/files`);
-        }
+          break;
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [basePath, navigate]);
-  const currentPath = location.pathname;
-  const activeSha = repository.indexed_commit || repository.active_version_short_sha || '';
-  const repoStatus = repository.latest_job_status || (activeSha ? 'READY' : 'NOT_INDEXED');
-  const githubUrl = `https://github.com/${repository.owner}/${repository.name}`;
 
-  const navItems = [
+  const handleCopySha = () => {
+    if (!commitSha) return;
+    navigator.clipboard.writeText(commitSha);
+    toast.success(`Copied commit SHA: ${shortSha(commitSha)}`);
+  };
+
+  const handleReindexClick = async () => {
+    setIsReindexing(true);
+    try {
+      if (onReindex) {
+        await onReindex();
+      }
+      onRefresh?.();
+      toast.success('Indexing job started');
+    } catch (err) {
+      toast.error('Failed to trigger indexing', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      });
+    } finally {
+      setIsReindexing(false);
+    }
+  };
+
+  const statusCategory = getRepositoryStatusCategory({
+    id: repository.id,
+    owner: repository.owner,
+    name: repository.name,
+    is_private: Boolean(repository.is_private),
+    created_at: '',
+    latest_job_status: repository.latest_job_status || activeVersion?.status || null,
+    latest_job_failure_code: null,
+    active_version_short_sha: commitSha || null,
+    last_indexed_at: activeVersion?.indexed_at || null,
+  });
+
+  const pinned = isPinned(repository.id);
+
+  const navTabs = [
     {
+      id: 'overview',
       name: 'Overview',
+      shortcut: '1',
       path: basePath,
-      iconName: 'description',
+      icon: 'description',
       isActive: currentPath === basePath || currentPath === `${basePath}/`,
     },
     {
-      name: 'Chat',
-      path: `${basePath}/chat`,
-      iconName: 'chat',
-      isActive: currentPath.startsWith(`${basePath}/chat`),
-    },
-    {
+      id: 'architecture',
       name: 'Architecture',
+      shortcut: '2',
       path: `${basePath}/architecture`,
-      iconName: 'account_tree',
+      icon: 'account_tree',
       isActive: currentPath.startsWith(`${basePath}/architecture`),
     },
     {
+      id: 'chat',
+      name: 'Chat',
+      shortcut: '3',
+      path: `${basePath}/chat`,
+      icon: 'chat',
+      isActive: currentPath.startsWith(`${basePath}/chat`),
+    },
+    {
+      id: 'search',
       name: 'Search',
+      shortcut: '4',
       path: `${basePath}/search`,
-      iconName: 'find_in_page',
+      icon: 'search',
       isActive: currentPath.startsWith(`${basePath}/search`),
     },
     {
+      id: 'files',
       name: 'Files',
+      shortcut: '5',
       path: `${basePath}/files`,
-      iconName: 'folder_open',
+      icon: 'folder',
       isActive: currentPath.startsWith(`${basePath}/files`),
     },
   ];
 
   return (
-    <header className="border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur-md sticky top-0 z-30 select-none">
-      {/* Alert Banner when latest indexing job failed */}
-      {repository.latest_job_status === 'FAILED' && (
-        <div
-          role="alert"
-          aria-live="polite"
-          className="px-4 sm:px-6 py-2 bg-[var(--color-warning-tint)] border-b border-[rgba(251,191,36,0.3)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-[var(--color-warning)]"
-        >
-          <div className="flex items-center gap-2">
-            <MaterialIcon name="warning" size={18} fill={1} className="text-[var(--color-warning)]" aria-hidden="true" />
-            <span>
-              Latest indexing job failed. Querying active fallback commit{' '}
-              <span className="font-mono font-semibold">
-                {repository.active_version_short_sha || shortSha(repository.indexed_commit || '')}
-              </span>.
-            </span>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleReindex}
-            disabled={reindexing}
-            aria-label="Retry indexing repository"
-            className="h-7 text-xs border-[rgba(251,191,36,0.4)] text-[var(--color-text)] hover:bg-[var(--color-warning-tint)]"
-          >
-            <MaterialIcon name="sync" size={16} spin={reindexing} aria-hidden="true" />
-            <span>Retry Indexing</span>
-          </Button>
-        </div>
-      )}
-
-      {/* Unified Repository Navigation & Action Bar */}
-      <div className="px-4 sm:px-6 max-w-7xl mx-auto flex items-center justify-between gap-3 py-1.5">
-        {/* Navigation Tabs */}
-        <nav
-          aria-label="Repository sections"
-          className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 [mask-image:linear-gradient(to_right,white_85%,transparent)] sm:[mask-image:none]"
-        >
-          {navItems.map((item) => (
+    <div className="border-b border-white/10 bg-surface-base/90 backdrop-blur-xs sticky top-0 z-30">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-4">
+        {/* Top bar: Breadcrumb & Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <Link
-              key={item.name}
-              to={item.path}
-              state={location.state}
-              aria-current={item.isActive ? 'page' : undefined}
-              className={cn(
-                'relative group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors select-none',
-                item.isActive
-                  ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
-                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/40'
-              )}
+              to="/repositories"
+              className="text-xs text-text-tertiary hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded"
             >
-              {item.isActive && (
-                <motion.div
-                  layoutId="active-repo-tab-pill"
-                  transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                  className="absolute inset-0 rounded-lg bg-[var(--color-mint-selected-bg,#1B332A)] border border-[rgba(185,228,208,0.25)] shadow-xs"
-                />
-              )}
-              <span className="relative z-10 flex items-center gap-2">
-                <MaterialIcon
-                  name={item.iconName}
-                  active={item.isActive}
-                  size={16}
-                  className={cn(
-                    'shrink-0 transition-colors',
-                    !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
-                  )}
-                  aria-hidden="true"
-                />
-                <span>{item.name}</span>
-              </span>
+              Repositories
             </Link>
-          ))}
-        </nav>
+            <span className="text-xs text-text-tertiary">/</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs text-text-secondary truncate">{repository.owner}</span>
+              <span className="text-text-tertiary">/</span>
+              <h1 className="text-sm font-semibold text-text-primary truncate">
+                {repository.name}
+              </h1>
+              {repository.is_private && (
+                <MaterialIcon name="lock" size={13} className="text-text-tertiary shrink-0" />
+              )}
+            </div>
 
-        {/* Revision Metadata & Action Controls */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Consolidated Revision Pill (Branch @ Short-SHA) */}
-          <div className="hidden md:flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--color-raised)] border border-[var(--color-border)] text-xs font-mono text-[var(--color-text)] shrink-0">
-            <MaterialIcon name="call_split" size={13} color="var(--color-mint-accent, #B9E4D0)" aria-hidden="true" />
-            <span className="truncate max-w-[120px]">{repository.default_branch || 'main'}</span>
-            <span className="text-[var(--color-muted)] font-sans">@</span>
-            <span className="text-[var(--color-mint-accent,#B9E4D0)] font-semibold">
-              {activeSha ? shortSha(activeSha) : '—'}
-            </span>
+            {/* Commit and branch badge */}
+            {commitSha && (
+              <button
+                type="button"
+                onClick={handleCopySha}
+                className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono bg-surface-raised border border-white/10 text-text-secondary hover:text-text-primary hover:border-white/20 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                title="Click to copy full commit SHA"
+              >
+                <span>{branchName}@{shortSha(commitSha)}</span>
+                <MaterialIcon name="content_copy" size={12} className="text-text-tertiary" />
+              </button>
+            )}
+
+            <StatusDot
+              status={
+                statusCategory === 'INDEXING'
+                  ? 'indexing'
+                  : statusCategory === 'FAILED'
+                  ? 'failed'
+                  : 'ready'
+              }
+            />
           </div>
 
-          <StatusChip status={repoStatus} size="sm" />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => togglePin(repository.id)}
+              className="text-text-tertiary hover:text-accent p-1.5 rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+              aria-label={pinned ? 'Unpin repository' : 'Pin repository'}
+            >
+              <MaterialIcon
+                name="keep"
+                fill={pinned ? 1 : 0}
+                size={16}
+                className={pinned ? 'text-accent' : 'text-text-tertiary'}
+              />
+            </button>
 
-          <Button
-            size="sm"
-            variant={isPinned(repository.id) ? 'secondary' : 'outline'}
-            onClick={handleTogglePin}
-            className="h-7 text-xs gap-1.5 cursor-pointer"
-            title={isPinned(repository.id) ? 'Unpin repository from sidebar' : 'Pin repository to sidebar'}
-            aria-label={isPinned(repository.id) ? 'Unpin repository from sidebar' : 'Pin repository to sidebar'}
-          >
-            <MaterialIcon
-              name="push_pin"
-              size={13}
-              fill={isPinned(repository.id) ? 1 : 0}
-              color={isPinned(repository.id) ? 'var(--color-mint-accent,#B9E4D0)' : undefined}
-              aria-hidden="true"
-            />
-            <span className="hidden sm:inline">
-              {isPinned(repository.id) ? 'Pinned' : 'Pin'}
-            </span>
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                window.open(
+                  `https://github.com/${repository.owner}/${repository.name}`,
+                  '_blank',
+                  'noopener,noreferrer'
+                )
+              }
+              className="h-7 px-2 text-xs text-text-secondary hover:text-text-primary gap-1 border border-white/10"
+            >
+              <MaterialIcon name="open_in_new" size={14} />
+              GitHub
+            </Button>
 
-          <a
-            href={githubUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)] transition"
-            title="Open repository on GitHub"
-          >
-            <MaterialIcon name="open_in_new" size={13} aria-hidden="true" />
-            <span className="hidden sm:inline">GitHub</span>
-          </a>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleReindex}
-            disabled={reindexing}
-            className="h-7 text-xs gap-1.5"
-            title="Re-analyze repository"
-          >
-            <MaterialIcon name="sync" size={13} spin={reindexing} aria-hidden="true" />
-            <span className="hidden sm:inline">Re-index</span>
-          </Button>
+            {(onReindex || onRefresh) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleReindexClick}
+                disabled={isReindexing}
+                className="h-7 px-2 text-xs text-text-secondary hover:text-text-primary gap-1 border border-white/10"
+              >
+                <MaterialIcon name="refresh" size={14} spin={isReindexing} />
+                Re-index
+              </Button>
+            )}
+          </div>
         </div>
+
+        {/* 5 Tab Links with Motion layout indicator */}
+        <nav
+          className="flex items-center gap-1 overflow-x-auto no-scrollbar -mb-px"
+          aria-label="Repository navigation"
+        >
+          {navTabs.map((tab) => {
+            return (
+              <Link
+                key={tab.id}
+                to={tab.path}
+                className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors select-none rounded-t focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
+                  tab.isActive
+                    ? 'text-accent font-semibold'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                <MaterialIcon name={tab.icon} size={15} />
+                <span>{tab.name}</span>
+                <span className="hidden sm:inline text-[10px] text-text-tertiary font-mono">
+                  {tab.shortcut}
+                </span>
+
+                {tab.isActive && (
+                  <motion.div
+                    layoutId="repo-header-active-tab"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+              </Link>
+            );
+          })}
+        </nav>
       </div>
-    </header>
+    </div>
   );
 }

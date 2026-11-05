@@ -82,6 +82,36 @@ const mockConversations = {
   ],
 };
 
+const mockRepoDetail = {
+  id: 'repo-fastapi',
+  owner: 'fastapi',
+  name: 'fastapi',
+  is_private: false,
+  primary_language: 'Python',
+  lines_of_code: 34210,
+  ast_nodes: 89420,
+  active_version: {
+    id: 'ver-1',
+    commit_sha: 'd3a4b1e8f00124ca',
+    branch: 'master',
+    status: 'READY',
+    indexed_at: '2026-03-01T14:32:00Z',
+  },
+};
+
+const mockFiles = {
+  files: [
+    { id: 'f1', path: 'fastapi/main.py', language: 'python', size: 14200, sha256: 'abc' },
+    { id: 'f2', path: 'fastapi/applications.py', language: 'python', size: 28400, sha256: 'def' },
+    { id: 'f3', path: 'fastapi/routing.py', language: 'python', size: 45200, sha256: 'ghi' },
+    { id: 'f4', path: 'fastapi/dependencies/models.py', language: 'python', size: 18500, sha256: 'jkl' },
+    { id: 'f5', path: 'fastapi/params.py', language: 'python', size: 12100, sha256: 'mno' },
+    { id: 'f6', path: 'tests/test_main.py', language: 'python', size: 8900, sha256: 'pqr' },
+    { id: 'f7', path: 'docs/index.md', language: 'markdown', size: 4500, sha256: 'stu' },
+  ],
+  total: 7,
+};
+
 async function setupPageRoutes(page) {
   await page.route('**/api/v1/auth/me', (route) => {
     route.fulfill({
@@ -96,6 +126,22 @@ async function setupPageRoutes(page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(mockRepositories),
+    });
+  });
+
+  await page.route('**/api/v1/repositories/repo-fastapi/files*', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mockFiles),
+    });
+  });
+
+  await page.route('**/api/v1/repositories/repo-fastapi', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mockRepoDetail),
     });
   });
 
