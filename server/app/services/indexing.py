@@ -74,6 +74,15 @@ BINARY_AND_ASSET_EXTENSIONS = {
 
 DATA_FILE_EXTENSIONS = {".csv", ".tsv", ".json", ".ndjson", ".jsonl", ".parquet"}
 
+NON_ENGLISH_DOC_LOCALES = {
+    # 2-letter ISO 639-1 language codes commonly used in multilingual documentation (excluding 'en')
+    "ar", "bn", "cs", "da", "de", "el", "es", "fa", "fi", "fr",
+    "he", "hi", "hu", "id", "it", "ja", "ko", "mr", "nl", "pl",
+    "pt", "ro", "ru", "sv", "ta", "te", "th", "tr", "uk", "ur", "vi", "zh",
+    # Specific regional/script variants (excluding en-*)
+    "zh-hans", "zh-hant", "zh-cn", "zh-tw", "pt-br", "es-es", "fr-fr", "de-de", "ja-jp", "ko-kr", "ru-ru",
+}
+
 DEFAULT_EXCLUDE_EXTENSIONS = BINARY_AND_ASSET_EXTENSIONS | {".min.js", ".map", ".lock"}
 
 LANGUAGE_EXTENSIONS = {
@@ -179,6 +188,7 @@ def classify_file(
       - 'file_too_large': any single file exceeding MAX_INDEXABLE_FILE_SIZE_BYTES
       - 'hidden_file': hidden file starting with '.'
       - 'unsupported_language': extension not supported
+      - 'doc_translation': non-English documentation translation directory
     """
     path = Path(rel_path)
     parts = set(path.parts)
@@ -187,6 +197,15 @@ def classify_file(
     # 1. Directory exclusion
     if parts & effective_exclude_dirs or "__snapshots__" in parts:
         return False, "excluded_directory"
+
+    # 1b. Documentation translations (e.g. docs/zh, docs/es, docs/zh-hant, etc.)
+    # Exclude non-English translated docs to avoid multiplying token usage by 10-20x
+    lower_parts = [p.lower() for p in path.parts]
+    for idx, part in enumerate(lower_parts[:-1]):
+        if part in {"docs", "documentation", "doc"}:
+            next_part = lower_parts[idx + 1]
+            if next_part in NON_ENGLISH_DOC_LOCALES:
+                return False, "doc_translation"
 
     file_name = path.name
     file_name_lower = file_name.lower()

@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     # Indexing Configuration
     MAX_INDEXABLE_FILE_SIZE_BYTES: int = 200000  # 200 KB per-file limit
-    INDEXING_MAX_ESTIMATED_TOKENS: int = 1000000  # 1M token cap per repository
+    INDEXING_MAX_ESTIMATED_TOKENS: int = 3000000  # 3M token cap per repository
     INDEXING_DATA_FILE_MAX_BYTES: int = 50000     # 50 KB limit for data files (csv, json, etc)
     CHUNK_MAX_CHARS: int = 4096
     

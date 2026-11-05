@@ -84,6 +84,32 @@ def test_filtering_excluded_directories():
         assert reason == "excluded_directory", f"Expected excluded_directory for {path}, got {reason}"
 
 
+def test_filtering_doc_translations():
+    """Verify non-English documentation translation directories are skipped."""
+    cases = [
+        # Non-English translations -> skipped
+        ("docs/zh/tutorial/index.md", False, "doc_translation"),
+        ("docs/es/tutorial/index.md", False, "doc_translation"),
+        ("docs/zh-hant/index.md", False, "doc_translation"),
+        ("docs/de/tutorial/setup.md", False, "doc_translation"),
+        ("documentation/fr/guide.md", False, "doc_translation"),
+        ("doc/ru/intro.md", False, "doc_translation"),
+        ("docs/ja/reference.md", False, "doc_translation"),
+        ("docs/pt-br/index.md", False, "doc_translation"),
+        # English and normal docs -> kept
+        ("docs/en/tutorial/index.md", True, None),
+        ("docs/en/index.md", True, None),
+        ("docs/index.md", True, None),
+        ("docs/tutorial/first-steps.md", True, None),
+        ("docs/api/endpoints.md", True, None),
+        ("fastapi/main.py", True, None),
+    ]
+    for rel_path, expected_keep, expected_reason in cases:
+        keep, reason = classify_file(rel_path, file_size=500)
+        assert keep == expected_keep, f"Expected keep={expected_keep} for {rel_path}, got keep={keep} ({reason})"
+        assert reason == expected_reason, f"Expected reason={expected_reason} for {rel_path}, got {reason}"
+
+
 def test_filtering_binary_and_assets():
     """Verify non-code assets, media, fonts, archives, and compiled binaries are skipped."""
     assets = [
@@ -189,6 +215,11 @@ def test_discover_files_with_stats_skip_counters(tmp_path):
     # Oversized file (> 200KB)
     (repo / "huge.py").write_text("# code\n" + "x = 1\n" * 40000, encoding="utf-8")
 
+    # Doc translation
+    docs_zh = repo / "docs" / "zh"
+    docs_zh.mkdir(parents=True)
+    (docs_zh / "intro.md").write_text("# Intro in Chinese", encoding="utf-8")
+
     files, skip_counts = discover_files_with_stats(
         str(repo),
         max_file_size=200000,
@@ -206,6 +237,7 @@ def test_discover_files_with_stats_skip_counters(tmp_path):
     assert skip_counts.get("binary_or_asset") == 1
     assert skip_counts.get("large_data_file") == 1
     assert skip_counts.get("file_too_large") == 1
+    assert skip_counts.get("doc_translation") == 1
 
 
 # ---------------------------------------------------------------------------
