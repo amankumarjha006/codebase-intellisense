@@ -321,6 +321,36 @@ const mockArchitecture = {
   },
 };
 
+const mockSearchResults = {
+  repository_version_id: 'v1',
+  results: [
+    {
+      id: 'res-1',
+      file_path: 'fastapi/applications.py',
+      start_line: 110,
+      end_line: 125,
+      snippet: 'class FastAPI(Starlette):\n    def __init__(self, debug: bool = False, routes: Optional[List[BaseRoute]] = None):\n        self.router: routing.APIRouter = routing.APIRouter()',
+      score: 0.96,
+    },
+    {
+      id: 'res-2',
+      file_path: 'fastapi/routing.py',
+      start_line: 142,
+      end_line: 158,
+      snippet: 'class APIRoute(routing.Route):\n    def __init__(self, path: str, endpoint: Callable[..., Any], *, response_model: Any = Default(None)):\n        self.path = path',
+      score: 0.88,
+    },
+    {
+      id: 'res-3',
+      file_path: 'fastapi/dependencies/utils.py',
+      start_line: 45,
+      end_line: 62,
+      snippet: 'async def solve_dependencies(request: Request, dependant: Dependant) -> Tuple[Dict[str, Any], List[Any]]:\n    values: Dict[str, Any] = {}\n    errors: List[Any] = []',
+      score: 0.84,
+    },
+  ],
+};
+
 async function setupPageRoutes(page) {
   await page.route('**/api/v1/auth/me', (route) => {
     route.fulfill({
@@ -407,6 +437,14 @@ async function setupPageRoutes(page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(mockFiles),
+    });
+  });
+
+  await page.route('**/api/v1/repositories/*/search', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mockSearchResults),
     });
   });
 }

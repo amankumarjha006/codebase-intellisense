@@ -20,6 +20,7 @@ describe('Real API Adapters for Page Components', () => {
         indexed_at: '2026-10-17T12:00:00Z',
       },
     });
+    vi.spyOn(realApi, 'getRepositoryVersions').mockResolvedValue([]);
 
     const repo = await api.getRepository('repo-123');
 
