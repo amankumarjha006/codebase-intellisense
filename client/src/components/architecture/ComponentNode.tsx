@@ -36,55 +36,53 @@ export function ComponentNode({ data, selected }: NodeProps) {
       onClick={() => nodeData?.onSelect?.(comp)}
       className={`
         relative w-[240px] rounded-lg p-3 text-left transition-colors cursor-pointer select-none
-        bg-[#161615] border
-        focus:outline-none focus:ring-1 focus:ring-white/40
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-accent
         ${
           isSelected
-            ? 'border-white/50 bg-[#1D1D1B]'
+            ? 'border border-accent bg-surface-overlay shadow-sm'
             : isHighlighted
-            ? 'border-white/40 bg-[#1A1A18]'
-            : 'border-white/[0.08] hover:border-white/20'
+            ? 'border border-accent/60 bg-surface-overlay'
+            : 'border border-white/10 bg-surface-raised hover:border-white/20'
         }
       `}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-2 !h-2 !bg-white/40 !border-none"
+        className="!w-2.5 !h-2.5 !bg-accent/70 !border-none"
       />
 
-      <div className="flex items-center justify-between gap-1.5 mb-1">
+      <div className="flex items-center justify-between gap-1.5 mb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
           <MaterialIcon
             name="folder"
             size={16}
-            className="text-white/60 shrink-0"
+            className="text-text-secondary shrink-0"
             aria-hidden="true"
           />
-          <span className="font-medium text-xs text-white/90 truncate">
+          <span className="font-medium text-xs text-text-primary truncate">
             {comp.name}
           </span>
         </div>
-        <span className="shrink-0 text-[10px] text-white/40 font-mono px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">
+        <span className="shrink-0 text-xs text-text-secondary font-mono px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/10">
           L{comp.layer}
         </span>
       </div>
 
-      <div className="font-mono text-[11px] text-white/50 truncate mb-2" title={comp.path_prefix || 'root'}>
+      <div className="font-mono text-xs text-text-secondary truncate mb-2" title={comp.path_prefix || 'root'}>
         {comp.path_prefix || './'}
       </div>
 
-      <div className="flex items-center justify-between text-[10px] text-white/40 border-t border-white/[0.06] pt-1.5 mt-1">
+      <div className="flex items-center justify-between text-xs text-text-secondary border-t border-white/[0.08] pt-1.5 mt-1 font-mono">
         <span>{comp.file_count} {comp.file_count === 1 ? 'file' : 'files'}</span>
-        {topLanguages && <span className="truncate max-w-[120px]">{topLanguages}</span>}
+        {topLanguages && <span className="truncate max-w-[120px] text-right">{topLanguages}</span>}
       </div>
 
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-2 !h-2 !bg-white/40 !border-none"
+        className="!w-2.5 !h-2.5 !bg-accent/70 !border-none"
       />
     </div>
   );
 }
-

@@ -37,10 +37,10 @@ export function ComponentEdge({
   const isCycle = Boolean(edge?.cycle);
 
   const strokeColor = isHighlighted
-    ? 'rgba(255, 255, 255, 0.7)'
+    ? '#8AB4F8'
     : isCycle
-    ? 'rgba(255, 180, 180, 0.5)'
-    : 'rgba(255, 255, 255, 0.2)';
+    ? '#F28B82'
+    : 'rgba(255, 255, 255, 0.25)';
 
   const evidenceCount = edge?.evidence?.length ?? 0;
   const firstEvidence = edge?.evidence?.[0];
@@ -65,9 +65,9 @@ export function ComponentEdge({
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
               pointerEvents: 'all',
             }}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#1D1D1B] border border-white/20 text-white/70 shadow-sm"
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-mono bg-surface-raised border border-status-failed/40 text-status-failed shadow-sm"
           >
-            <MaterialIcon name="sync" size={12} className="text-white/60 shrink-0" aria-hidden="true" />
+            <MaterialIcon name="sync" size={14} className="text-status-failed shrink-0" aria-hidden="true" />
             <span>cycle</span>
           </div>
         </EdgeLabelRenderer>
@@ -80,14 +80,13 @@ export function ComponentEdge({
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
               pointerEvents: 'all',
             }}
-            className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#1D1D1B] border border-white/20 text-white/80"
-            title={firstEvidence ? `${firstEvidence.source_path}:${firstEvidence.line} -> ${firstEvidence.target_path}` : undefined}
+            className="px-2 py-0.5 rounded text-xs font-mono bg-surface-raised border border-white/10 text-text-primary shadow-sm"
+            title={firstEvidence ? `Approximate evidence: ${firstEvidence.source_path}:${firstEvidence.line} -> ${firstEvidence.target_path}` : 'Approximate import evidence'}
           >
-            {weight} {weight === 1 ? 'import' : 'imports'}
+            approx. {weight} {weight === 1 ? 'import' : 'imports'}
           </div>
         </EdgeLabelRenderer>
       )}
     </>
   );
 }
-

@@ -67,8 +67,28 @@ function getElkInstance() {
   return elkInstance;
 }
 
+let workerInstance: Worker | null = null;
+let reqId = 0;
+
+function getLayoutWorker(): Worker | null {
+  if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
+    if (!workerInstance) {
+      try {
+        workerInstance = new Worker(new URL('./elkWorker.ts', import.meta.url), {
+          type: 'module',
+        });
+      } catch {
+        workerInstance = null;
+      }
+    }
+    return workerInstance;
+  }
+  return null;
+}
+
 /**
  * Runs ELK layout on nodes and edges, returning updated nodes with positioned coordinates.
+ * Dispatches to web worker when available in browser to avoid blocking main thread.
  */
 export async function layoutArchitectureGraph(
   nodes: Node<ArchitectureNodeData>[],
@@ -79,12 +99,48 @@ export async function layoutArchitectureGraph(
   }
 
   const elkGraph = buildElkGraph(nodes, edges);
-  const elk = getElkInstance();
-  const layout = await elk.layout(elkGraph as Parameters<typeof elk.layout>[0]);
+  const worker = getLayoutWorker();
+
+  let layoutResult: { children?: Array<{ id: string; x?: number; y?: number }> } | null = null;
+
+  if (worker) {
+    try {
+      const currentId = `layout_${++reqId}`;
+      layoutResult = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('ELK worker layout timeout'));
+        }, 5000);
+
+        const handler = (event: MessageEvent) => {
+          if (event.data?.id === currentId) {
+            clearTimeout(timeout);
+            worker.removeEventListener('message', handler);
+            if (event.data.error) {
+              reject(new Error(event.data.error));
+            } else {
+              resolve(event.data.layout);
+            }
+          }
+        };
+
+        worker.addEventListener('message', handler);
+        worker.postMessage({ id: currentId, graph: elkGraph });
+      });
+    } catch {
+      // Fallback to direct thread if worker fails
+      layoutResult = null;
+    }
+  }
+
+  if (!layoutResult) {
+    const elk = getElkInstance();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    layoutResult = await elk.layout(elkGraph as any);
+  }
 
   const positionMap = new Map<string, { x: number; y: number }>();
-  if (layout.children) {
-    for (const child of layout.children) {
+  if (layoutResult?.children) {
+    for (const child of layoutResult.children) {
       positionMap.set(child.id, {
         x: child.x ?? 0,
         y: child.y ?? 0,
@@ -102,4 +158,3 @@ export async function layoutArchitectureGraph(
 
   return { nodes: laidOutNodes, edges };
 }
-

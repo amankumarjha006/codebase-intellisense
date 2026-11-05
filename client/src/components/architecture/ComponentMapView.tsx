@@ -91,9 +91,9 @@ export function ComponentMapView({
   };
 
   return (
-    <div className="relative w-full h-[650px] min-h-[500px] rounded-xl border border-white/[0.08] bg-[#0F0F0E] overflow-hidden">
+    <div className="relative w-full h-[620px] min-h-[460px] rounded-lg border border-white/10 bg-surface-base overflow-hidden">
       {isLayingOut && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#0F0F0E]/80 backdrop-blur-xs text-xs text-white/50">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface-base/80 backdrop-blur-xs text-xs text-text-secondary font-mono">
           Calculating graph layout…
         </div>
       )}
@@ -114,15 +114,15 @@ export function ComponentMapView({
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="rgba(255,255,255,0.04)" gap={20} size={1} />
+        <Background color="rgba(255,255,255,0.05)" gap={20} size={1} />
         <Controls
           showInteractive={false}
-          className="!bg-[#161615] !border-white/[0.08] !text-white/70"
+          className="!bg-surface-raised !border !border-white/10 !text-text-secondary !rounded-lg !shadow-sm overflow-hidden"
         />
         <MiniMap
-          nodeColor="#1D1D1B"
-          maskColor="rgba(15, 15, 14, 0.7)"
-          className="!bg-[#161615] !border-white/[0.08] rounded-lg overflow-hidden"
+          nodeColor="#171B22"
+          maskColor="rgba(11, 13, 16, 0.75)"
+          className="!bg-surface-raised !border !border-white/10 rounded-lg overflow-hidden"
         />
       </ReactFlow>
 
@@ -139,4 +139,3 @@ export function ComponentMapView({
     </div>
   );
 }
-

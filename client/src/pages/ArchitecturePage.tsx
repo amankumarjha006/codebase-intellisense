@@ -14,7 +14,7 @@ import { FlowsView } from '../components/architecture/FlowsView';
 import { ComponentListView } from '../components/architecture/ComponentListView';
 import { ComponentDetailsPanel } from '../components/architecture/ComponentDetailsPanel';
 
-type TabKey = 'system' | 'components' | 'flows' | 'list';
+type TabKey = 'modules' | 'flows' | 'entrypoints' | 'list';
 
 // Version-pinned in-memory cache: key = `${repoId}:${versionId}`
 const architectureCache = new Map<string, ArchitectureOut>();
@@ -24,7 +24,15 @@ export function ArchitecturePage() {
   const [repository] = React.useState<Repository | null>(() =>
     repoId ? getCachedRepository(repoId) : null
   );
-  const [activeTab, setActiveTab] = React.useState<TabKey>('components');
+
+  // Default to 'list' on mobile viewports (< 768px), otherwise 'modules'
+  const [activeTab, setActiveTab] = React.useState<TabKey>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return 'list';
+    }
+    return 'modules';
+  });
+
   const [payload, setPayload] = React.useState<ArchitectureOut | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [errorCopy, setErrorCopy] = React.useState<string | null>(null);
@@ -115,82 +123,67 @@ export function ArchitecturePage() {
   };
 
   return (
-    <AnimatedPage className="min-h-screen bg-[#0B0D10] text-[var(--color-text)] flex flex-col font-sans">
+    <AnimatedPage className="min-h-screen bg-surface-base text-text-primary flex flex-col font-sans">
       {repository && <RepositoryHeader repository={repository} />}
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Page Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-white/[0.08]">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-white/10">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-medium text-white tracking-tight">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-medium text-text-primary tracking-tight">
                 Architecture
               </h1>
               {payload?.status === 'ready' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#8AB4F8]/10 text-[#8AB4F8] border border-[#8AB4F8]/20">
-                  <MaterialIcon name="check_circle" size={12} className="text-[#8AB4F8]" fill={1} />
+                <div className="inline-flex items-center gap-1.5 text-xs text-text-secondary">
+                  <span className="w-2 h-2 rounded-full bg-status-ready" aria-hidden="true" />
                   <span>Ready</span>
-                </span>
+                </div>
               )}
               {payload?.status === 'partial' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  <MaterialIcon name="warning" size={12} className="text-amber-400" />
+                <div className="inline-flex items-center gap-1.5 text-xs text-status-indexing">
+                  <span className="w-2 h-2 rounded-full bg-status-indexing" aria-hidden="true" />
                   <span>Partial</span>
-                </span>
+                </div>
               )}
               {payload?.limits?.truncated && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/[0.04] text-white/60 border border-white/[0.08]">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-white/[0.04] text-text-secondary border border-white/10">
                   Edge cap (400)
                 </span>
               )}
             </div>
 
             {/* Coverage line */}
-            <p className="text-xs text-white/60 mt-1 font-mono">
+            <p className="text-xs text-text-secondary mt-1 font-mono">
               {loading ? 'Evaluating architecture…' : formatCoverageLine(payload?.coverage)}
             </p>
           </div>
 
-          {/* Navigation Tabs (icon + text) */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#161615] border border-white/[0.08] self-start sm:self-auto">
+          {/* Segmented Tab Controls */}
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-surface-raised border border-white/10 self-start sm:self-auto">
             <button
-              onClick={() => setActiveTab('components')}
+              onClick={() => setActiveTab('modules')}
               className={`
-                flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent
                 ${
-                  activeTab === 'components'
-                    ? 'bg-[#1D1D1B] text-white shadow-xs'
-                    : 'text-white/60 hover:text-white hover:bg-white/[0.03]'
+                  activeTab === 'modules'
+                    ? 'bg-surface-overlay text-white shadow-xs border border-white/10'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
                 }
               `}
             >
               <MaterialIcon name="category" size={16} aria-hidden="true" />
-              <span>Components</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('system')}
-              className={`
-                flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                ${
-                  activeTab === 'system'
-                    ? 'bg-[#1D1D1B] text-white shadow-xs'
-                    : 'text-white/60 hover:text-white hover:bg-white/[0.03]'
-                }
-              `}
-            >
-              <MaterialIcon name="dns" size={16} aria-hidden="true" />
-              <span>System</span>
+              <span>Modules</span>
             </button>
 
             <button
               onClick={() => setActiveTab('flows')}
               className={`
-                flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent
                 ${
                   activeTab === 'flows'
-                    ? 'bg-[#1D1D1B] text-white shadow-xs'
-                    : 'text-white/60 hover:text-white hover:bg-white/[0.03]'
+                    ? 'bg-surface-overlay text-white shadow-xs border border-white/10'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
                 }
               `}
             >
@@ -199,13 +192,28 @@ export function ArchitecturePage() {
             </button>
 
             <button
+              onClick={() => setActiveTab('entrypoints')}
+              className={`
+                flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent
+                ${
+                  activeTab === 'entrypoints'
+                    ? 'bg-surface-overlay text-white shadow-xs border border-white/10'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+                }
+              `}
+            >
+              <MaterialIcon name="dns" size={16} aria-hidden="true" />
+              <span>Entry points</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('list')}
               className={`
-                flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent
                 ${
                   activeTab === 'list'
-                    ? 'bg-[#1D1D1B] text-white shadow-xs'
-                    : 'text-white/60 hover:text-white hover:bg-white/[0.03]'
+                    ? 'bg-surface-overlay text-white shadow-xs border border-white/10'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
                 }
               `}
             >
@@ -216,49 +224,49 @@ export function ArchitecturePage() {
         </div>
 
         {/* Informative Disclaimer Notice */}
-        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-[#161615] border border-white/[0.06] text-xs text-white/50">
-          <MaterialIcon name="info" size={16} className="text-white/40 shrink-0" aria-hidden="true" />
+        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-surface-raised border border-white/10 text-xs text-text-secondary">
+          <MaterialIcon name="info" size={16} className="text-text-tertiary shrink-0" aria-hidden="true" />
           <span>Components are directory-based approximations derived from static analysis evidence.</span>
         </div>
 
         {/* Main Body States */}
         {loading ? (
-          <div className="w-full h-96 rounded-xl border border-white/[0.08] bg-[#161615] flex flex-col items-center justify-center p-8 space-y-3">
-            <MaterialIcon name="sync" size={24} className="text-white/40 animate-spin" aria-hidden="true" />
-            <p className="text-xs text-white/50">Loading architecture model…</p>
+          <div className="w-full h-96 rounded-lg border border-white/10 bg-surface-raised flex flex-col items-center justify-center p-8 space-y-3">
+            <MaterialIcon name="sync" size={24} className="text-text-tertiary animate-spin" aria-hidden="true" />
+            <p className="text-xs text-text-secondary font-mono">Loading architecture model…</p>
           </div>
         ) : errorCopy ? (
-          <div className="w-full p-8 rounded-xl border border-white/[0.08] bg-[#161615] flex flex-col items-center justify-center text-center space-y-3">
-            <div className="flex items-center gap-2 text-rose-400">
+          <div className="w-full p-8 rounded-lg border border-white/10 bg-surface-raised flex flex-col items-center justify-center text-center space-y-3">
+            <div className="flex items-center gap-2 text-status-failed">
               <MaterialIcon name="error_outline" size={20} aria-hidden="true" />
               <span className="text-sm font-medium">{errorCopy}</span>
             </div>
             {requestId && (
               <button
                 onClick={handleCopyRequestId}
-                className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono text-white/60 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors"
+                className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono text-text-secondary bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] transition-colors"
               >
                 <span>Reference: {requestId}</span>
                 <MaterialIcon
                   name={copiedReqId ? 'check' : 'content_copy'}
                   size={14}
-                  className="text-white/40"
+                  className="text-text-secondary"
                   aria-hidden="true"
                 />
               </button>
             )}
           </div>
         ) : !payload ? (
-          <div className="w-full p-8 rounded-xl border border-white/[0.08] bg-[#161615] text-center text-xs text-white/40">
+          <div className="w-full p-8 rounded-lg border border-white/10 bg-surface-raised text-center text-xs text-text-secondary">
             No architecture data available for this repository.
           </div>
         ) : (
           <div>
-            {activeTab === 'components' && (
+            {activeTab === 'modules' && (
               <ComponentMapView payload={payload} repoId={repoId!} />
             )}
 
-            {activeTab === 'system' && (
+            {activeTab === 'entrypoints' && (
               <SystemMapView payload={payload} />
             )}
 

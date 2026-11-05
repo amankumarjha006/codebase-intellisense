@@ -155,6 +155,172 @@ const mockFileContent = {
   size: 3420,
 };
 
+const mockArchitecture = {
+  schema_version: 2,
+  status: 'ready',
+  system: {
+    nodes: [
+      {
+        id: 'sys:app',
+        name: 'FastAPI Application',
+        kind: 'service',
+        metadata: { framework: 'FastAPI', uvicorn_workers: 4 },
+        source_file: 'fastapi/applications.py',
+        line_number: 55,
+      },
+      {
+        id: 'sys:routing',
+        name: 'APIRouter',
+        kind: 'runtime',
+        metadata: { routes_count: 32 },
+        source_file: 'fastapi/routing.py',
+        line_number: 120,
+      },
+      {
+        id: 'sys:dependencies',
+        name: 'Dependency Engine',
+        kind: 'runtime',
+        metadata: { scope: 'request' },
+        source_file: 'fastapi/dependencies/utils.py',
+        line_number: 45,
+      },
+    ],
+    edges: [
+      { source: 'sys:app', target: 'sys:routing', label: 'mounts' },
+      { source: 'sys:routing', target: 'sys:dependencies', label: 'resolves' },
+    ],
+  },
+  components: [
+    {
+      id: 'comp:core',
+      name: 'fastapi/core',
+      path_prefix: 'fastapi/applications.py',
+      file_count: 8,
+      language_mix: { Python: 8 },
+      layer: 0,
+      summary: 'Application lifecycle and main HTTP router orchestrator.',
+    },
+    {
+      id: 'comp:routing',
+      name: 'fastapi/routing',
+      path_prefix: 'fastapi/routing.py',
+      file_count: 14,
+      language_mix: { Python: 14 },
+      layer: 1,
+      summary: 'Route matchers, endpoint dispatchers, and OpenAPI spec schemas.',
+    },
+    {
+      id: 'comp:dependencies',
+      name: 'fastapi/dependencies',
+      path_prefix: 'fastapi/dependencies',
+      file_count: 12,
+      language_mix: { Python: 12 },
+      layer: 2,
+      summary: 'Sub-dependency resolution and DI parameter solvers.',
+    },
+    {
+      id: 'comp:params',
+      name: 'fastapi/params',
+      path_prefix: 'fastapi/params.py',
+      file_count: 6,
+      language_mix: { Python: 6 },
+      layer: 3,
+      summary: 'Query, Path, Body, Header, Cookie parameter descriptors.',
+    },
+  ],
+  edges: [
+    {
+      source: 'comp:core',
+      target: 'comp:routing',
+      weight: 18,
+      kind: 'internal',
+      cycle: false,
+      evidence: [
+        {
+          source_path: 'fastapi/applications.py',
+          target_path: 'fastapi/routing.py',
+          line: 24,
+        },
+      ],
+    },
+    {
+      source: 'comp:routing',
+      target: 'comp:dependencies',
+      weight: 24,
+      kind: 'internal',
+      cycle: false,
+      evidence: [
+        {
+          source_path: 'fastapi/routing.py',
+          target_path: 'fastapi/dependencies/utils.py',
+          line: 45,
+        },
+      ],
+    },
+    {
+      source: 'comp:dependencies',
+      target: 'comp:params',
+      weight: 12,
+      kind: 'internal',
+      cycle: false,
+      evidence: [
+        {
+          source_path: 'fastapi/dependencies/utils.py',
+          target_path: 'fastapi/params.py',
+          line: 18,
+        },
+      ],
+    },
+  ],
+  flows: [
+    {
+      id: 'flow-1',
+      title: 'HTTP Request Dispatch & DI Solver',
+      entry: {
+        kind: 'http_route',
+        method: 'GET',
+        path: '/items/{item_id}',
+        file: 'fastapi/routing.py',
+        line: 142,
+      },
+      steps: [
+        {
+          component_id: 'comp:core',
+          caption: 'Incoming HTTP request received and assigned to router.',
+          citations: [
+            { file_path: 'fastapi/applications.py', start_line: 110, end_line: 125 },
+          ],
+        },
+        {
+          component_id: 'comp:routing',
+          caption: 'Path parameters extracted and matched against route schema.',
+          citations: [
+            { file_path: 'fastapi/routing.py', start_line: 142, end_line: 160 },
+          ],
+        },
+        {
+          component_id: 'comp:dependencies',
+          caption: 'Solve all Depends() parameters recursively before handler call.',
+          citations: [
+            { file_path: 'fastapi/dependencies/utils.py', start_line: 45, end_line: 72 },
+          ],
+        },
+      ],
+    },
+  ],
+  coverage: {
+    internal_imports_total: 142,
+    resolved: 138,
+    ratio: 0.97,
+    languages_analyzed: ['python'],
+    languages_not_analyzed: [],
+  },
+  limits: {
+    truncated: false,
+    max_components: 50,
+  },
+};
+
 async function setupPageRoutes(page) {
   await page.route('**/api/v1/auth/me', (route) => {
     route.fulfill({
@@ -217,6 +383,30 @@ async function setupPageRoutes(page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify([]),
+    });
+  });
+
+  await page.route('**/api/v1/repositories/*/active-version', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ id: 'v1', commit_sha: 'a1b2c3d4e5f6', branch_name: 'main' }),
+    });
+  });
+
+  await page.route('**/api/v1/repositories/*/architecture', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mockArchitecture),
+    });
+  });
+
+  await page.route('**/api/v1/repositories/*/components/*/files*', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mockFiles),
     });
   });
 }

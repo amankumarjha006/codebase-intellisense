@@ -9,22 +9,30 @@ interface SystemMapViewProps {
 export function SystemMapView({ payload }: SystemMapViewProps) {
   const [extExpanded, setExtExpanded] = React.useState(false);
   const system = payload.system;
-  const nodes = system?.nodes || [];
+  const nodes = React.useMemo(() => system?.nodes || [], [system?.nodes]);
   const edges = system?.edges || [];
+
+  const nodeNameMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const n of nodes) {
+      map.set(n.id, n.name);
+    }
+    return map;
+  }, [nodes]);
 
   if (nodes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center rounded-xl border border-white/[0.08] bg-[#161615]">
+      <div className="flex flex-col items-center justify-center p-12 text-center rounded-lg border border-white/10 bg-surface-raised">
         <MaterialIcon
           name="dns"
           size={36}
-          className="text-white/30 mb-3"
+          className="text-text-tertiary mb-3"
           aria-hidden="true"
         />
-        <h3 className="text-sm font-medium text-white/80 mb-1">
+        <h3 className="text-sm font-medium text-text-primary mb-1">
           No deployment manifests found
         </h3>
-        <p className="text-xs text-white/40 max-w-sm">
+        <p className="text-xs text-text-secondary max-w-sm">
           No Dockerfile, docker-compose, or manifest files were detected in this repository.
         </p>
       </div>
@@ -49,38 +57,38 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
           return (
             <div
               key={node.id}
-              className="p-4 rounded-xl border border-white/[0.08] bg-[#161615] flex flex-col justify-between space-y-3"
+              className="p-4 rounded-lg border border-white/10 bg-surface-raised flex flex-col justify-between space-y-3"
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
                     <MaterialIcon
                       name={kindIcon}
                       size={16}
-                      className="text-white/60 shrink-0"
+                      className="text-text-secondary shrink-0"
                       aria-hidden="true"
                     />
-                    <h4 className="font-medium text-xs text-white/90 truncate">
+                    <h4 className="font-medium text-xs text-text-primary truncate">
                       {node.name}
                     </h4>
                   </div>
-                  <span className="shrink-0 text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-white/50">
+                  <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-white/10 text-text-secondary">
                     {node.kind}
                   </span>
                 </div>
 
-                <div className="text-[11px] font-mono text-white/40 truncate">
+                <div className="text-xs font-mono text-text-secondary truncate">
                   {node.source_file}:{node.line_number}
                 </div>
               </div>
 
               {/* Node metadata summary */}
               {Object.keys(node.metadata || {}).length > 0 && (
-                <div className="pt-2 border-t border-white/[0.04] text-[11px] text-white/60 space-y-1">
+                <div className="pt-2 border-t border-white/[0.06] text-xs text-text-secondary space-y-1">
                   {Object.entries(node.metadata).map(([key, val]) => (
                     <div key={key} className="flex items-center justify-between gap-2">
-                      <span className="text-white/40 font-mono text-[10px]">{key}</span>
-                      <span className="font-mono text-[10px] text-white/80 truncate max-w-[180px]">
+                      <span className="text-text-secondary font-mono text-xs">{key}</span>
+                      <span className="font-mono text-xs text-text-primary truncate max-w-[180px]">
                         {Array.isArray(val) ? `${val.length} items` : String(val)}
                       </span>
                     </div>
@@ -94,49 +102,54 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
 
       {/* System Dependency Connections */}
       {edges.length > 0 && (
-        <div className="p-4 rounded-xl border border-white/[0.08] bg-[#161615]">
-          <h4 className="text-[11px] font-medium text-white/50 uppercase tracking-wider mb-3">
-            System Connections
+        <div className="p-4 rounded-lg border border-white/10 bg-surface-raised">
+          <h4 className="text-xs font-medium text-text-secondary mb-3">
+            System connections
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {edges.map((e, idx) => (
-              <div
-                key={`${e.source}-${e.target}-${idx}`}
-                className="p-2.5 rounded-lg bg-[#1D1D1B] border border-white/[0.06] flex items-center justify-between text-xs"
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <span className="font-medium text-white/90 truncate">{e.source.replace(/^sys:/, '')}</span>
-                  <span className="text-white/40">→</span>
-                  <span className="font-medium text-white/90 truncate">{e.target.replace(/^sys:/, '')}</span>
+            {edges.map((e, idx) => {
+              const sourceLabel = nodeNameMap.get(e.source) || e.source.replace(/^sys:?/, '').replace(/^sys_/, '');
+              const targetLabel = nodeNameMap.get(e.target) || e.target.replace(/^sys:?/, '').replace(/^sys_/, '');
+
+              return (
+                <div
+                  key={`${e.source}-${e.target}-${idx}`}
+                  className="p-2.5 rounded-lg bg-surface-overlay border border-white/10 flex items-center justify-between text-xs"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="font-medium text-text-primary truncate">{sourceLabel}</span>
+                    <span className="text-text-secondary">→</span>
+                    <span className="font-medium text-text-primary truncate">{targetLabel}</span>
+                  </div>
+                  {e.label && (
+                    <span className="shrink-0 text-xs font-mono text-text-secondary px-2 py-0.5 rounded bg-white/[0.04] border border-white/10">
+                      {e.label}
+                    </span>
+                  )}
                 </div>
-                {e.label && (
-                  <span className="shrink-0 text-[10px] font-mono text-white/50 px-1.5 py-0.5 rounded bg-white/[0.04]">
-                    {e.label}
-                  </span>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
       {/* Collapsible External Dependencies Box */}
       {externalDepsNodes.length > 0 && (
-        <div className="rounded-xl border border-white/[0.08] bg-[#161615] overflow-hidden">
+        <div className="rounded-lg border border-white/10 bg-surface-raised overflow-hidden">
           <button
             onClick={() => setExtExpanded(!extExpanded)}
-            className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors"
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
           >
             <div className="flex items-center gap-2">
-              <MaterialIcon name="extension" size={16} className="text-white/50" aria-hidden="true" />
-              <span className="text-xs font-medium text-white/80">
-                External Package Dependencies ({externalDepsNodes.length})
+              <MaterialIcon name="extension" size={16} className="text-text-secondary" aria-hidden="true" />
+              <span className="text-xs font-medium text-text-primary">
+                External package dependencies ({externalDepsNodes.length})
               </span>
             </div>
             <MaterialIcon
               name={extExpanded ? 'expand_less' : 'expand_more'}
               size={18}
-              className="text-white/40"
+              className="text-text-secondary"
               aria-hidden="true"
             />
           </button>
@@ -146,10 +159,10 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
               {externalDepsNodes.map((dep) => (
                 <div
                   key={dep.id}
-                  className="p-2 rounded bg-[#1D1D1B] border border-white/[0.04] flex items-center justify-between text-xs"
+                  className="p-2.5 rounded-lg bg-surface-overlay border border-white/10 flex items-center justify-between text-xs"
                 >
-                  <span className="font-mono text-[11px] text-white/80 truncate">{dep.name}</span>
-                  <span className="text-[10px] text-white/40 font-mono truncate">{dep.source_file}</span>
+                  <span className="font-mono text-xs text-text-primary truncate">{dep.name}</span>
+                  <span className="text-xs text-text-secondary font-mono truncate">{dep.source_file}</span>
                 </div>
               ))}
             </div>
@@ -159,4 +172,3 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
     </div>
   );
 }
-
