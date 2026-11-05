@@ -114,3 +114,4 @@ export function getLastOpenedRepoId(userId: string | null | undefined): string |
     return null;
   }
 }
+

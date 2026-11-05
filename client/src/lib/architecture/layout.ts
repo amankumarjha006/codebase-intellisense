@@ -1,6 +1,6 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { ArchitectureNodeData, ArchitectureEdgeData } from './types';
-import ELK from 'elkjs/lib/elk.bundled.js';
+import ELK from 'elkjs/lib/elk-api.js';
 
 export interface ElkLayoutInput {
   id: string;
@@ -60,35 +60,28 @@ export function buildElkGraph(
 
 let elkInstance: InstanceType<typeof ELK> | null = null;
 
-function getElkInstance() {
+function getElkInstance(): InstanceType<typeof ELK> {
   if (!elkInstance) {
-    elkInstance = new ELK();
+    if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
+      try {
+        elkInstance = new ELK({
+          workerFactory: () =>
+            new Worker(new URL('elkjs/lib/elk-worker.min.js', import.meta.url)),
+        });
+      } catch {
+        elkInstance = null;
+      }
+    }
+    if (!elkInstance) {
+      elkInstance = new ELK();
+    }
   }
   return elkInstance;
 }
 
-let workerInstance: Worker | null = null;
-let reqId = 0;
-
-function getLayoutWorker(): Worker | null {
-  if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
-    if (!workerInstance) {
-      try {
-        workerInstance = new Worker(new URL('./elkWorker.ts', import.meta.url), {
-          type: 'module',
-        });
-      } catch {
-        workerInstance = null;
-      }
-    }
-    return workerInstance;
-  }
-  return null;
-}
-
 /**
  * Runs ELK layout on nodes and edges, returning updated nodes with positioned coordinates.
- * Dispatches to web worker when available in browser to avoid blocking main thread.
+ * Web Worker is leveraged via ELK workerFactory in browser.
  */
 export async function layoutArchitectureGraph(
   nodes: Node<ArchitectureNodeData>[],
@@ -99,43 +92,16 @@ export async function layoutArchitectureGraph(
   }
 
   const elkGraph = buildElkGraph(nodes, edges);
-  const worker = getLayoutWorker();
 
   let layoutResult: { children?: Array<{ id: string; x?: number; y?: number }> } | null = null;
 
-  if (worker) {
-    try {
-      const currentId = `layout_${++reqId}`;
-      layoutResult = await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('ELK worker layout timeout'));
-        }, 5000);
-
-        const handler = (event: MessageEvent) => {
-          if (event.data?.id === currentId) {
-            clearTimeout(timeout);
-            worker.removeEventListener('message', handler);
-            if (event.data.error) {
-              reject(new Error(event.data.error));
-            } else {
-              resolve(event.data.layout);
-            }
-          }
-        };
-
-        worker.addEventListener('message', handler);
-        worker.postMessage({ id: currentId, graph: elkGraph });
-      });
-    } catch {
-      // Fallback to direct thread if worker fails
-      layoutResult = null;
-    }
-  }
-
-  if (!layoutResult) {
+  try {
     const elk = getElkInstance();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     layoutResult = await elk.layout(elkGraph as any);
+  } catch (err) {
+    console.warn('ELK layout failed, falling back to grid positions:', err);
+    return { nodes, edges };
   }
 
   const positionMap = new Map<string, { x: number; y: number }>();

@@ -152,7 +152,7 @@ export function SearchPage() {
       <LiveRegion message={a11yStatus} />
       <RepositoryHeader repository={repository} />
 
-      <main id="main-content" className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col space-y-4">
+      <main id="main-content" className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-10 pb-16 flex flex-col space-y-6">
         {/* Search header & input bar */}
         <section role="search" aria-label="Repository code search" className="space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-white/10">

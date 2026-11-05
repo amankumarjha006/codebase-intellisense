@@ -16,3 +16,4 @@ export function isInputFocused(e?: KeyboardEvent): boolean {
     Boolean(target.closest('[role="dialog"]'))
   );
 }
+

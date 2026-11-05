@@ -150,3 +150,4 @@ export function CommandPalette({ open, onOpenChange, onOpenConnect }: CommandPal
     </CommandDialog>
   );
 }
+

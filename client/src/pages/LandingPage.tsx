@@ -15,6 +15,7 @@ import { SkipToContent } from '../components/ui/A11y';
 import { LANDING_ERROR_COPY } from '../lib/errors';
 import { useAuth } from '../lib/AuthContext';
 import { ease } from '../lib/motion';
+import { API_URL } from '../lib/api';
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -44,6 +45,10 @@ export function LandingPage() {
 
   const handleSignIn = () => {
     signIn();
+  };
+
+  const handleDevSignIn = () => {
+    window.location.href = `${API_URL}/auth/dev-login`;
   };
 
   // Prevent flash of landing page content while redirecting
@@ -92,6 +97,12 @@ export function LandingPage() {
           </nav>
 
           <div className="flex items-center gap-2.5">
+            {import.meta.env.DEV && (
+              <Button size="sm" variant="secondary" onClick={handleDevSignIn} className="border-[var(--color-accent)]/40 text-[var(--color-accent)]">
+                <MaterialIcon name="terminal" size={14} />
+                <span>Dev Login</span>
+              </Button>
+            )}
             <Button size="sm" variant={scrolled ? "primary" : "secondary"} onClick={handleSignIn}>
               <GithubIcon size={14} />
               <span>Sign in with GitHub</span>
@@ -216,6 +227,12 @@ export function LandingPage() {
 
             <FadeUp delay={0.3}>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                {import.meta.env.DEV && (
+                  <Button size="lg" variant="secondary" onClick={handleDevSignIn} className="w-full sm:w-auto border-[var(--color-accent)]/40 text-[var(--color-accent)]">
+                    <MaterialIcon name="terminal" size={16} aria-hidden="true" />
+                    <span>Dev Quick Login</span>
+                  </Button>
+                )}
                 <Button size="lg" variant="primary" onClick={handleSignIn} className="w-full sm:w-auto">
                   <GithubIcon size={16} />
                   <span>Connect with GitHub</span>

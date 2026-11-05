@@ -130,3 +130,4 @@ export const ICON_MAP: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> =
 };
 
 export type IconName = keyof typeof ICON_MAP;
+

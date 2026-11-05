@@ -17,3 +17,4 @@ self.onmessage = async (
     });
   }
 };
+

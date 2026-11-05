@@ -134,7 +134,7 @@ export function RepositoryOverviewPage() {
       {/* Sticky 5-tab Header */}
       <RepositoryHeader repository={repo} onReindex={handleReindex} />
 
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 space-y-6">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-10 pb-16 space-y-8">
         {/* 1. Compact Stat Strip (4 items) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="p-3.5 rounded-lg border border-white/10 bg-surface-raised space-y-1">

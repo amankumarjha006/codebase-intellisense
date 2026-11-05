@@ -18,7 +18,7 @@ import { deriveUserDisplay } from '../../lib/user';
 
 interface TopBarProps {
   onOpenCommand: () => void;
-  onOpenConnect: () => void;
+  onOpenConnect?: () => void;
 }
 
 export function TopBar({ onOpenCommand, onOpenConnect }: TopBarProps) {
@@ -169,18 +169,7 @@ export function TopBar({ onOpenCommand, onOpenConnect }: TopBarProps) {
           </kbd>
         </button>
 
-        {/* Contextual Primary Action (Never repeated on same screen) */}
-        {isHomeOrRepos && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={onOpenConnect}
-            className="h-8 px-3 text-xs font-medium gap-1.5 bg-[var(--color-text)] text-[#0B0D10] hover:bg-white transition-colors cursor-pointer"
-          >
-            <MaterialIcon name="add" size={16} />
-            <span>Connect repository</span>
-          </Button>
-        )}
+
 
         {isInsideRepo && currentRepo && !location.pathname.endsWith('/chat') && (
           <Button

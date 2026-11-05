@@ -172,7 +172,7 @@ export function RepositoryHeader({
 
   return (
     <div className="border-b border-white/10 bg-surface-base/90 backdrop-blur-xs sticky top-0 z-30">
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-4">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 pt-5 sm:pt-6 pb-1">
         {/* Top bar: Breadcrumb & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
           <div className="flex items-center gap-2.5 min-w-0">

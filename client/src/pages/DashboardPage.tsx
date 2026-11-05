@@ -124,7 +124,7 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-[1200px] mx-auto">
+    <div className="space-y-8 max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-10 pb-16">
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <div>

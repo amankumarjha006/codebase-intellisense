@@ -154,3 +154,4 @@ export function isSourceHotspot(filePath: string): boolean {
   const category = classifyPath(filePath);
   return category === 'source';
 }
+

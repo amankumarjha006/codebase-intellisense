@@ -54,18 +54,27 @@ async def dev_login(
         return JSONResponse(status_code=403, content={"error": "Dev login only available in development"})
 
     try:
-        auth_service = AuthService(db)
-        user = auth_service.provision_user_and_installation(
-            github_user_data={
-                "github_user_id": "123456",
-                "username": "alexc-dev",
-                "email": "alex.chen@devtools.co",
-                "full_name": "Alex Chen",
-            },
-            access_token="dev-mock-access-token",
-            verified_installation=None,
-            installation_id=None,
+        user = (
+            db.query(User)
+            .filter(User.email.notlike("%test_%"), User.email.notlike("%devtools.co%"))
+            .order_by(User.created_at.asc())
+            .first()
         )
+        if not user:
+            user = db.query(User).filter(User.email.notlike("%test_%")).order_by(User.created_at.asc()).first()
+        if not user:
+            auth_service = AuthService(db)
+            user = auth_service.provision_user_and_installation(
+                github_user_data={
+                    "github_user_id": "123456",
+                    "username": "alexc-dev",
+                    "email": "alex.chen@devtools.co",
+                    "full_name": "Alex Chen",
+                },
+                access_token="dev-mock-access-token",
+                verified_installation=None,
+                installation_id=None,
+            )
 
         session_id = secrets.token_urlsafe(32)
         await redis_client.setex(
@@ -74,7 +83,7 @@ async def dev_login(
             str(user.id),
         )
 
-        redirect_url = settings.FRONTEND_URL
+        redirect_url = f"{settings.FRONTEND_URL}/dashboard"
         redirect_response = RedirectResponse(url=redirect_url, status_code=302)
         redirect_response.set_cookie(
             key=settings.SESSION_COOKIE_NAME,
