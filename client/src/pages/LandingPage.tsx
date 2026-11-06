@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LandingLayout } from '../features/landing/components/LandingLayout';
 import { HeroSection } from '../features/landing/components/HeroSection';
 import { InteractiveDemo } from '../features/landing/components/InteractiveDemo';
+import { HowItWorksScrolly } from '../features/landing/components/HowItWorksScrolly';
 import { useAuth } from '../lib/AuthContext';
 import { LANDING_ERROR_COPY } from '../lib/errors';
 
@@ -69,27 +70,8 @@ export function LandingPage() {
       {/* 02 INTERACTIVE DEMO */}
       <InteractiveDemo />
 
-      {/* 03 HOW IT WORKS (Scaffold for Step 4) */}
-      <section id="how-it-works" className="py-24 border-t border-[var(--color-landing-hairline)]">
-        <div className="mb-8">
-          <p className="text-xs font-[family-name:var(--font-code)] text-[var(--color-landing-ink-tertiary)] uppercase tracking-wider">
-            03 // Architecture & Indexing
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-normal tracking-tight mt-2 text-[var(--color-landing-ink)]">
-            How It Works
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {['01 Connect', '02 Index', '03 Ask', '04 Map'].map((chapter) => (
-            <div
-              key={chapter}
-              className="p-6 rounded-lg border border-[var(--color-landing-hairline)] bg-[var(--color-landing-surface)]"
-            >
-              <h3 className="text-base font-medium text-[var(--color-landing-ink)]">{chapter}</h3>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* 03 HOW IT WORKS (Scrollytelling & 3D Architecture Scene) */}
+      <HowItWorksScrolly />
 
       {/* 04 PROOF (Scaffold for Step 5) */}
       <section id="proof" className="py-24 border-t border-[var(--color-landing-hairline)]">

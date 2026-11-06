@@ -1,0 +1,86 @@
+{
+  "repo": "fastapi/fastapi",
+  "commit": "69c67a1",
+  "components": [
+    {
+      "id": "comp_docs_src",
+      "name": "docs_src",
+      "layer": 1,
+      "summary": "Source code examples and raw content used to generate documentation.",
+      "file_count": 347,
+      "path_prefix": "docs_src",
+      "language_mix": {
+        "css": 1,
+        "html": 2,
+        "python": 343,
+        "javascript": 1
+      }
+    },
+    {
+      "id": "comp_fastapi",
+      "name": "fastapi",
+      "layer": 2,
+      "summary": "The core implementation of the FastAPI web framework itself.",
+      "file_count": 58,
+      "path_prefix": "fastapi",
+      "language_mix": {
+        "python": 51,
+        "markdown": 7
+      }
+    },
+    {
+      "id": "comp_scripts",
+      "name": "scripts",
+      "layer": 2,
+      "summary": "Collection of utility scripts for development, build, or maintenance tasks.",
+      "file_count": 28,
+      "path_prefix": "scripts",
+      "language_mix": {
+        "bash": 5,
+        "python": 22,
+        "markdown": 1
+      }
+    },
+    {
+      "id": "comp_tests",
+      "name": "tests",
+      "layer": 1,
+      "summary": "Comprehensive suite of unit and integration tests for the FastAPI framework.",
+      "file_count": 244,
+      "path_prefix": "tests",
+      "language_mix": {
+        "python": 244
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "comp_tests",
+      "target": "comp_fastapi",
+      "weight": 895,
+      "kind": "internal"
+    },
+    {
+      "source": "comp_docs_src",
+      "target": "comp_fastapi",
+      "weight": 527,
+      "kind": "internal"
+    },
+    {
+      "source": "comp_tests",
+      "target": "comp_scripts",
+      "weight": 8,
+      "kind": "internal"
+    }
+  ],
+  "externalDependencies": [
+    "annotated-doc",
+    "opentelemetry-api",
+    "pydantic",
+    "starlette",
+    "typing-extensions",
+    "typing-inspection"
+  ],
+  "totalComponents": 20,
+  "totalEdges": 19
+}
