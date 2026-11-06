@@ -1,0 +1,11 @@
+{
+  "query": "How does Starlette implement the SessionMiddleware cookie signing mechanism?",
+  "answer": "Based on the provided repository context, the available information is insufficient to answer how Starlette implements its SessionMiddleware cookie signing mechanism.\n\nThe context notes that Starlette provides session and cookie support, but the specific implementation details of SessionMiddleware (such as the signing library, secret key handling, or cryptographic algorithm used) are not present in the supplied repository context.",
+  "status": "declined_insufficient_context",
+  "metadata": {
+    "repo": "fastapi/fastapi",
+    "commit": "69c67a1672eb7f8e5b3f9019a096f4993338c689",
+    "capturedAt": "2026-11-06T11:21:06Z",
+    "model": "gemini-3.5-flash"
+  }
+}

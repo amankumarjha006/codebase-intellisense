@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LandingLayout } from '../features/landing/components/LandingLayout';
+import { HeroSection } from '../features/landing/components/HeroSection';
 import { useAuth } from '../lib/AuthContext';
 import { LANDING_ERROR_COPY } from '../lib/errors';
 
@@ -61,41 +62,8 @@ export function LandingPage() {
         </div>
       )}
 
-      {/* 01 HERO SECTION (Scaffold for Step 2) */}
-      <section
-        id="hero"
-        className="min-h-[75vh] flex flex-col justify-center py-16 lg:py-24"
-      >
-        <div className="max-w-4xl">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full border border-[var(--color-landing-hairline-strong)] bg-[var(--color-landing-surface)] text-xs text-[var(--color-landing-ink-secondary)] mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-landing-accent)]" />
-            <span>Recorded from fastapi/fastapi @ 69c67a1</span>
-          </div>
-
-          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-normal tracking-tight text-[var(--color-landing-ink)] leading-[1.05]">
-            Ask the repo. <br />
-            <span className="highlighter-sweep is-visible">Get the line.</span>
-          </h1>
-
-          <p className="mt-8 text-lg sm:text-xl text-[var(--color-landing-ink-secondary)] max-w-2xl leading-relaxed">
-            Connect a public GitHub repository, ask in plain English, and get answers
-            whose citations open the exact lines of code.
-          </p>
-
-          <div className="mt-10 flex flex-wrap items-center gap-4">
-            <button
-              onClick={() => {
-                const el = document.getElementById('demo');
-                el?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="text-sm font-medium text-[var(--color-landing-ink)] hover:text-[var(--color-landing-ink-secondary)] transition-colors inline-flex items-center space-x-1"
-            >
-              <span>See a real answer</span>
-              <span aria-hidden="true">↓</span>
-            </button>
-          </div>
-        </div>
-      </section>
+      {/* 01 HERO SECTION */}
+      <HeroSection />
 
       {/* 02 INTERACTIVE DEMO (Scaffold for Step 3) */}
       <section id="demo" className="py-24 border-t border-[var(--color-landing-hairline)]">

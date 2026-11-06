@@ -1,0 +1,23 @@
+{
+  "repository": "fastapi/fastapi",
+  "repositoryUrl": "https://github.com/fastapi/fastapi",
+  "commitSha": "69c67a1672eb7f8e5b3f9019a096f4993338c689",
+  "shortCommit": "69c67a1",
+  "indexedAt": "2026-11-05 02:28:48 UTC",
+  "sourceFilesAnalyzed": 1221,
+  "pythonFiles": 1217,
+  "javascriptFiles": 4,
+  "skippedFilesDisclosed": 244,
+  "skippedBreakdown": {
+    "markdown": 192,
+    "yaml": 38,
+    "html": 5,
+    "bash": 5,
+    "css": 3,
+    "toml": 1
+  },
+  "symbolsExtracted": 12499,
+  "internalImportsResolvedPercent": 99.1,
+  "totalInternalImports": 2778,
+  "resolvedInternalImports": 2753
+}
