@@ -22,7 +22,7 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
 
   if (nodes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center rounded-lg border border-white/10 bg-surface-raised">
+      <div className="flex flex-col items-center justify-center p-12 text-center rounded-lg border border-[var(--color-border)] bg-surface-raised">
         <MaterialIcon
           name="dns"
           size={36}
@@ -57,7 +57,7 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
           return (
             <div
               key={node.id}
-              className="p-4 rounded-lg border border-white/10 bg-surface-raised flex flex-col justify-between space-y-3"
+              className="p-4 rounded-lg border border-[var(--color-border)] bg-surface-raised flex flex-col justify-between space-y-3"
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -72,7 +72,7 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
                       {node.name}
                     </h4>
                   </div>
-                  <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-white/10 text-text-secondary">
+                  <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded bg-surface-overlay border border-[var(--color-border)] text-text-secondary">
                     {node.kind}
                   </span>
                 </div>
@@ -84,7 +84,7 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
 
               {/* Node metadata summary */}
               {Object.keys(node.metadata || {}).length > 0 && (
-                <div className="pt-2 border-t border-white/[0.06] text-xs text-text-secondary space-y-1">
+                <div className="pt-2 border-t border-[var(--color-border)] text-xs text-text-secondary space-y-1">
                   {Object.entries(node.metadata).map(([key, val]) => (
                     <div key={key} className="flex items-center justify-between gap-2">
                       <span className="text-text-secondary font-mono text-xs">{key}</span>
@@ -102,7 +102,7 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
 
       {/* System Dependency Connections */}
       {edges.length > 0 && (
-        <div className="p-4 rounded-lg border border-white/10 bg-surface-raised">
+        <div className="p-4 rounded-lg border border-[var(--color-border)] bg-surface-raised">
           <h4 className="text-xs font-medium text-text-secondary mb-3">
             System connections
           </h4>
@@ -114,7 +114,7 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
               return (
                 <div
                   key={`${e.source}-${e.target}-${idx}`}
-                  className="p-2.5 rounded-lg bg-surface-overlay border border-white/10 flex items-center justify-between text-xs"
+                  className="p-2.5 rounded-lg bg-surface-overlay border border-[var(--color-border)] flex items-center justify-between text-xs"
                 >
                   <div className="flex items-center gap-2 truncate">
                     <span className="font-medium text-text-primary truncate">{sourceLabel}</span>
@@ -122,7 +122,7 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
                     <span className="font-medium text-text-primary truncate">{targetLabel}</span>
                   </div>
                   {e.label && (
-                    <span className="shrink-0 text-xs font-mono text-text-secondary px-2 py-0.5 rounded bg-white/[0.04] border border-white/10">
+                    <span className="shrink-0 text-xs font-mono text-text-secondary px-2 py-0.5 rounded bg-surface-overlay border border-[var(--color-border)]">
                       {e.label}
                     </span>
                   )}
@@ -135,10 +135,10 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
 
       {/* Collapsible External Dependencies Box */}
       {externalDepsNodes.length > 0 && (
-        <div className="rounded-lg border border-white/10 bg-surface-raised overflow-hidden">
+        <div className="rounded-lg border border-[var(--color-border)] bg-surface-raised overflow-hidden">
           <button
             onClick={() => setExtExpanded(!extExpanded)}
-            className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-surface-overlay/50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
           >
             <div className="flex items-center gap-2">
               <MaterialIcon name="extension" size={16} className="text-text-secondary" aria-hidden="true" />
@@ -155,11 +155,11 @@ export function SystemMapView({ payload }: SystemMapViewProps) {
           </button>
 
           {extExpanded && (
-            <div className="p-4 pt-0 border-t border-white/[0.06] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-3">
+            <div className="p-4 pt-0 border-t border-[var(--color-border)] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-3">
               {externalDepsNodes.map((dep) => (
                 <div
                   key={dep.id}
-                  className="p-2.5 rounded-lg bg-surface-overlay border border-white/10 flex items-center justify-between text-xs"
+                  className="p-2.5 rounded-lg bg-surface-overlay border border-[var(--color-border)] flex items-center justify-between text-xs"
                 >
                   <span className="font-mono text-xs text-text-primary truncate">{dep.name}</span>
                   <span className="text-xs text-text-secondary font-mono truncate">{dep.source_file}</span>

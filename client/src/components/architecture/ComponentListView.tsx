@@ -23,17 +23,17 @@ export function ComponentListView({
 
   if (components.length === 0) {
     return (
-      <div className="p-8 text-center text-xs text-text-secondary italic rounded-lg border border-white/10 bg-surface-raised">
+      <div className="p-8 text-center text-xs text-text-secondary italic rounded-lg border border-[var(--color-border)] bg-surface-raised">
         No components detected in this repository.
       </div>
     );
   }
 
   return (
-    <div className="w-full rounded-lg border border-white/10 bg-surface-raised overflow-x-auto">
+    <div className="w-full rounded-lg border border-[var(--color-border)] bg-surface-raised overflow-x-auto">
       <table className="w-full text-left text-xs text-text-primary border-collapse">
         <thead>
-          <tr className="border-b border-white/10 bg-surface-overlay text-xs font-medium text-text-secondary">
+          <tr className="border-b border-[var(--color-border)] bg-surface-overlay text-xs font-medium text-text-secondary">
             <th scope="col" className="py-3 px-4">Component</th>
             <th scope="col" className="py-3 px-4">Path prefix</th>
             <th scope="col" className="py-3 px-4">Layer</th>
@@ -43,7 +43,7 @@ export function ComponentListView({
             <th scope="col" className="py-3 px-4 text-right">Action</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/[0.06]">
+        <tbody className="divide-y divide-[var(--color-border)]">
           {components.map((comp) => {
             const outCount = outgoingCounts.get(comp.id) || 0;
             const inCount = incomingCounts.get(comp.id) || 0;
@@ -82,7 +82,7 @@ export function ComponentListView({
                       e.stopPropagation();
                       onSelectComponent(comp);
                     }}
-                    className="px-2.5 py-1 rounded text-xs font-medium bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-text-primary transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                    className="px-2.5 py-1 rounded text-xs font-medium bg-surface-overlay border border-[var(--color-border)] hover:bg-surface-base text-text-primary transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
                   >
                     View details
                   </button>

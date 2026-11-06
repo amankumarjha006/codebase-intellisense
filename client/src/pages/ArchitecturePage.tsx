@@ -145,7 +145,7 @@ export function ArchitecturePage() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-10 pb-16 space-y-6">
         {/* Page Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-white/10">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[var(--color-border)]">
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-medium text-text-primary tracking-tight">
@@ -164,7 +164,7 @@ export function ArchitecturePage() {
                 </div>
               )}
               {payload?.limits?.truncated && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-white/[0.04] text-text-secondary border border-white/10">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-surface-raised text-text-secondary border border-[var(--color-border)]">
                   Edge cap (400)
                 </span>
               )}
@@ -177,15 +177,15 @@ export function ArchitecturePage() {
           </div>
 
           {/* Segmented Tab Controls */}
-          <div className="flex items-center gap-1 p-1 rounded-lg bg-surface-raised border border-white/10 self-start sm:self-auto">
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-surface-raised border border-[var(--color-border)] self-start sm:self-auto">
             <button
               onClick={() => setActiveTab('modules')}
               className={`
                 flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent
                 ${
                   activeTab === 'modules'
-                    ? 'bg-surface-overlay text-white shadow-xs border border-white/10'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+                    ? 'bg-surface-overlay text-text-primary font-semibold shadow-xs border border-[var(--color-border-strong)]'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-overlay/50'
                 }
               `}
             >
@@ -199,8 +199,8 @@ export function ArchitecturePage() {
                 flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent
                 ${
                   activeTab === 'flows'
-                    ? 'bg-surface-overlay text-white shadow-xs border border-white/10'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+                    ? 'bg-surface-overlay text-text-primary font-semibold shadow-xs border border-[var(--color-border-strong)]'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-overlay/50'
                 }
               `}
             >
@@ -214,8 +214,8 @@ export function ArchitecturePage() {
                 flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent
                 ${
                   activeTab === 'entrypoints'
-                    ? 'bg-surface-overlay text-white shadow-xs border border-white/10'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+                    ? 'bg-surface-overlay text-text-primary font-semibold shadow-xs border border-[var(--color-border-strong)]'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-overlay/50'
                 }
               `}
             >
@@ -229,8 +229,8 @@ export function ArchitecturePage() {
                 flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent
                 ${
                   activeTab === 'list'
-                    ? 'bg-surface-overlay text-white shadow-xs border border-white/10'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+                    ? 'bg-surface-overlay text-text-primary font-semibold shadow-xs border border-[var(--color-border-strong)]'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-overlay/50'
                 }
               `}
             >
@@ -241,19 +241,19 @@ export function ArchitecturePage() {
         </div>
 
         {/* Informative Disclaimer Notice */}
-        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-surface-raised border border-white/10 text-xs text-text-secondary">
+        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-surface-raised border border-[var(--color-border)] text-xs text-text-secondary">
           <MaterialIcon name="info" size={16} className="text-text-tertiary shrink-0" aria-hidden="true" />
           <span>Components are directory-based approximations derived from static analysis evidence.</span>
         </div>
 
         {/* Main Body States */}
         {loading ? (
-          <div className="w-full h-96 rounded-lg border border-white/10 bg-surface-raised flex flex-col items-center justify-center p-8 space-y-3">
+          <div className="w-full h-96 rounded-lg border border-[var(--color-border)] bg-surface-raised flex flex-col items-center justify-center p-8 space-y-3">
             <MaterialIcon name="sync" size={24} className="text-text-tertiary animate-spin" aria-hidden="true" />
             <p className="text-xs text-text-secondary font-mono">Loading architecture model…</p>
           </div>
         ) : errorCopy ? (
-          <div className="w-full p-8 rounded-lg border border-white/10 bg-surface-raised flex flex-col items-center justify-center text-center space-y-3">
+          <div className="w-full p-8 rounded-lg border border-[var(--color-border)] bg-surface-raised flex flex-col items-center justify-center text-center space-y-3">
             <div className="flex items-center gap-2 text-status-failed">
               <MaterialIcon name="error_outline" size={20} aria-hidden="true" />
               <span className="text-sm font-medium">{errorCopy}</span>
@@ -261,7 +261,7 @@ export function ArchitecturePage() {
             {requestId && (
               <button
                 onClick={handleCopyRequestId}
-                className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono text-text-secondary bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] transition-colors"
+                className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono text-text-secondary bg-surface-overlay border border-[var(--color-border)] hover:bg-surface-base transition-colors"
               >
                 <span>Reference: {requestId}</span>
                 <MaterialIcon
@@ -274,7 +274,7 @@ export function ArchitecturePage() {
             )}
           </div>
         ) : !payload ? (
-          <div className="w-full p-8 rounded-lg border border-white/10 bg-surface-raised text-center text-xs text-text-secondary">
+          <div className="w-full p-8 rounded-lg border border-[var(--color-border)] bg-surface-raised text-center text-xs text-text-secondary">
             No architecture data available for this repository.
           </div>
         ) : (

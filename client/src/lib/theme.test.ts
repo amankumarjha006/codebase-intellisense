@@ -44,3 +44,4 @@ describe('Theme System', () => {
     expect(html).toContain('h-7 w-7');
   });
 });
+

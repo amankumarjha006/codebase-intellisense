@@ -105,22 +105,22 @@ export function ComponentDetailsPanel({
       className={
         isEmbedded
           ? "w-full h-full bg-surface-raised flex flex-col overflow-hidden"
-          : "fixed inset-y-0 right-0 w-full sm:w-[420px] bg-surface-raised border-l border-white/10 z-40 flex flex-col shadow-2xl overflow-hidden"
+          : "fixed inset-y-0 right-0 w-full sm:w-[420px] bg-surface-raised border-l border-[var(--color-border)] z-40 flex flex-col shadow-2xl overflow-hidden"
       }
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-surface-raised">
+      <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-surface-raised">
         <div className="flex items-center gap-2 min-w-0">
           <MaterialIcon name="folder" size={18} className="text-text-secondary shrink-0" aria-hidden="true" />
           <h2 className="font-medium text-sm text-text-primary truncate">{component.name}</h2>
-          <span className="shrink-0 text-xs text-text-secondary font-mono px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/10">
+          <span className="shrink-0 text-xs text-text-secondary font-mono px-1.5 py-0.5 rounded bg-surface-overlay border border-[var(--color-border)]">
             L{component.layer}
           </span>
         </div>
         <button
           onClick={onClose}
           aria-label="Close details"
-          className="p-1 rounded text-text-secondary hover:text-text-primary hover:bg-white/[0.06] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="p-1 rounded text-text-secondary hover:text-text-primary hover:bg-surface-overlay transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <MaterialIcon name="close" size={18} aria-hidden="true" />
         </button>
@@ -129,7 +129,7 @@ export function ComponentDetailsPanel({
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs text-text-primary">
         {/* Path prefix & files count */}
-        <div className="p-3 rounded-lg bg-surface-overlay border border-white/10 space-y-1.5">
+        <div className="p-3 rounded-lg bg-surface-overlay border border-[var(--color-border)] space-y-1.5">
           <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>Path prefix</span>
             <span className="font-mono">{component.file_count} {component.file_count === 1 ? 'file' : 'files'}</span>
@@ -141,7 +141,7 @@ export function ComponentDetailsPanel({
 
         {/* Generated Summary (if available) */}
         {component.summary && (
-          <div className="p-3 rounded-lg bg-surface-overlay border border-white/10 space-y-1.5">
+          <div className="p-3 rounded-lg bg-surface-overlay border border-[var(--color-border)] space-y-1.5">
             <div className="flex items-center gap-1.5 text-xs text-text-secondary font-medium">
               <MaterialIcon name="auto_awesome" size={14} className="text-text-secondary shrink-0" aria-hidden="true" />
               <span>Generated summary</span>
@@ -167,7 +167,7 @@ export function ComponentDetailsPanel({
                 return (
                   <div
                     key={e.target}
-                    className="p-2 rounded bg-surface-overlay border border-white/10 flex items-center justify-between gap-2"
+                    className="p-2 rounded bg-surface-overlay border border-[var(--color-border)] flex items-center justify-between gap-2"
                   >
                     <button
                       onClick={() => onSelectComponent(targetComp)}
@@ -200,7 +200,7 @@ export function ComponentDetailsPanel({
                 return (
                   <div
                     key={e.source}
-                    className="p-2 rounded bg-surface-overlay border border-white/10 flex items-center justify-between gap-2"
+                    className="p-2 rounded bg-surface-overlay border border-[var(--color-border)] flex items-center justify-between gap-2"
                   >
                     <button
                       onClick={() => onSelectComponent(srcComp)}
@@ -234,7 +234,7 @@ export function ComponentDetailsPanel({
                         `/repositories/${repoId}/files?path=${encodeURIComponent(ev.source_path)}&line=${ev.line}`
                       )
                     }
-                    className="w-full text-left p-2 rounded bg-surface-overlay border border-white/10 hover:border-accent/40 transition-colors group flex items-start gap-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                    className="w-full text-left p-2 rounded bg-surface-overlay border border-[var(--color-border)] hover:border-accent/40 transition-colors group flex items-start gap-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
                   >
                     <span className="shrink-0 text-xs font-mono px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/20">
                       L{ev.line}
@@ -260,7 +260,7 @@ export function ComponentDetailsPanel({
                 <button
                   disabled={page <= 1 || loadingFiles}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="px-2 py-0.5 rounded bg-surface-overlay border border-[var(--color-border)] hover:bg-surface-base disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Prev
                 </button>
@@ -268,7 +268,7 @@ export function ComponentDetailsPanel({
                 <button
                   disabled={page >= totalPages || loadingFiles}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="px-2 py-0.5 rounded bg-surface-overlay border border-[var(--color-border)] hover:bg-surface-base disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Next
                 </button>
@@ -292,7 +292,7 @@ export function ComponentDetailsPanel({
                       `/repositories/${repoId}/files?path=${encodeURIComponent(file.path)}`
                     )
                   }
-                  className="w-full text-left p-2 rounded hover:bg-white/[0.04] transition-colors flex items-center justify-between gap-2 group focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                  className="w-full text-left p-2 rounded hover:bg-surface-overlay transition-colors flex items-center justify-between gap-2 group focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
                 >
                   <span className="font-mono text-xs text-text-secondary group-hover:text-text-primary truncate">
                     {file.path}

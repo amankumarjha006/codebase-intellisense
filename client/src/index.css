@@ -52,6 +52,12 @@
   --color-border-subtle: rgba(255, 255, 255, 0.08);
   --color-border-strong: rgba(255, 255, 255, 0.16);
 
+  /* ── Architecture Graph Tokens ──────────────────────────── */
+  --color-edge-stroke: rgba(255, 255, 255, 0.32);
+  --color-edge-highlight: #8AB4F8;
+  --color-edge-cycle: #F28B82;
+  --color-graph-dot: rgba(255, 255, 255, 0.08);
+
   /* ── Text Hierarchy ─────────────────────────────────────── */
   --color-text-primary: #E8EAED;
   --color-text-secondary: #9AA0A6;
@@ -143,6 +149,12 @@
   --color-border-subtle: rgba(255, 255, 255, 0.08);
   --color-border-strong: rgba(255, 255, 255, 0.16);
 
+  /* ── Architecture Graph Tokens ──────────────────────────── */
+  --color-edge-stroke: rgba(255, 255, 255, 0.32);
+  --color-edge-highlight: #8AB4F8;
+  --color-edge-cycle: #F28B82;
+  --color-graph-dot: rgba(255, 255, 255, 0.08);
+
   --color-text-primary: #E8EAED;
   --color-text-secondary: #9AA0A6;
   --color-text-tertiary: #6F757C;
@@ -196,6 +208,12 @@ html.light {
   --color-border: rgba(20, 22, 26, 0.10);
   --color-border-subtle: rgba(20, 22, 26, 0.08);
   --color-border-strong: rgba(20, 22, 26, 0.20);
+
+  /* ── Architecture Graph Tokens (Light Paper & Ink) ──────── */
+  --color-edge-stroke: rgba(20, 22, 26, 0.40);
+  --color-edge-highlight: #1A73E8;
+  --color-edge-cycle: #D93025;
+  --color-graph-dot: rgba(20, 22, 26, 0.14);
 
   /* ── Light Mode Text Hierarchy ──────────────────────────── */
   --color-text-primary: #14161A;

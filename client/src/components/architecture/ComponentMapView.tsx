@@ -23,6 +23,7 @@ import { layoutArchitectureGraph } from '../../lib/architecture/layout';
 import { ComponentNode } from './ComponentNode';
 import { ComponentEdge } from './ComponentEdge';
 import { ComponentDetailsPanel } from './ComponentDetailsPanel';
+import { useTheme } from '../../lib/ThemeContext';
 
 const nodeTypes = {
   componentNode: ComponentNode,
@@ -45,6 +46,8 @@ export function ComponentMapView({
   highlightedComponentIds,
   highlightedEdgeKeys,
 }: ComponentMapViewProps) {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const [selectedComp, setSelectedComp] = React.useState<ComponentOut | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<ArchitectureNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<ArchitectureEdgeData>>([]);
@@ -92,7 +95,7 @@ export function ComponentMapView({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row w-full h-[660px] min-h-[480px] rounded-lg border border-white/10 bg-surface-base overflow-hidden">
+    <div className="flex flex-col lg:flex-row w-full h-[660px] min-h-[480px] rounded-lg border border-[var(--color-border)] bg-surface-base overflow-hidden">
       <div className="relative flex-1 h-full min-w-0">
         {isLayingOut && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface-base/80 backdrop-blur-xs text-xs text-text-secondary font-mono">
@@ -116,15 +119,19 @@ export function ComponentMapView({
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
         >
-          <Background color="rgba(255,255,255,0.05)" gap={20} size={1} />
+          <Background
+            color={isLight ? 'rgba(20, 22, 26, 0.12)' : 'rgba(255, 255, 255, 0.08)'}
+            gap={20}
+            size={1}
+          />
           <Controls
             showInteractive={false}
-            className="!bg-surface-raised !border !border-white/10 !text-text-secondary !rounded-lg !shadow-sm overflow-hidden"
+            className="!bg-surface-raised !border !border-[var(--color-border-strong)] !text-text-secondary !rounded-lg !shadow-sm overflow-hidden"
           />
           <MiniMap
-            nodeColor="#171B22"
-            maskColor="rgba(11, 13, 16, 0.75)"
-            className="!bg-surface-raised !border !border-white/10 rounded-lg overflow-hidden"
+            nodeColor={isLight ? '#EDEAE3' : '#171B22'}
+            maskColor={isLight ? 'rgba(246, 244, 239, 0.8)' : 'rgba(11, 13, 16, 0.8)'}
+            className="!bg-surface-raised !border !border-[var(--color-border-strong)] rounded-lg overflow-hidden"
           />
         </ReactFlow>
       </div>
@@ -142,7 +149,7 @@ export function ComponentMapView({
               damping: 30,
               mass: 0.8,
             }}
-            className="w-full lg:w-[420px] shrink-0 h-80 lg:h-full border-t lg:border-t-0 lg:border-l border-white/10 bg-surface-raised flex flex-col z-20 shadow-xl overflow-hidden"
+            className="w-full lg:w-[420px] shrink-0 h-80 lg:h-full border-t lg:border-t-0 lg:border-l border-[var(--color-border)] bg-surface-raised flex flex-col z-20 shadow-xl overflow-hidden"
           >
             <ComponentDetailsPanel
               component={selectedComp}

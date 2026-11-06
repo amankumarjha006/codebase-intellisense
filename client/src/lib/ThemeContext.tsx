@@ -70,10 +70,71 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+const getFallbackTheme = (): Theme => {
+  if (typeof document !== 'undefined') {
+    if (document.documentElement.classList.contains('light')) return 'light';
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === 'light' || stored === 'dark') return stored;
+    } catch {
+      // ignore
+    }
+  }
+  return 'dark';
+};
+
+const fallbackThemeContext: ThemeContextType = {
+  theme: 'dark',
+  setTheme: (next) => {
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      if (next === 'light') {
+        root.classList.remove('dark');
+        root.classList.add('light');
+        root.setAttribute('data-theme', 'light');
+      } else {
+        root.classList.remove('light');
+        root.classList.add('dark');
+        root.setAttribute('data-theme', 'dark');
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, next);
+      } catch {
+        // ignore storage error
+      }
+    }
+  },
+  toggleTheme: () => {
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      const isDark = !root.classList.contains('light');
+      const next: Theme = isDark ? 'light' : 'dark';
+      if (next === 'light') {
+        root.classList.remove('dark');
+        root.classList.add('light');
+        root.setAttribute('data-theme', 'light');
+      } else {
+        root.classList.remove('light');
+        root.classList.add('dark');
+        root.setAttribute('data-theme', 'dark');
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, next);
+      } catch {
+        // ignore storage error
+      }
+    }
+  },
+};
+
 export function useTheme(): ThemeContextType {
   const context = React.useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    return {
+      ...fallbackThemeContext,
+      theme: getFallbackTheme(),
+    };
   }
   return context;
 }
+
