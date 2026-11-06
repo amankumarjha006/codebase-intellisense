@@ -12,7 +12,7 @@ export const WontDoSection: React.FC = () => {
             HONEST BOUNDARIES
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-normal text-[var(--landing-ink)] tracking-tight font-display mb-4">
-            What Codebase Intellisense won&apos;t do
+            What RepoMind won&apos;t do
           </h2>
           <p className="text-base sm:text-lg text-[var(--landing-ink-secondary)] leading-relaxed">
             We believe developer tools must be uncompromisingly honest about their limitations. Here is what we refuse to do, what we cannot do, and how we handle missing context.

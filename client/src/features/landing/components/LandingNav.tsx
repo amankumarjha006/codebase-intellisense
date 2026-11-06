@@ -2,6 +2,8 @@ import * as React from 'react';
 import { useAuth } from '../../../lib/AuthContext';
 import { API_URL } from '../../../lib/api';
 import { ThemeToggle } from '../../../components/ui/ThemeToggle';
+import { RepoMindLogo } from '../../../components/ui/RepoMindLogo';
+import { GithubIcon } from '../../../components/ui/GithubIcon';
 
 export const LandingNav: React.FC = () => {
   const { user, signIn } = useAuth();
@@ -27,12 +29,12 @@ export const LandingNav: React.FC = () => {
         {/* Brand / Logo */}
         <a
           href="#"
-          className="flex items-center space-x-2 text-[var(--color-landing-ink)] font-medium text-base tracking-tight hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-landing-accent)] rounded"
+          className="flex items-center gap-2.5 text-[var(--color-landing-ink)] font-semibold text-base tracking-tight hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-landing-accent)] rounded"
         >
-          <span className="w-5 h-5 rounded bg-[var(--color-landing-ink)] flex items-center justify-center text-[var(--color-landing-bg)] text-xs font-bold font-[family-name:var(--font-code)]">
-            C
+          <RepoMindLogo size={24} />
+          <span className="font-[family-name:var(--font-display)]">
+            Repo<span className="text-[var(--color-accent)]">Mind</span>
           </span>
-          <span className="font-[family-name:var(--font-display)]">Codebase Intellisense</span>
         </a>
 
         {/* Section Navigation Links */}
@@ -82,9 +84,10 @@ export const LandingNav: React.FC = () => {
                 signIn();
               }
             }}
-            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg bg-[var(--color-landing-ink)] text-[var(--color-landing-bg)] hover:opacity-90 active:scale-[0.98] transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-landing-accent)] focus-visible:ring-offset-2"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-[var(--color-btn-primary-bg)] text-[var(--color-btn-primary-text)] hover:bg-[var(--color-btn-primary-hover)] border border-[var(--color-btn-primary-border)] shadow-xs active:scale-[0.98] transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-landing-accent)] focus-visible:ring-offset-2"
           >
-            Connect GitHub
+            <GithubIcon size={16} className="shrink-0" />
+            <span>Connect GitHub</span>
           </button>
         </div>
       </div>

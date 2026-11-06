@@ -3,6 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { GithubIcon } from '../ui/GithubIcon';
 import { MaterialIcon } from '../ui/MaterialIcon';
+import { RepoMindLogo } from '../ui/RepoMindLogo';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 import { cn } from '../../lib/utils';
 import { realApi, RepositoryListItemOut } from '../../lib/api';
@@ -94,13 +95,11 @@ export function Sidebar({
           to="/dashboard"
           className="flex items-center gap-2.5 overflow-hidden group py-1"
         >
-          <div className="h-9 w-9 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-accent)] shrink-0 group-hover:border-[var(--color-accent)] transition-colors">
-            <MaterialIcon name="terminal" size={22} fill={1} color="var(--color-accent)" />
-          </div>
+          <RepoMindLogo size={32} />
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-xs font-bold tracking-tight text-[var(--color-text)] truncate font-sans">
-                Codebase Intellisense
+              <span className="text-sm font-semibold tracking-tight text-[var(--color-text)] truncate font-[family-name:var(--font-display)]">
+                Repo<span className="text-[var(--color-accent)]">Mind</span>
               </span>
               <span className="text-[10px] text-[var(--color-muted)] font-mono truncate">
                 v0.1.0-preview

@@ -17,7 +17,7 @@ export const PRIVACY_FACTS: readonly PrivacyFact[] = [
   },
   {
     topic: "Repository Scope",
-    detail: "Codebase Intellisense currently indexes public GitHub repositories using read-only requests.",
+    detail: "RepoMind currently indexes public GitHub repositories using read-only requests.",
     evidence: "server/app/services/github.py:27",
   },
   {

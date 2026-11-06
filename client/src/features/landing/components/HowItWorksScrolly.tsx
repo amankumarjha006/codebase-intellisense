@@ -54,7 +54,7 @@ const CHAPTERS: Chapter[] = [
     number: '04',
     title: 'Visualize directory architecture and relationships',
     summary:
-      'Codebase Intellisense maps directory modules, entrypoints, and cross-module import weights, giving you an immediate structural mental model of any unfamiliar codebase.',
+      'RepoMind maps directory modules, entrypoints, and cross-module import weights, giving you an immediate structural mental model of any unfamiliar codebase.',
     details: [
       'Automated architectural module discovery and layering',
       'Cross-component import call graph with weighted dependency counts',
@@ -103,7 +103,7 @@ export const HowItWorksScrolly: React.FC = () => {
             ENGINEERING PIPELINE
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-normal text-[var(--landing-ink)] tracking-tight font-display mb-4">
-            How Codebase Intellisense works
+            How RepoMind works
           </h2>
           <p className="text-base sm:text-lg text-[var(--landing-ink-secondary)] leading-relaxed">
             From raw Git commits to verifiable answers. A four-stage pipeline designed for precision, verifiable line-level citations, and zero fabrication.

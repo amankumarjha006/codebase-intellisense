@@ -40,9 +40,9 @@ export const FinalCtaSection: React.FC = () => {
               onClick={handleConnect}
               whileHover={shouldReduceMotion ? undefined : { scale: 1.02, y: -2 }}
               whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl font-medium text-base text-[#0B0D10] bg-white hover:bg-slate-100 transition-colors shadow-xl focus:outline-none focus:ring-2 focus:ring-[var(--landing-accent)]"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl font-semibold text-base bg-[var(--color-btn-primary-bg)] text-[var(--color-btn-primary-text)] hover:bg-[var(--color-btn-primary-hover)] border border-[var(--color-btn-primary-border)] shadow-xl active:scale-[0.98] transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--landing-accent)]"
             >
-              <svg className="w-5 h-5 text-[#0B0D10]" viewBox="0 0 24 24" fill="currentColor">
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                 <path
                   fillRule="evenodd"
                   clipRule="evenodd"

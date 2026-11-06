@@ -2,6 +2,7 @@ import * as React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { MaterialIcon } from '../ui/MaterialIcon';
+import { RepoMindLogo } from '../ui/RepoMindLogo';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '../../lib/utils';
 import { usePinnedRepos } from '../../lib/pinnedRepos';
@@ -36,11 +37,11 @@ export function IconRail({ onOpenCommand }: IconRailProps) {
         {/* Brand Icon */}
         <NavLink
           to="/dashboard"
-          className="h-9 w-9 rounded-[var(--radius-control)] bg-[var(--color-raised)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)] hover:border-[var(--color-border-strong)] transition-colors focus-visible:outline-none"
-          title="Codebase Intellisense"
-          aria-label="Codebase Intellisense Home"
+          className="h-9 w-9 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none"
+          title="RepoMind"
+          aria-label="RepoMind Home"
         >
-          <MaterialIcon name="terminal" size={20} color="var(--color-accent)" />
+          <RepoMindLogo size={32} />
         </NavLink>
 
         {/* Core Navigation Items */}

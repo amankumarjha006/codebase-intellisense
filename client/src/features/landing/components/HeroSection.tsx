@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useAuth } from '../../../lib/AuthContext';
+import { GithubIcon } from '../../../components/ui/GithubIcon';
 import proofData from '../data/proof.json';
 
 export const HeroSection: React.FC = () => {
@@ -121,9 +122,10 @@ export const HeroSection: React.FC = () => {
                 signIn();
               }
             }}
-            className="inline-flex items-center justify-center px-6 py-3.5 text-base font-medium rounded-xl bg-[var(--color-landing-ink)] text-[var(--color-landing-bg)] hover:opacity-90 active:scale-[0.98] transition-all shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-landing-accent)] focus-visible:ring-offset-2"
+            className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 text-base font-semibold rounded-xl bg-[var(--color-btn-primary-bg)] text-[var(--color-btn-primary-text)] hover:bg-[var(--color-btn-primary-hover)] border border-[var(--color-btn-primary-border)] shadow-md hover:shadow-lg active:scale-[0.98] transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-landing-accent)] focus-visible:ring-offset-2"
           >
-            Connect GitHub
+            <GithubIcon size={20} className="shrink-0" />
+            <span>Connect GitHub</span>
           </button>
 
           <button

@@ -4,12 +4,12 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/utils';
 
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-control)] text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-page)] disabled:pointer-events-none disabled:opacity-50 select-none active:scale-[0.98] cursor-pointer',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-control)] text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-page)] disabled:pointer-events-none disabled:opacity-50 select-none active:scale-[0.98] cursor-pointer [&_svg]:shrink-0 [&_.material-symbols-rounded]:shrink-0',
   {
     variants: {
       variant: {
         primary:
-          'bg-[var(--color-accent)] text-[#0B0D10] hover:bg-[#AECBFA] shadow-sm hover:shadow-[0_0_20px_rgba(138,180,248,0.25)]',
+          'bg-[var(--color-btn-primary-bg)] text-[var(--color-btn-primary-text)] hover:bg-[var(--color-btn-primary-hover)] border border-[var(--color-btn-primary-border)] shadow-xs hover:shadow-sm',
         secondary:
           'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-raised)] hover:border-[var(--color-accent-border)] hover:text-[var(--color-accent)]',
         outline:

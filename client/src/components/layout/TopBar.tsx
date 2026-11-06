@@ -176,7 +176,7 @@ export function TopBar({ onOpenCommand, onOpenConnect: _onOpenConnect }: TopBarP
             variant="primary"
             size="sm"
             onClick={() => navigate(`/repositories/${currentRepo.id}/chat`)}
-            className="h-8 px-3 text-xs font-medium gap-1.5 bg-[var(--color-text)] text-[var(--color-page)] hover:opacity-90 transition-colors cursor-pointer"
+            className="h-8 px-3 text-xs font-medium gap-1.5 cursor-pointer"
           >
             <MaterialIcon name="chat" size={16} />
             <span>Ask in chat</span>

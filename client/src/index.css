@@ -73,6 +73,12 @@
   --color-accent-border: rgba(138, 180, 248, 0.28);
   --color-accent-highlighter: rgba(138, 180, 248, 0.25);
 
+  /* ── High-Contrast Inverted Primary Buttons ─────────────── */
+  --color-btn-primary-bg: #FFFFFF;
+  --color-btn-primary-text: #14161A;
+  --color-btn-primary-hover: #EDEAE3;
+  --color-btn-primary-border: rgba(255, 255, 255, 0.92);
+
   /* ── Status Indicators ──────────────────────────────────── */
   --color-status-ready: #81C995;
   --color-status-indexing: #FDD663;
@@ -168,6 +174,12 @@
   --color-accent-border: rgba(138, 180, 248, 0.28);
   --color-accent-highlighter: rgba(138, 180, 248, 0.25);
 
+  /* ── High-Contrast Inverted Primary Buttons ─────────────── */
+  --color-btn-primary-bg: #FFFFFF;
+  --color-btn-primary-text: #14161A;
+  --color-btn-primary-hover: #EDEAE3;
+  --color-btn-primary-border: rgba(255, 255, 255, 0.92);
+
   --landing-bg: var(--color-landing-bg);
   --landing-surface: var(--color-landing-surface);
   --landing-surface-dim: var(--color-landing-surface-dim);
@@ -229,6 +241,12 @@ html.light {
   --color-accent-tint: rgba(26, 115, 232, 0.10);
   --color-accent-border: rgba(26, 115, 232, 0.28);
   --color-accent-highlighter: rgba(138, 180, 248, 0.35);
+
+  /* ── Inverted Primary Button Tokens (Light Mode: Black) ─── */
+  --color-btn-primary-bg: #14161A;
+  --color-btn-primary-text: #FFFFFF;
+  --color-btn-primary-hover: #2B2F38;
+  --color-btn-primary-border: #14161A;
 
   /* ── Light Mode Landing Page Tokens (Paper & Ink) ───────── */
   --color-landing-bg: #F6F4EF;

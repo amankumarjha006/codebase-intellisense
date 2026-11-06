@@ -130,7 +130,7 @@ export const mockApi = {
       name,
       owner,
       full_name: `${owner}/${name}`,
-      description: 'Connected via Codebase Intellisense prototype',
+      description: 'Connected via RepoMind prototype',
       is_private: false,
       language: 'TypeScript',
       default_branch: 'main',

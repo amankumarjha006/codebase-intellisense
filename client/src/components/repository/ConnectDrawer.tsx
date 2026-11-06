@@ -87,7 +87,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
       if (err.code === 'GITHUB_API_ERROR' || err.status === 502) {
         return {
           message:
-            "We couldn't find this repository, or you don't have access to it. Verify your GitHub organization has granted third-party application permissions to Codebase Intellisense.",
+            "We couldn't find this repository, or you don't have access to it. Verify your GitHub organization has granted third-party application permissions to RepoMind.",
           traceId,
         };
       }

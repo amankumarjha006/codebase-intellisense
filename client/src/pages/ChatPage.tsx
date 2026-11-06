@@ -458,9 +458,10 @@ export function ChatPage() {
                   variant="primary"
                   size="sm"
                   onClick={handleNewChat}
-                  className="h-7 text-xs font-medium"
+                  className="h-7 text-xs font-medium gap-1"
                 >
-                  New
+                  <MaterialIcon name="add" size={14} />
+                  <span>New</span>
                 </Button>
               </div>
 
