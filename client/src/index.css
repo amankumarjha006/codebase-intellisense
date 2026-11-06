@@ -12,15 +12,15 @@
 
 /* ── Theme Tokens ────────────────────────────────────────── */
 @theme {
-  /* ── Paper & Ink Landing Page Tokens ────────────────────── */
-  --color-landing-bg: #F6F4EF;
-  --color-landing-surface: #FFFFFF;
-  --color-landing-surface-dim: #EDEAE3;
-  --color-landing-ink: #14161A;
-  --color-landing-ink-secondary: #5F6368;
-  --color-landing-ink-tertiary: #80868B;
-  --color-landing-hairline: rgba(20, 22, 26, 0.12);
-  --color-landing-hairline-strong: rgba(20, 22, 26, 0.24);
+  /* ── Dark Landing Page Tokens (Matching App Theme) ───────── */
+  --color-landing-bg: #0B0D10;
+  --color-landing-surface: #111419;
+  --color-landing-surface-dim: #171B22;
+  --color-landing-ink: #E8EAED;
+  --color-landing-ink-secondary: #9AA0A6;
+  --color-landing-ink-tertiary: #6F757C;
+  --color-landing-hairline: rgba(255, 255, 255, 0.08);
+  --color-landing-hairline-strong: rgba(255, 255, 255, 0.16);
 
   --color-panel-bg: #0B0D10;
   --color-panel-surface: #111419;
@@ -30,9 +30,9 @@
   --color-panel-border: rgba(255, 255, 255, 0.08);
 
   --color-landing-accent: #8AB4F8;
-  --color-landing-accent-highlighter: rgba(138, 180, 248, 0.35);
+  --color-landing-accent-highlighter: rgba(138, 180, 248, 0.25);
   --color-landing-accent-tint: rgba(138, 180, 248, 0.12);
-  --color-landing-accent-border: rgba(138, 180, 248, 0.35);
+  --color-landing-accent-border: rgba(138, 180, 248, 0.28);
 
   /* ── Typography (Display & Code) ────────────────────────── */
   --font-display: 'Google Sans Flex Variable', 'Google Sans Flex', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -40,29 +40,40 @@
 
   /* ── 3 Tonal Surface Elevations ─────────────────────────── */
   --color-page: #0B0D10;
+  --color-surface-base: #0B0D10;
   --color-surface: #111419;
   --color-raised: #171B22;
+  --color-surface-raised: #171B22;
   --color-overlay: #1C212B;
+  --color-surface-overlay: #1C212B;
 
   /* ── Hairline Borders ───────────────────────────────────── */
   --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
   --color-border-strong: rgba(255, 255, 255, 0.16);
 
   /* ── Text Hierarchy ─────────────────────────────────────── */
-  --color-text: #E8EAED;
+  --color-text-primary: #E8EAED;
   --color-text-secondary: #9AA0A6;
   --color-text-tertiary: #6F757C;
+  --color-text-muted: #6F757C;
+  --color-text: #E8EAED;
   --color-muted: #6F757C;
 
   /* ── Accent: Citations, Selection, Focus, Primary CTA ─────── */
   --color-accent: #8AB4F8;
+  --color-accent-hover: #AECBFA;
   --color-accent-tint: rgba(138, 180, 248, 0.12);
   --color-accent-border: rgba(138, 180, 248, 0.28);
+  --color-accent-highlighter: rgba(138, 180, 248, 0.25);
 
   /* ── Status Indicators ──────────────────────────────────── */
   --color-status-ready: #81C995;
   --color-status-indexing: #FDD663;
   --color-status-failed: #F28B82;
+  --color-status-amber: #FDD663;
+  --color-status-red: #F28B82;
+  --color-status-green: #81C995;
 
   --color-error: #F28B82;
   --color-error-tint: rgba(242, 139, 130, 0.12);
@@ -72,14 +83,21 @@
   --color-warning: #FDD663;
   --color-warning-tint: rgba(253, 214, 99, 0.12);
 
-  /* ── Typography (IBM Plex Serif + JetBrains Mono) ────────── */
-  --font-sans: 'IBM Plex Serif', Georgia, Cambria, 'Times New Roman', serif;
+  /* ── Accent Aliases (Backward-compatible) ────────────────── */
+  --color-mint-accent: #8AB4F8;
+  --color-mint-hover: #AECBFA;
+  --color-mint-selected-bg: rgba(138, 180, 248, 0.14);
+
+  /* ── Typography (Unified Google Sans Flex & Google Sans Code) ── */
+  --font-sans: 'Google Sans Flex Variable', 'Google Sans Flex', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: 'IBM Plex Serif', Georgia, Cambria, 'Times New Roman', serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono: 'Google Sans Code Variable', 'Google Sans Code', monospace;
 
   /* ── Density & Radii ────────────────────────────────────── */
+  --radius-panel: 8px;
   --radius-card: 8px;
   --radius-control: 6px;
+  --radius-modal: 12px;
   --radius-pill: 9999px;
 
   /* ── Dimensions ─────────────────────────────────────────── */
@@ -103,6 +121,59 @@
   --z-modal: 40;
   --z-toast: 50;
   --z-command: 60;
+}
+
+/* ── Root Variable Aliases ────────────────────────────────── */
+:root {
+  --radius-panel: 8px;
+  --radius-card: 8px;
+  --radius-control: 6px;
+  --radius-modal: 12px;
+  --radius-pill: 9999px;
+
+  --color-page: #0B0D10;
+  --color-surface-base: #0B0D10;
+  --color-surface: #111419;
+  --color-raised: #171B22;
+  --color-surface-raised: #171B22;
+  --color-overlay: #1C212B;
+  --color-surface-overlay: #1C212B;
+
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.16);
+
+  --color-text-primary: #E8EAED;
+  --color-text-secondary: #9AA0A6;
+  --color-text-tertiary: #6F757C;
+  --color-text-muted: #6F757C;
+  --color-text: #E8EAED;
+  --color-muted: #6F757C;
+
+  --color-accent: #8AB4F8;
+  --color-accent-hover: #AECBFA;
+  --color-accent-tint: rgba(138, 180, 248, 0.12);
+  --color-accent-border: rgba(138, 180, 248, 0.28);
+  --color-accent-highlighter: rgba(138, 180, 248, 0.25);
+
+  --landing-bg: var(--color-landing-bg);
+  --landing-surface: var(--color-landing-surface);
+  --landing-surface-dim: var(--color-landing-surface-dim);
+  --landing-ink: var(--color-landing-ink);
+  --landing-ink-secondary: var(--color-landing-ink-secondary);
+  --landing-ink-tertiary: var(--color-landing-ink-tertiary);
+  --landing-hairline: var(--color-landing-hairline);
+  --landing-hairline-strong: var(--color-landing-hairline-strong);
+  --landing-accent: var(--color-landing-accent);
+  --landing-accent-highlighter: var(--color-landing-accent-highlighter);
+  --landing-accent-tint: var(--color-landing-accent-tint);
+  --landing-accent-border: var(--color-landing-accent-border);
+  --panel-bg: var(--color-panel-bg);
+  --panel-surface: var(--color-panel-surface);
+  --panel-raised: var(--color-panel-raised);
+  --panel-text: var(--color-panel-text);
+  --panel-text-secondary: var(--color-panel-text-secondary);
+  --panel-border: var(--color-panel-border);
 }
 
 /* ── Global Base Styles ───────────────────────────────────── */

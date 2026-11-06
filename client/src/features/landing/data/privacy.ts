@@ -26,3 +26,4 @@ export const PRIVACY_FACTS: readonly PrivacyFact[] = [
     evidence: "server/app/core/encryption.py",
   },
 ] as const;
+

@@ -354,7 +354,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                 </p>
                 <div className="pt-1 flex items-center gap-1.5 text-[10px] font-mono text-[var(--color-muted)]">
                   <MaterialIcon name="lock" size={12} />
-                  <span>Read-only access. Your source code is never used for training.</span>
+                  <span>Read-only GitHub repository access for indexing and search.</span>
                 </div>
               </div>
 

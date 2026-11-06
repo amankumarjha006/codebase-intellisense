@@ -4,22 +4,22 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/utils';
 
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-control)] text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-mint-accent,#B9E4D0)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-page)] disabled:pointer-events-none disabled:opacity-50 select-none active:scale-[0.98] cursor-pointer',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-control)] text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-page)] disabled:pointer-events-none disabled:opacity-50 select-none active:scale-[0.98] cursor-pointer',
   {
     variants: {
       variant: {
         primary:
-          'bg-[var(--color-mint-accent,#B9E4D0)] text-[#0C0C0B] hover:bg-[var(--color-mint-hover,#D0F1E0)] shadow-sm hover:shadow-[0_0_20px_rgba(185,228,208,0.25)]',
+          'bg-[var(--color-accent)] text-[#0B0D10] hover:bg-[#AECBFA] shadow-sm hover:shadow-[0_0_20px_rgba(138,180,248,0.25)]',
         secondary:
-          'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-raised)] hover:border-[var(--color-mint-accent,#B9E4D0)]/40 hover:text-[var(--color-mint-accent,#B9E4D0)]',
+          'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-raised)] hover:border-[var(--color-accent-border)] hover:text-[var(--color-accent)]',
         outline:
-          'border border-[var(--color-mint-accent,#B9E4D0)]/40 bg-transparent text-[var(--color-mint-accent,#B9E4D0)] hover:bg-[var(--color-mint-selected-bg,#1B332A)] hover:border-[var(--color-mint-accent,#B9E4D0)]',
+          'border border-[var(--color-accent-border)] bg-transparent text-[var(--color-accent)] hover:bg-[var(--color-accent-tint)] hover:border-[var(--color-accent)]',
         ghost:
-          'text-[var(--color-text-secondary)] hover:text-[var(--color-mint-accent,#B9E4D0)] hover:bg-[var(--color-raised)]',
+          'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]',
         destructive:
           'text-[var(--color-error)] hover:bg-[var(--color-error-tint)] hover:text-[var(--color-error)] border border-transparent hover:border-[var(--color-error-border)]',
         link:
-          'text-[var(--color-mint-accent,#B9E4D0)] underline-offset-4 hover:underline p-0 h-auto font-normal',
+          'text-[var(--color-accent)] underline-offset-4 hover:underline p-0 h-auto font-normal',
       },
       size: {
         default: 'h-9 px-4 py-2',

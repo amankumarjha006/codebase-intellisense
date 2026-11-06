@@ -21,7 +21,7 @@ interface TopBarProps {
   onOpenConnect?: () => void;
 }
 
-export function TopBar({ onOpenCommand, onOpenConnect }: TopBarProps) {
+export function TopBar({ onOpenCommand, onOpenConnect: _onOpenConnect }: TopBarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { id: currentRepoId } = useParams<{ id?: string }>();
@@ -56,7 +56,6 @@ export function TopBar({ onOpenCommand, onOpenConnect }: TopBarProps) {
     return sub.charAt(0).toUpperCase() + sub.slice(1);
   }, [currentRepoId, location.pathname]);
 
-  const isHomeOrRepos = location.pathname === '/dashboard' || location.pathname === '/repositories';
   const isInsideRepo = Boolean(currentRepoId);
 
   return (

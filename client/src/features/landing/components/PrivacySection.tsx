@@ -3,7 +3,7 @@ import { PRIVACY_FACTS } from '../data/privacy';
 
 export const PrivacySection: React.FC = () => {
   return (
-    <section id="privacy" className="relative py-24 md:py-36 border-t border-[var(--landing-hairline)] bg-[var(--landing-surface)]">
+    <section id="privacy" className="relative py-24 md:py-36 border-t border-[var(--landing-hairline)] bg-[var(--landing-bg)]">
       <div className="max-w-[1280px] mx-auto px-6 sm:px-8 lg:px-12">
         {/* Section Header */}
         <div className="max-w-2xl mb-16 md:mb-20">
@@ -24,7 +24,7 @@ export const PrivacySection: React.FC = () => {
           {PRIVACY_FACTS.map((fact, idx) => (
             <div
               key={fact.topic}
-              className="p-8 rounded-xl bg-[var(--landing-bg)] border border-[var(--landing-hairline)] transition-all hover:border-[var(--landing-hairline-strong)] flex flex-col justify-between"
+              className="p-8 rounded-xl bg-[var(--landing-surface)] border border-[var(--landing-hairline)] transition-all hover:border-[var(--landing-hairline-strong)] flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-4">
@@ -32,7 +32,7 @@ export const PrivacySection: React.FC = () => {
                     Fact 0{idx + 1}
                   </span>
                   <span className="text-xs font-mono text-[var(--landing-ink-tertiary)] flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                     Verified
                   </span>
                 </div>
@@ -65,3 +65,4 @@ export const PrivacySection: React.FC = () => {
     </section>
   );
 };
+

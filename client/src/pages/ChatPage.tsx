@@ -78,7 +78,7 @@ export function ChatPage() {
       if (!activeConvId && convItems.length > 0 && convItems[0]) {
         setActiveConvId(convItems[0].id);
       }
-    } catch (_err) {
+    } catch {
       toast.error('Failed to load repository conversations');
     } finally {
       setLoadingConversations(false);
@@ -126,7 +126,7 @@ export function ChatPage() {
         }));
         setMessages(mappedMessages);
         setTimeout(() => scrollToBottom(true), 50);
-      } catch (_err) {
+      } catch {
         if (!isCancelled) {
           setErrorInfo({ message: 'Failed to load messages for this conversation.' });
         }

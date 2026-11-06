@@ -302,7 +302,7 @@ export function ServerUnreachableStatusPage() {
             <span className="text-[var(--color-text)] truncate max-w-[240px]">{API_URL}</span>
           </div>
           {pingResult && (
-            <div className={`pt-1 border-t border-[var(--color-border)]/50 text-[11px] leading-relaxed ${pingResult.includes('reachable') ? 'text-[var(--color-mint-accent,#B9E4D0)]' : 'text-[var(--color-error)]'}`}>
+            <div className={`pt-1 border-t border-[var(--color-border)]/50 text-[11px] leading-relaxed ${pingResult.includes('reachable') ? 'text-[var(--color-status-ready)]' : 'text-[var(--color-error)]'}`}>
               {pingResult}
             </div>
           )}

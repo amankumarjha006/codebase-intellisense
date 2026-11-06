@@ -63,3 +63,4 @@ export const LineGutter: React.FC<LineGutterProps> = ({ activeSection = 'hero' }
     </aside>
   );
 };
+

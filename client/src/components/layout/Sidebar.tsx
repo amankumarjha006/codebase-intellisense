@@ -94,8 +94,8 @@ export function Sidebar({
           to="/dashboard"
           className="flex items-center gap-2.5 overflow-hidden group py-1"
         >
-          <div className="h-9 w-9 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-mint-accent,#B9E4D0)] shrink-0 group-hover:border-[var(--color-mint-accent,#B9E4D0)] transition-colors">
-            <MaterialIcon name="terminal" size={22} fill={1} color="var(--color-mint-accent, #B9E4D0)" />
+          <div className="h-9 w-9 rounded-lg bg-[var(--color-raised)] border border-[var(--color-border-strong)] flex items-center justify-center text-[var(--color-accent)] shrink-0 group-hover:border-[var(--color-accent)] transition-colors">
+            <MaterialIcon name="terminal" size={22} fill={1} color="var(--color-accent)" />
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">
@@ -137,7 +137,7 @@ export function Sidebar({
                   className={cn(
                     'flex items-center justify-center p-2 rounded-[var(--radius-control)] transition-colors',
                     isDashboardActive
-                      ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
+                      ? 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] border border-[var(--color-accent-border)]'
                       : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
                   )}
                   aria-label="Dashboard"
@@ -159,14 +159,14 @@ export function Sidebar({
               className={cn(
                 'group relative flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-control)] text-xs font-medium transition-colors select-none z-10',
                 isDashboardActive
-                  ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
+                  ? 'text-[var(--color-accent)] font-semibold'
                   : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
               )}
             >
               {isDashboardActive && (
                 <motion.div
                   layoutId="sidebar-main-active"
-                  className="absolute inset-0 rounded-[var(--radius-control)] bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                  className="absolute inset-0 rounded-[var(--radius-control)] bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] -z-10 shadow-xs"
                   transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                 />
               )}
@@ -176,11 +176,11 @@ export function Sidebar({
                 size={22}
                 className={cn(
                   'shrink-0 transition-transform duration-200 group-hover:scale-110',
-                  !isDashboardActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
+                  !isDashboardActive && 'group-hover:text-[var(--color-text)]'
                 )}
                 aria-hidden={true}
               />
-              <span className={isDashboardActive ? 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]' : undefined}>
+              <span className={isDashboardActive ? 'font-semibold text-[var(--color-accent)]' : undefined}>
                 Dashboard
               </span>
             </NavLink>
@@ -195,7 +195,7 @@ export function Sidebar({
                   className={cn(
                     'flex items-center justify-center p-2 rounded-[var(--radius-control)] transition-colors',
                     isRepositoriesActive
-                      ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
+                      ? 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] border border-[var(--color-accent-border)]'
                       : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
                   )}
                   aria-label="Repositories"
@@ -217,14 +217,14 @@ export function Sidebar({
               className={cn(
                 'group relative flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-control)] text-xs font-medium transition-colors select-none z-10',
                 isRepositoriesActive
-                  ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
+                  ? 'text-[var(--color-accent)] font-semibold'
                   : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
               )}
             >
               {isRepositoriesActive && (
                 <motion.div
                   layoutId="sidebar-main-active"
-                  className="absolute inset-0 rounded-[var(--radius-control)] bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                  className="absolute inset-0 rounded-[var(--radius-control)] bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] -z-10 shadow-xs"
                   transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                 />
               )}
@@ -234,11 +234,11 @@ export function Sidebar({
                 size={22}
                 className={cn(
                   'shrink-0 transition-transform duration-200 group-hover:scale-110',
-                  !isRepositoriesActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
+                  !isRepositoriesActive && 'group-hover:text-[var(--color-text)]'
                 )}
                 aria-hidden={true}
               />
-              <span className={isRepositoriesActive ? 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]' : undefined}>
+              <span className={isRepositoriesActive ? 'font-semibold text-[var(--color-accent)]' : undefined}>
                 Repositories
               </span>
             </NavLink>
@@ -256,7 +256,7 @@ export function Sidebar({
                   <MaterialIcon
                     name="add_circle"
                     size={22}
-                    color="var(--color-mint-accent, #B9E4D0)"
+                    color="var(--color-accent)"
                     className="shrink-0"
                     aria-hidden={true}
                   />
@@ -272,7 +272,7 @@ export function Sidebar({
               <MaterialIcon
                 name="add_circle"
                 size={22}
-                color="var(--color-mint-accent, #B9E4D0)"
+                color="var(--color-accent)"
                 className="shrink-0 group-hover:scale-105 transition-transform"
                 aria-hidden={true}
               />
@@ -287,10 +287,10 @@ export function Sidebar({
             {!collapsed && (
               <div className="px-2.5 mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
                 <span className="flex items-center gap-1.5">
-                  <MaterialIcon name="push_pin" size={12} fill={1} color="var(--color-mint-accent,#B9E4D0)" aria-hidden="true" />
+                  <MaterialIcon name="push_pin" size={12} fill={1} color="var(--color-accent)" aria-hidden="true" />
                   <span>Pinned Repositories</span>
                 </span>
-                <span className="font-mono text-[9px] text-[var(--color-mint-accent,#B9E4D0)] font-semibold">{pinnedRepositories.length}</span>
+                <span className="font-mono text-[9px] text-[var(--color-accent)] font-semibold">{pinnedRepositories.length}</span>
               </div>
             )}
 
@@ -300,7 +300,7 @@ export function Sidebar({
                   <p className="text-[11px] text-[var(--color-muted)]">No pinned repositories</p>
                   <NavLink
                     to="/repositories"
-                    className="text-[10px] text-[var(--color-mint-accent,#B9E4D0)] hover:underline inline-flex items-center gap-1 font-medium"
+                    className="text-[10px] text-[var(--color-accent)] hover:underline inline-flex items-center gap-1 font-medium"
                   >
                     <span>Pin from catalog</span>
                     <MaterialIcon name="arrow_forward" size={10} aria-hidden="true" />
@@ -322,7 +322,7 @@ export function Sidebar({
                       className={cn(
                         'group relative flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium transition-colors select-none z-10',
                         isSelected
-                          ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
+                          ? 'text-[var(--color-accent)] font-semibold'
                           : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60',
                         collapsed && 'justify-center p-2'
                       )}
@@ -330,7 +330,7 @@ export function Sidebar({
                       {isSelected && !collapsed && (
                         <motion.div
                           layoutId="sidebar-pinned-active"
-                          className="absolute inset-0 rounded-[var(--radius-control)] bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                          className="absolute inset-0 rounded-[var(--radius-control)] bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] -z-10 shadow-xs"
                           transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                         />
                       )}
@@ -341,13 +341,13 @@ export function Sidebar({
                           size={20}
                           className={cn(
                             'shrink-0 transition-colors',
-                            !isSelected && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
+                            !isSelected && 'group-hover:text-[var(--color-text)]'
                           )}
                           aria-hidden="true"
                         />
                         {!collapsed && (
                           <div className="flex flex-col min-w-0 flex-1">
-                            <span className={cn('truncate', isSelected && 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]')}>
+                            <span className={cn('truncate', isSelected && 'font-semibold text-[var(--color-accent)]')}>
                               {repo.name}
                             </span>
                             {isIndexing && (
@@ -396,7 +396,7 @@ export function Sidebar({
                                 name="check_circle"
                                 size={15}
                                 fill={1}
-                                color="var(--color-mint-accent, #B9E4D0)"
+                                color="var(--color-status-ready)"
                                 aria-label="Ready"
                               />
                             )}

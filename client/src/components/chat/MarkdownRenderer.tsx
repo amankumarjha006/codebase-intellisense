@@ -77,7 +77,7 @@ export function MarkdownRenderer({
           },
           h3({ children }) {
             return (
-              <h3 className="text-xs sm:text-[13px] font-semibold text-[var(--color-mint-accent,#B9E4D0)] uppercase tracking-wider mt-3 mb-1 font-mono">
+              <h3 className="text-xs sm:text-[13px] font-semibold text-[var(--color-accent)] uppercase tracking-wider mt-3 mb-1 font-mono">
                 {children}
               </h3>
             );
@@ -106,7 +106,7 @@ export function MarkdownRenderer({
             );
           },
           thead({ children }) {
-            return <thead className="bg-[var(--color-raised)]/70 text-[var(--color-mint-accent,#B9E4D0)] border-b border-[var(--color-border)]">{children}</thead>;
+            return <thead className="bg-[var(--color-raised)]/70 text-[var(--color-accent)] border-b border-[var(--color-border)]">{children}</thead>;
           },
           tbody({ children }) {
             return <tbody className="divide-y divide-[var(--color-border)]/50">{children}</tbody>;
@@ -133,7 +133,7 @@ export function MarkdownRenderer({
                       onSelectCitation(citation);
                     }
                   }}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] bg-[var(--color-raised)] hover:bg-[var(--color-mint-selected-bg,#1B332A)] border border-[var(--color-border)] hover:border-[var(--color-mint-accent,#B9E4D0)] text-[var(--color-mint-accent,#B9E4D0)] font-mono text-[11px] font-semibold transition-all cursor-pointer mx-0.5 align-baseline active:scale-95 shadow-2xs"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] bg-[var(--color-raised)] hover:bg-[var(--color-accent-tint)] border border-[var(--color-border)] hover:border-[var(--color-accent)] text-[var(--color-accent)] font-mono text-[11px] font-semibold transition-all cursor-pointer mx-0.5 align-baseline active:scale-95 shadow-2xs"
                   title={citation ? `View source citation: ${citation.path} (L${citation.start_line}–${citation.end_line})` : `Citation ${children}`}
                 >
                   <span>{children}</span>
@@ -147,7 +147,7 @@ export function MarkdownRenderer({
                 href={href}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="text-[var(--color-mint-accent,#B9E4D0)] underline underline-offset-2 hover:opacity-80 transition-opacity"
+                className="text-[var(--color-accent)] underline underline-offset-2 hover:opacity-80 transition-opacity"
               >
                 {children}
               </a>

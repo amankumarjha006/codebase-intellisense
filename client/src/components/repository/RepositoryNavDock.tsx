@@ -70,14 +70,14 @@ export function RepositoryNavDock({
             className={cn(
               'group relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors select-none z-10',
               item.isActive
-                ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
+                ? 'text-[var(--color-accent)] font-semibold'
                 : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/50'
             )}
           >
             {item.isActive && (
               <motion.div
                 layoutId="dock-active-pill-horiz-explicit"
-                className="absolute inset-0 rounded-lg bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                className="absolute inset-0 rounded-lg bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] -z-10 shadow-xs"
                 transition={{ type: 'spring', stiffness: 450, damping: 32 }}
               />
             )}
@@ -87,11 +87,11 @@ export function RepositoryNavDock({
               size={20}
               className={cn(
                 'shrink-0 transition-transform duration-200 group-hover:scale-110',
-                !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
+                !item.isActive && 'group-hover:text-[var(--color-text)]'
               )}
               aria-hidden={true}
             />
-            <span className={item.isActive ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold' : undefined}>
+            <span className={item.isActive ? 'text-[var(--color-accent)] font-semibold' : undefined}>
               {item.name}
             </span>
           </Link>
@@ -118,14 +118,14 @@ export function RepositoryNavDock({
             className={cn(
               'group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-colors font-medium select-none z-10',
               item.isActive
-                ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
+                ? 'text-[var(--color-accent)] font-semibold'
                 : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/50'
             )}
           >
             {item.isActive && (
               <motion.div
                 layoutId="dock-active-pill-vert-explicit"
-                className="absolute inset-0 rounded-xl bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                className="absolute inset-0 rounded-xl bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] -z-10 shadow-xs"
                 transition={{ type: 'spring', stiffness: 450, damping: 32 }}
               />
             )}
@@ -135,11 +135,11 @@ export function RepositoryNavDock({
               size={20}
               className={cn(
                 'shrink-0 transition-transform duration-200 group-hover:scale-110',
-                !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
+                !item.isActive && 'group-hover:text-[var(--color-text)]'
               )}
               aria-hidden={true}
             />
-            <span className={cn('truncate', item.isActive && 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold')}>
+            <span className={cn('truncate', item.isActive && 'text-[var(--color-accent)] font-semibold')}>
               {item.name}
             </span>
           </Link>
@@ -168,14 +168,14 @@ export function RepositoryNavDock({
             className={cn(
               'group relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors select-none z-10',
               item.isActive
-                ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
+                ? 'text-[var(--color-accent)] font-semibold'
                 : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/50'
             )}
           >
             {item.isActive && (
               <motion.div
                 layoutId="dock-active-pill-horiz-resp"
-                className="absolute inset-0 rounded-lg bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                className="absolute inset-0 rounded-lg bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] -z-10 shadow-xs"
                 transition={{ type: 'spring', stiffness: 450, damping: 32 }}
               />
             )}
@@ -185,11 +185,11 @@ export function RepositoryNavDock({
               size={20}
               className={cn(
                 'shrink-0 transition-transform duration-200 group-hover:scale-110',
-                !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
+                !item.isActive && 'group-hover:text-[var(--color-text)]'
               )}
               aria-hidden={true}
             />
-            <span className={item.isActive ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold' : undefined}>
+            <span className={item.isActive ? 'text-[var(--color-accent)] font-semibold' : undefined}>
               {item.name}
             </span>
           </Link>
@@ -212,14 +212,14 @@ export function RepositoryNavDock({
             className={cn(
               'group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-colors font-medium select-none z-10',
               item.isActive
-                ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
+                ? 'text-[var(--color-accent)] font-semibold'
                 : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/50'
             )}
           >
             {item.isActive && (
               <motion.div
                 layoutId="dock-active-pill-vert-resp"
-                className="absolute inset-0 rounded-xl bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                className="absolute inset-0 rounded-xl bg-[var(--color-accent-tint)] border border-[var(--color-accent-border)] -z-10 shadow-xs"
                 transition={{ type: 'spring', stiffness: 450, damping: 32 }}
               />
             )}
@@ -229,11 +229,11 @@ export function RepositoryNavDock({
               size={20}
               className={cn(
                 'shrink-0 transition-transform duration-200 group-hover:scale-110',
-                !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
+                !item.isActive && 'group-hover:text-[var(--color-text)]'
               )}
               aria-hidden={true}
             />
-            <span className={cn('truncate', item.isActive && 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold')}>
+            <span className={cn('truncate', item.isActive && 'text-[var(--color-accent)] font-semibold')}>
               {item.name}
             </span>
           </Link>

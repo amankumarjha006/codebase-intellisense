@@ -78,7 +78,7 @@ export const LandingNav: React.FC = () => {
                 signIn();
               }
             }}
-            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg text-[var(--panel-text)] bg-[var(--color-landing-ink)] hover:bg-[var(--color-landing-ink)]/90 active:scale-[0.98] transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-landing-accent)] focus-visible:ring-offset-2"
+            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg text-[#0B0D10] bg-white hover:bg-slate-100 active:scale-[0.98] transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-landing-accent)] focus-visible:ring-offset-2"
           >
             Connect GitHub
           </button>
@@ -87,3 +87,4 @@ export const LandingNav: React.FC = () => {
     </header>
   );
 };
+

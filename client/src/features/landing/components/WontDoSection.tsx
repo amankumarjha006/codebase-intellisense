@@ -59,7 +59,7 @@ export const WontDoSection: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           {/* Boundary 1 */}
           <div className="p-8 rounded-xl bg-[var(--landing-surface)] border border-[var(--landing-hairline)]">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center font-mono font-bold text-sm mb-4">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-mono font-bold text-sm mb-4">
               01
             </div>
             <h3 className="text-xl font-display font-medium text-[var(--landing-ink)] mb-3">
@@ -72,7 +72,7 @@ export const WontDoSection: React.FC = () => {
 
           {/* Boundary 2 */}
           <div className="p-8 rounded-xl bg-[var(--landing-surface)] border border-[var(--landing-hairline)]">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center font-mono font-bold text-sm mb-4">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-mono font-bold text-sm mb-4">
               02
             </div>
             <h3 className="text-xl font-display font-medium text-[var(--landing-ink)] mb-3">
@@ -85,7 +85,7 @@ export const WontDoSection: React.FC = () => {
 
           {/* Boundary 3 */}
           <div className="p-8 rounded-xl bg-[var(--landing-surface)] border border-[var(--landing-hairline)]">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center font-mono font-bold text-sm mb-4">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-mono font-bold text-sm mb-4">
               03
             </div>
             <h3 className="text-xl font-display font-medium text-[var(--landing-ink)] mb-3">
@@ -100,3 +100,4 @@ export const WontDoSection: React.FC = () => {
     </section>
   );
 };
+

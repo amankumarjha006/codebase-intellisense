@@ -21,6 +21,7 @@ describe('ErrorBoundary', () => {
     // In React 18 / server rendering, static markup doesn't trigger getDerivedStateFromError automatically,
     // so we test the ErrorBoundary state directly
     const boundary = new ErrorBoundary({ children: null });
+    expect(boundary).toBeDefined();
     const errorState = ErrorBoundary.getDerivedStateFromError(new Error('Synthetic rendering failure'));
 
     expect(errorState.hasError).toBe(true);

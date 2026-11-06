@@ -128,7 +128,7 @@ export const HowItWorksScrolly: React.FC = () => {
                     <span
                       className={`text-sm font-mono px-2.5 py-0.5 rounded transition-colors ${
                         isActive
-                          ? 'bg-[var(--landing-accent)] text-[var(--landing-ink)] font-semibold'
+                          ? 'bg-[var(--landing-accent)] text-[#0B0D10] font-semibold'
                           : 'bg-[var(--landing-surface-dim)] text-[var(--landing-ink-tertiary)]'
                       }`}
                     >
@@ -535,3 +535,4 @@ const MapScene: React.FC = () => {
     </TiltedCard>
   );
 };
+

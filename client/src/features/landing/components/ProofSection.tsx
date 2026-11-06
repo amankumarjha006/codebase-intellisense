@@ -4,12 +4,12 @@ import proofData from '../data/proof.json';
 
 export const ProofSection: React.FC = () => {
   return (
-    <section id="proof" className="relative py-24 md:py-36 border-t border-[var(--landing-hairline)] bg-[var(--landing-surface)]">
+    <section id="proof" className="relative py-24 md:py-36 border-t border-[var(--landing-hairline)] bg-[var(--landing-bg)]">
       <div className="max-w-[1280px] mx-auto px-6 sm:px-8 lg:px-12">
         {/* Section Header */}
         <div className="max-w-2xl mb-16 md:mb-20">
           <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full bg-[var(--landing-surface-dim)] border border-[var(--landing-hairline)] text-xs font-mono text-[var(--landing-ink-secondary)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             BENCHMARKED EVIDENCE
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-normal text-[var(--landing-ink)] tracking-tight font-display mb-4">
@@ -32,7 +32,7 @@ export const ProofSection: React.FC = () => {
         {/* 3 Core Metric Cards with CountUp */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mb-12">
           {/* Metric 1 */}
-          <div className="p-8 rounded-xl bg-[var(--landing-bg)] border border-[var(--landing-hairline)] transition-all hover:border-[var(--landing-hairline-strong)]">
+          <div className="p-8 rounded-xl bg-[var(--landing-surface)] border border-[var(--landing-hairline)] transition-all hover:border-[var(--landing-hairline-strong)]">
             <div className="text-xs font-mono uppercase tracking-wider text-[var(--landing-ink-tertiary)] mb-3">
               Source Files Analyzed
             </div>
@@ -45,7 +45,7 @@ export const ProofSection: React.FC = () => {
           </div>
 
           {/* Metric 2 */}
-          <div className="p-8 rounded-xl bg-[var(--landing-bg)] border border-[var(--landing-hairline)] transition-all hover:border-[var(--landing-hairline-strong)]">
+          <div className="p-8 rounded-xl bg-[var(--landing-surface)] border border-[var(--landing-hairline)] transition-all hover:border-[var(--landing-hairline-strong)]">
             <div className="text-xs font-mono uppercase tracking-wider text-[var(--landing-ink-tertiary)] mb-3">
               AST Symbols Extracted
             </div>
@@ -58,11 +58,11 @@ export const ProofSection: React.FC = () => {
           </div>
 
           {/* Metric 3 */}
-          <div className="p-8 rounded-xl bg-[var(--landing-bg)] border border-[var(--landing-hairline)] transition-all hover:border-[var(--landing-hairline-strong)]">
+          <div className="p-8 rounded-xl bg-[var(--landing-surface)] border border-[var(--landing-hairline)] transition-all hover:border-[var(--landing-hairline-strong)]">
             <div className="text-xs font-mono uppercase tracking-wider text-[var(--landing-ink-tertiary)] mb-3">
               Internal Imports Resolved
             </div>
-            <div className="text-4xl sm:text-5xl lg:text-6xl font-display font-medium text-emerald-600 tracking-tight mb-2">
+            <div className="text-4xl sm:text-5xl lg:text-6xl font-display font-medium text-emerald-400 tracking-tight mb-2">
               <CountUp to={proofData.internalImportsResolvedPercent} decimals={1} suffix="%" />
             </div>
             <p className="text-sm text-[var(--landing-ink-secondary)] leading-normal">
@@ -113,3 +113,4 @@ export const ProofSection: React.FC = () => {
     </section>
   );
 };
+

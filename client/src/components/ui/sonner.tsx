@@ -13,14 +13,14 @@ export const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast:
-            'group toast group-[.toaster]:bg-[#161615] group-[.toaster]:text-[var(--color-text,#F3F1EC)] group-[.toaster]:border-[rgba(255,255,255,0.12)] group-[.toaster]:shadow-2xl group-[.toaster]:rounded-xl group-[.toaster]:text-xs group-[.toaster]:font-sans group-[.toaster]:py-3 group-[.toaster]:px-3.5',
-          description: 'group-[.toast]:text-[var(--color-muted,#A8A59D)] text-[11px]',
+            'group toast group-[.toaster]:bg-[var(--color-surface)] group-[.toaster]:text-[var(--color-text)] group-[.toaster]:border-[var(--color-border-strong)] group-[.toaster]:shadow-2xl group-[.toaster]:rounded-xl group-[.toaster]:text-xs group-[.toaster]:font-sans group-[.toaster]:py-3 group-[.toaster]:px-3.5',
+          description: 'group-[.toast]:text-[var(--color-text-secondary)] text-[11px]',
           actionButton:
-            'group-[.toast]:bg-[var(--color-mint-accent,#B9E4D0)] group-[.toast]:text-[#0C0C0B] group-[.toast]:font-semibold text-xs rounded-lg',
+            'group-[.toast]:bg-[var(--color-accent)] group-[.toast]:text-[#0B0D10] group-[.toast]:font-semibold text-xs rounded-lg',
           cancelButton:
-            'group-[.toast]:bg-[var(--color-raised,#1C1C1A)] group-[.toast]:text-[var(--color-muted,#A8A59D)] text-xs rounded-lg',
+            'group-[.toast]:bg-[var(--color-raised)] group-[.toast]:text-[var(--color-text-secondary)] text-xs rounded-lg',
           closeButton:
-            'group-[.toast]:bg-[var(--color-raised,#1C1C1A)] group-[.toast]:border-[rgba(255,255,255,0.1)] group-[.toast]:text-[var(--color-muted,#A8A59D)] group-[.toast]:hover:text-[var(--color-text,#F3F1EC)]',
+            'group-[.toast]:bg-[var(--color-raised)] group-[.toast]:border-[var(--color-border)] group-[.toast]:text-[var(--color-text-secondary)] group-[.toast]:hover:text-[var(--color-text)]',
         },
       }}
       {...props}
