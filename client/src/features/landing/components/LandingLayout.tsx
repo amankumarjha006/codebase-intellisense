@@ -19,11 +19,9 @@ export const LandingLayout: React.FC<LandingLayoutProps> = ({
       {/* Main navigation */}
       <LandingNav />
 
-      {/* Main content with 12-column responsive grid container */}
-      <main className="relative lg:pl-12 w-full">
-        <div className="max-w-[1280px] mx-auto px-6 sm:px-8 lg:px-12 pt-24 pb-16">
-          {children}
-        </div>
+      {/* Main content with responsive layout */}
+      <main className="relative lg:pl-12 w-full pt-16">
+        {children}
       </main>
     </div>
   );

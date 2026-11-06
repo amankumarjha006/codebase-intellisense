@@ -4,6 +4,11 @@ import { LandingLayout } from '../features/landing/components/LandingLayout';
 import { HeroSection } from '../features/landing/components/HeroSection';
 import { InteractiveDemo } from '../features/landing/components/InteractiveDemo';
 import { HowItWorksScrolly } from '../features/landing/components/HowItWorksScrolly';
+import { ProofSection } from '../features/landing/components/ProofSection';
+import { WontDoSection } from '../features/landing/components/WontDoSection';
+import { PrivacySection } from '../features/landing/components/PrivacySection';
+import { FinalCtaSection } from '../features/landing/components/FinalCtaSection';
+import { LandingFooter } from '../features/landing/components/LandingFooter';
 import { useAuth } from '../lib/AuthContext';
 import { LANDING_ERROR_COPY } from '../lib/errors';
 
@@ -54,69 +59,41 @@ export function LandingPage() {
 
   return (
     <LandingLayout activeSection={activeSection}>
-      {/* Error notification banner if redirected with error */}
-      {errorCopy && (
-        <div
-          role="alert"
-          className="mb-8 p-4 rounded-lg border border-[var(--color-error-border)] bg-[var(--color-error-tint)] text-[var(--color-error)] text-sm flex items-center justify-between"
-        >
-          <p>{errorCopy}</p>
-        </div>
-      )}
+      <div className="max-w-[1280px] mx-auto px-6 sm:px-8 lg:px-12">
+        {/* Error notification banner if redirected with error */}
+        {errorCopy && (
+          <div
+            role="alert"
+            className="mb-8 p-4 rounded-lg border border-[var(--color-error-border)] bg-[var(--color-error-tint)] text-[var(--color-error)] text-sm flex items-center justify-between"
+          >
+            <p>{errorCopy}</p>
+          </div>
+        )}
 
-      {/* 01 HERO SECTION */}
-      <HeroSection />
+        {/* 01 HERO SECTION */}
+        <HeroSection />
 
-      {/* 02 INTERACTIVE DEMO */}
-      <InteractiveDemo />
+        {/* 02 INTERACTIVE DEMO */}
+        <InteractiveDemo />
+      </div>
 
       {/* 03 HOW IT WORKS (Scrollytelling & 3D Architecture Scene) */}
       <HowItWorksScrolly />
 
-      {/* 04 PROOF (Scaffold for Step 5) */}
-      <section id="proof" className="py-24 border-t border-[var(--color-landing-hairline)]">
-        <div className="mb-8">
-          <p className="text-xs font-[family-name:var(--font-code)] text-[var(--color-landing-ink-tertiary)] uppercase tracking-wider">
-            04 // Verifiable Proof
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-normal tracking-tight mt-2 text-[var(--color-landing-ink)]">
-            Real Metrics from Real Repositories
-          </h2>
-        </div>
-      </section>
+      {/* 04 PROOF (Benchmarked Evidence) */}
+      <ProofSection />
 
-      {/* 05 WHAT IT WON'T DO (Scaffold for Step 5) */}
-      <section id="wont-do" className="py-24 border-t border-[var(--color-landing-hairline)]">
-        <div className="mb-8">
-          <p className="text-xs font-[family-name:var(--font-code)] text-[var(--color-landing-ink-tertiary)] uppercase tracking-wider">
-            05 // Honest Boundaries
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-normal tracking-tight mt-2 text-[var(--color-landing-ink)]">
-            What It Won&apos;t Do
-          </h2>
-        </div>
-      </section>
+      {/* 05 WHAT IT WON'T DO (Honest Boundaries & Real Refusal) */}
+      <WontDoSection />
 
-      {/* 06 PRIVACY (Scaffold for Step 5) */}
-      <section id="privacy" className="py-24 border-t border-[var(--color-landing-hairline)]">
-        <div className="mb-8">
-          <p className="text-xs font-[family-name:var(--font-code)] text-[var(--color-landing-ink-tertiary)] uppercase tracking-wider">
-            06 // Privacy & Transparency
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-normal tracking-tight mt-2 text-[var(--color-landing-ink)]">
-            Code Privacy by Architecture
-          </h2>
-        </div>
-      </section>
+      {/* 06 PRIVACY & SECURITY (Factual Disclosures from PRIVACY_FACTS) */}
+      <PrivacySection />
 
-      {/* 07 FINAL CTA (Scaffold for Step 5) */}
-      <section id="cta" className="py-24 border-t border-[var(--color-landing-hairline)]">
-        <div className="rounded-2xl p-12 bg-[var(--panel-bg)] text-[var(--panel-text)] text-center">
-          <h2 className="text-3xl sm:text-5xl font-normal tracking-tight">
-            Ground your codebase answers today.
-          </h2>
-        </div>
-      </section>
+      {/* 07 FINAL CTA (Full-bleed Dark Section) */}
+      <FinalCtaSection />
+
+      {/* 08 FOOTER */}
+      <LandingFooter />
     </LandingLayout>
   );
 }
