@@ -93,7 +93,7 @@ export async function layoutArchitectureGraph(
 
   const elkGraph = buildElkGraph(nodes, edges);
 
-  let layoutResult: { children?: Array<{ id: string; x?: number; y?: number }> } | null = null;
+  let layoutResult: { children?: Array<{ id: string; x?: number; y?: number }> } | undefined;
 
   try {
     const elk = getElkInstance();

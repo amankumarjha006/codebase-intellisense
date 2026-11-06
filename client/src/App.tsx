@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
-import { LandingPage } from './pages/LandingPage';
+const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
 import { DashboardPage } from './pages/DashboardPage';
 import { RepositoriesPage } from './pages/RepositoriesPage';
 import { RepositoryOverviewPage } from './pages/RepositoryOverviewPage';
@@ -32,7 +32,14 @@ export function App() {
           <ErrorBoundary>
             <Routes>
               {/* Public landing page */}
-              <Route path="/" element={<LandingPage />} />
+              <Route
+                path="/"
+                element={
+                  <Suspense fallback={<div className="min-h-screen bg-[#F6F4EF]" />}>
+                    <LandingPage />
+                  </Suspense>
+                }
+              />
 
               {/* Authenticated application routes wrapped in AppLayout */}
               <Route element={<AppLayout />}>

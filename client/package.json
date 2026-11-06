@@ -13,6 +13,8 @@
     "test:smoke": "node scripts/smoke-test.cjs"
   },
   "dependencies": {
+    "@fontsource-variable/google-sans-code": "^5.3.2",
+    "@fontsource-variable/google-sans-flex": "^5.3.2",
     "@material-symbols/svg-400": "^0.48.3",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-dropdown-menu": "^2.1.24",
