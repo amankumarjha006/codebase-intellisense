@@ -132,3 +132,23 @@ def test_chunk_builder_service_skips_path_traversal(tmp_path):
     created_chunks = knowledge_repo.bulk_create_code_chunks.call_args[0][0]
     assert len(created_chunks) == 1
     assert created_chunks[0].file_id == legit_file.id
+
+
+def test_line_chunker_handles_utf16_and_null_bytes():
+    """Verify that LineChunker decodes UTF-16 and strips NUL bytes."""
+    chunker = LineChunker(max_chars=500)
+    file_id = uuid4()
+
+    # UTF-16LE with BOM
+    utf16_bytes = b"\xff\xfe" + "Line 1 in utf16\nLine 2 in utf16".encode("utf-16le")
+    chunks = chunker.chunk(file_id, "output.txt", "text", utf16_bytes)
+    assert len(chunks) >= 1
+    assert "Line 1 in utf16" in chunks[0].content
+    assert "\x00" not in chunks[0].content
+
+    # File with raw NUL bytes
+    raw_nul_bytes = b"First line\x00with null\nSecond line"
+    chunks2 = chunker.chunk(file_id, "nul.txt", "text", raw_nul_bytes)
+    assert "\x00" not in chunks2[0].content
+    assert "First linewith null" in chunks2[0].content
+

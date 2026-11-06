@@ -89,6 +89,7 @@ def setup_db_for_indexing(db_session):
 
 
 def test_indexing_embedding_integration(db_session, tmp_path, monkeypatch):
+    monkeypatch.setattr("app.core.config.settings.ARCHITECTURE_LLM_ENRICHMENT_ENABLED", False)
     user, repo, version, job = setup_db_for_indexing(db_session)
     repo_root = create_mock_repo(tmp_path)
     

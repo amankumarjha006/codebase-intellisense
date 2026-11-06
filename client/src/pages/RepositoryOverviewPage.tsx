@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { StatusDot } from '../components/ui/StatusDot';
 import { Button } from '../components/ui/button';
+import { AnimatedPage } from '../components/ui/AnimatedPage';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
 import { realApi, type RepositoryDetailOut, type FileOut } from '../lib/api';
 import { formatNumber, formatRelativeTime, shortSha } from '../lib/utils';
@@ -10,11 +11,13 @@ import { classifyPath } from '../lib/classifyPath';
 import { getRepositoryStatusCategory } from '../lib/repositoryTableUtils';
 import { setLastOpenedRepoId } from '../lib/repositoryTableUtils';
 import { useAuth } from '../lib/AuthContext';
+import { useIndexingStatus } from '../lib/useIndexingStatus';
 
 export function RepositoryOverviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { repositories, refetch: refetchIndexing } = useIndexingStatus();
 
   const [repo, setRepo] = React.useState<RepositoryDetailOut | null>(null);
   const [files, setFiles] = React.useState<FileOut[]>([]);
@@ -59,8 +62,81 @@ export function RepositoryOverviewPage() {
   const handleReindex = async () => {
     if (!id) return;
     await realApi.analyzeRepository(id);
+    refetchIndexing();
     loadRepositoryData();
   };
+
+  const currentRepoStatus = React.useMemo(() => {
+    return repositories.find((r) => r.id === id);
+  }, [repositories, id]);
+
+  const rawStatus = currentRepoStatus?.latest_job_status || repo?.active_version?.status;
+  const isCurrentlyIndexing =
+    rawStatus === 'QUEUED' ||
+    rawStatus === 'FETCHING' ||
+    rawStatus === 'INDEXING' ||
+    rawStatus === 'ANALYZING' ||
+    rawStatus === 'PENDING';
+
+  const progressInfo = React.useMemo(() => {
+    switch (rawStatus) {
+      case 'QUEUED':
+        return {
+          percent: 15,
+          stage: 'Queued',
+          description: 'Waiting in indexing pipeline to clone repository',
+        };
+      case 'FETCHING':
+        return {
+          percent: 35,
+          stage: 'Fetching',
+          description: 'Downloading repository files and verifying commit snapshot',
+        };
+      case 'INDEXING':
+      case 'PENDING':
+        return {
+          percent: 70,
+          stage: 'Indexing',
+          description: 'Analyzing code structure, extracting symbols, and building chunks',
+        };
+      case 'ANALYZING':
+        return {
+          percent: 90,
+          stage: 'Analyzing',
+          description: 'Generating vector embeddings and component architecture map',
+        };
+      default:
+        return {
+          percent: 100,
+          stage: 'Ready',
+          description: 'Repository indexed and ready',
+        };
+    }
+  }, [rawStatus]);
+
+  // Live polling while indexing is active so the UI refreshes in real-time
+  React.useEffect(() => {
+    if (!isCurrentlyIndexing || !id) return;
+
+    const interval = setInterval(() => {
+      realApi
+        .getRepositoryDetail(id)
+        .then((detail) => {
+          setRepo(detail);
+          if (detail.active_version?.status === 'SUCCESS') {
+            realApi
+              .getRepositoryFiles(id, 1, 500)
+              .then((res) => {
+                setFiles(res.files || []);
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [id, isCurrentlyIndexing]);
 
   // Identify entry points from files (main.py, app.py, index.ts, App.tsx, etc.)
   const entryPoints = React.useMemo(() => {
@@ -130,11 +206,45 @@ export function RepositoryOverviewPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <AnimatedPage className="space-y-6">
       {/* Sticky 5-tab Header */}
       <RepositoryHeader repository={repo} onReindex={handleReindex} />
 
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-10 pb-16 space-y-8">
+        {/* Active Indexing / Re-indexing Progress Banner */}
+        {isCurrentlyIndexing && (
+          <div className="p-4 rounded-lg border border-accent/30 bg-accent/5 backdrop-blur-xs space-y-3 animate-fade-in shadow-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <MaterialIcon name="sync" size={18} spin className="text-accent shrink-0" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-xs font-semibold text-text-primary truncate">
+                    Indexing repository in progress…
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-accent/15 text-accent font-medium">
+                    {progressInfo.stage}
+                  </span>
+                </div>
+              </div>
+              <span className="text-xs font-mono font-medium text-accent tabular-nums">
+                {progressInfo.percent}%
+              </span>
+            </div>
+
+            {/* Linear Progress Bar */}
+            <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden relative">
+              <div
+                className="h-full bg-accent rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${progressInfo.percent}%` }}
+              />
+            </div>
+
+            <p className="text-[11px] text-text-secondary leading-normal">
+              {progressInfo.description}
+            </p>
+          </div>
+        )}
+
         {/* 1. Compact Stat Strip (4 items) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="p-3.5 rounded-lg border border-white/10 bg-surface-raised space-y-1">
@@ -359,7 +469,7 @@ export function RepositoryOverviewPage() {
           </div>
         )}
       </div>
-    </div>
+    </AnimatedPage>
   );
 }
 export default RepositoryOverviewPage;

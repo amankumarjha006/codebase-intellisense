@@ -14,7 +14,7 @@ class ASTChunker:
         self.line_fallback = LineChunker(max_chars)
         
     def chunk(self, file_id: UUID, file_path: str, language: str, source_bytes: bytes, symbols: List[Symbol]) -> List[ChunkData]:
-        source_text = source_bytes.decode('utf-8', 'replace')
+        source_text = source_bytes.decode('utf-8', 'replace').replace("\x00", "")
         
         # 1. Parse into ASTNodeSpan
         root_span = self._parse_to_span(language, source_text, source_bytes)
@@ -32,7 +32,7 @@ class ASTChunker:
         # 4. Map to ChunkData and assign symbols
         chunks = []
         for i, (start_byte, end_byte, start_line, end_line) in enumerate(packed_ranges):
-            content = source_bytes[start_byte:end_byte].decode('utf-8', 'replace')
+            content = source_bytes[start_byte:end_byte].decode('utf-8', 'replace').replace("\x00", "")
             sym_id = self._find_best_symbol(start_line, end_line, symbols)
             
             chunks.append(ChunkData(

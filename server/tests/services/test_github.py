@@ -135,3 +135,34 @@ class TestGetRepository:
                 await github_service.get_repository("super_secret_token", "owner", "repo")
 
             assert "super_secret_token" not in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_401_falls_back_to_unauthenticated_request(self, github_service):
+        mock_401 = MagicMock()
+        mock_401.status_code = 401
+
+        mock_200 = MagicMock()
+        mock_200.status_code = 200
+        mock_200.json.return_value = {
+            "id": 456,
+            "name": "public-repo",
+            "owner": {"login": "owner"},
+            "private": False,
+        }
+
+        with patch("httpx.AsyncClient") as MockClient:
+            mock_client = AsyncMock()
+            MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+            mock_client.get.side_effect = [mock_401, mock_200]
+
+            result = await github_service.get_repository("expired_token", "owner", "public-repo")
+
+        assert result["id"] == 456
+        assert mock_client.get.await_count == 2
+        # First call used Authorization header
+        first_call_headers = mock_client.get.await_args_list[0][1]["headers"]
+        assert first_call_headers.get("Authorization") == "Bearer expired_token"
+        # Second call dropped Authorization header
+        second_call_headers = mock_client.get.await_args_list[1][1]["headers"]
+        assert "Authorization" not in second_call_headers

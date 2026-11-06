@@ -177,7 +177,9 @@ class RepositoryService:
                     index_status="PENDING",
                 )
             else:
-                version.index_status = "PENDING"
+                # Retain SUCCESS status to avoid breaking active search/chat while re-indexing
+                if version.index_status != "SUCCESS":
+                    version.index_status = "PENDING"
                 version.branch = branch
 
             # 3. Create IndexJob

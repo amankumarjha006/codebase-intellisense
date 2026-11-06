@@ -7,6 +7,7 @@ import { Button } from '../ui/button';
 import { Input } from '../components/../ui/input';
 import { realApi, ApiError, RepositoryDetailOut, IndexJobOut } from '../../lib/api';
 import { getFailureMessage } from '../../lib/status';
+import { useIndexingStatus } from '../../lib/useIndexingStatus';
 
 interface ConnectDrawerProps {
   open: boolean;
@@ -38,6 +39,7 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
   // Connected repository & job tracking
   const [connectedRepo, setConnectedRepo] = React.useState<RepositoryDetailOut | null>(null);
   const [activeJob, setActiveJob] = React.useState<IndexJobOut | null>(null);
+  const { activeJobRepo } = useIndexingStatus();
 
   const pollTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -222,6 +224,39 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
                 : 'Connect a public or private GitHub repository to search code, explore architecture, and chat with AI.'}
             </DrawerDescription>
           </DrawerHeader>
+
+          {/* Active background indexing banner */}
+          {activeJobRepo && step === 'input' && (
+            <div className="mx-4 mt-2 p-3 rounded-[var(--radius-control)] bg-[var(--color-raised)] border border-[rgba(253,214,99,0.3)] space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5 font-medium text-[var(--color-text)] min-w-0">
+                  <MaterialIcon name="sync" size={14} spin className="text-[var(--color-warning)] shrink-0" />
+                  <span className="truncate">{activeJobRepo.name} is indexing…</span>
+                </div>
+                <span className="font-mono text-[10px] text-[var(--color-warning)] font-medium shrink-0">
+                  {activeJobRepo.latest_job_status?.toLowerCase()}
+                </span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-[var(--color-surface)] overflow-hidden">
+                <div
+                  className="h-full bg-[var(--color-warning)] rounded-full transition-all duration-500"
+                  style={{
+                    width: activeJobRepo.latest_job_status === 'FETCHING' ? '35%' : activeJobRepo.latest_job_status === 'INDEXING' ? '70%' : '90%'
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenChange(false);
+                  navigate(`/repositories/${activeJobRepo.id}`);
+                }}
+                className="text-[11px] text-[var(--color-accent)] hover:underline inline-flex items-center gap-1 font-medium cursor-pointer"
+              >
+                <span>View repository overview →</span>
+              </button>
+            </div>
+          )}
 
           {/* Step 1: Input GitHub URL (connect_form.png / connect_form_with_errors.png) */}
           {step === 'input' && (
@@ -412,9 +447,28 @@ export function ConnectDrawer({ open, onOpenChange, onConnected }: ConnectDrawer
             </div>
           )}
 
-          {/* Step 3: Indexing Progress (connect_indexing_progress.png - NO percentage, stage based) */}
+          {/* Step 3: Indexing Progress */}
           {step === 'indexing' && (
             <div className="space-y-5 px-4 mt-4" role="status" aria-label="Indexing progress stages" aria-live="polite">
+              {/* Overall Linear Progress Bar */}
+              <div className="p-3.5 rounded-[var(--radius-control)] bg-[var(--color-raised)] border border-[var(--color-border)] space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 font-medium text-[var(--color-text)]">
+                    <MaterialIcon name="sync" size={15} spin className="text-[var(--color-warning)]" />
+                    <span>Indexing progress</span>
+                  </div>
+                  <span className="font-mono text-xs font-semibold text-[var(--color-accent)] tabular-nums">
+                    {Math.round(((currentStageIndex + 1) / STAGES.length) * 100)}%
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]/50 overflow-hidden">
+                  <div
+                    className="h-full bg-[var(--color-accent)] rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${Math.round(((currentStageIndex + 1) / STAGES.length) * 100)}%` }}
+                  />
+                </div>
+              </div>
+
               <div className="space-y-4">
                 {STAGES.map((s, index) => {
                   const isCompleted = index < currentStageIndex;

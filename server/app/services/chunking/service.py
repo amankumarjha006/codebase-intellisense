@@ -99,7 +99,7 @@ class ChunkBuilderService:
                     new_chunks.append(CodeChunk(
                         file_id=c_data.file_id,
                         symbol_id=c_data.symbol_id,
-                        content=c_data.content,
+                        content=c_data.content.replace("\x00", ""),
                         start_line=c_data.start_line,
                         end_line=c_data.end_line,
                         chunk_index=c_data.chunk_index

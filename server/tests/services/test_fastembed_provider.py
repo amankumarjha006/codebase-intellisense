@@ -42,6 +42,9 @@ def test_fastembed_factory():
     )
     provider = get_embedding_provider(settings)
     assert isinstance(provider, FastEmbedProvider)
+    # Check singleton caching
+    provider_again = get_embedding_provider(settings)
+    assert provider is provider_again
 
     # Test alias 'local'
     settings_local = Settings(

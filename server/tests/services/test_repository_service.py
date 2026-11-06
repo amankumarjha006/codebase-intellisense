@@ -525,3 +525,53 @@ class TestConnectRepositoryDbRollback:
 
         mock_db.rollback.assert_called_once()
         mock_db.commit.assert_not_called()
+
+
+class TestQueueAnalysis:
+    def test_queue_analysis_preserves_success_status(self, service, mock_db):
+        from app.models.repository import RepositoryVersion, IndexJob
+
+        repo = Repository()
+        repo.id = uuid4()
+
+        service.repository_repo.get_active_job = MagicMock(return_value=None)
+        existing_version = RepositoryVersion(
+            id=uuid4(),
+            repository_id=repo.id,
+            commit_sha="abc1234",
+            branch="main",
+            index_status="SUCCESS",
+        )
+        service.repository_repo.get_version_by_commit = MagicMock(return_value=existing_version)
+        mock_job = IndexJob(id=uuid4(), repository_id=repo.id, repository_version_id=existing_version.id)
+        service.repository_repo.create_index_job = MagicMock(return_value=mock_job)
+
+        version, job = service.queue_analysis(repo, "main", "abc1234")
+
+        assert version.index_status == "SUCCESS"
+        assert job == mock_job
+        mock_db.commit.assert_called_once()
+
+    def test_queue_analysis_resets_failed_status_to_pending(self, service, mock_db):
+        from app.models.repository import RepositoryVersion, IndexJob
+
+        repo = Repository()
+        repo.id = uuid4()
+
+        service.repository_repo.get_active_job = MagicMock(return_value=None)
+        existing_version = RepositoryVersion(
+            id=uuid4(),
+            repository_id=repo.id,
+            commit_sha="abc1234",
+            branch="main",
+            index_status="FAILED",
+        )
+        service.repository_repo.get_version_by_commit = MagicMock(return_value=existing_version)
+        mock_job = IndexJob(id=uuid4(), repository_id=repo.id, repository_version_id=existing_version.id)
+        service.repository_repo.create_index_job = MagicMock(return_value=mock_job)
+
+        version, job = service.queue_analysis(repo, "main", "abc1234")
+
+        assert version.index_status == "PENDING"
+        assert job == mock_job
+        mock_db.commit.assert_called_once()

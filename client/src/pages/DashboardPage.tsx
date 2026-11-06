@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { Button } from '../components/ui/button';
+import { AnimatedPage } from '../components/ui/AnimatedPage';
 import { ConnectDrawer } from '../components/repository/ConnectDrawer';
 import { ContinueHero } from '../components/dashboard/ContinueHero';
 import { RepoCardGrid } from '../components/dashboard/RepoCardGrid';
@@ -124,7 +125,7 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-10 pb-16">
+    <AnimatedPage className="space-y-8 max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-10 pb-16">
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -201,7 +202,7 @@ export function DashboardPage() {
         onOpenChange={setConnectOpen}
         onConnected={() => refetch()}
       />
-    </div>
+    </AnimatedPage>
   );
 }
 export default DashboardPage;

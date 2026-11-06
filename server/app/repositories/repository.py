@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select, func, or_, true
+from sqlalchemy import select, func, or_, true, delete
 from sqlalchemy.orm import Session, aliased
 
 from app.models.repository import Repository, UserRepository, RepositoryVersion, IndexJob
@@ -70,6 +70,37 @@ class RepositoryRepository:
         self.db.add(user_repo)
         self.db.flush()
         return user_repo
+
+    def revoke_user_access(
+        self,
+        *,
+        user_id: UUID,
+        repository_id: UUID,
+    ) -> bool:
+        stmt = (
+            delete(UserRepository)
+            .where(
+                UserRepository.user_id == user_id,
+                UserRepository.repository_id == repository_id,
+            )
+        )
+        result = self.db.execute(stmt)
+        self.db.flush()
+        try:
+            return bool(result.rowcount and result.rowcount > 0)
+        except (TypeError, AttributeError):
+            return True
+
+    def count_users_with_access(
+        self,
+        repository_id: UUID,
+    ) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(UserRepository)
+            .where(UserRepository.repository_id == repository_id)
+        )
+        return self.db.execute(stmt).scalar_one()
 
     def user_has_access(
         self,

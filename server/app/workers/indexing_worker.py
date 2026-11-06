@@ -102,9 +102,15 @@ class IndexingWorker:
         except Exception as e:
             logger.error(f"Error during startup job recovery: {e}", exc_info=True)
 
+        last_recovery_time = time.time()
         while self.running:
             had_job = False
             try:
+                # Periodically recover any orphaned/stuck jobs (every 60s)
+                if time.time() - last_recovery_time > 60:
+                    self.recover_orphaned_jobs()
+                    last_recovery_time = time.time()
+
                 had_job = self._process_next_job()
             except Exception as e:
                 logger.error(f"Error in worker loop: {e}", exc_info=True)
@@ -299,16 +305,24 @@ class IndexingWorker:
             self.current_job_id = None
 
     def _mark_job_failed(self, job_id: UUID, error_message: str, failure_code: str = "INTERNAL_ERROR") -> None:
-        """Mark a job as failed."""
+        """Mark a job as failed, sanitizing error message and failure code for PostgreSQL."""
+        valid_codes = {
+            "CLONE_FAILED",
+            "REPOSITORY_TOO_LARGE",
+            "EMBEDDING_PROVIDER_RATE_LIMITED",
+            "EMBEDDING_PROVIDER_UNAVAILABLE",
+            "EMBEDDING_PROVIDER_AUTH",
+            "INTERNAL_ERROR",
+        }
         db = self._get_db()
         try:
             repo_repo = RepositoryRepository(db)
             job = repo_repo.get_job_by_id(job_id)
             if job:
                 job.status = "FAILED"
-                job.error_message = error_message
-                if not isinstance(job.failure_code, str):
-                    job.failure_code = failure_code
+                job.error_message = str(error_message).replace("\x00", "")[:4000]
+                code = failure_code if isinstance(failure_code, str) and failure_code in valid_codes else "INTERNAL_ERROR"
+                job.failure_code = code
                 job.completed_at = datetime.now(timezone.utc)
                 if job.repository_version:
                     job.repository_version.index_status = "FAILED"

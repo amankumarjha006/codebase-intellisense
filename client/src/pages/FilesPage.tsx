@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'motion/react';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { api, getCachedRepository } from '../lib/api';
 import type { Repository, FileTreeNode, FileContent } from '../lib/types';
@@ -18,15 +19,16 @@ export function FilesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
 
-  const [repository, setRepository] = React.useState<Repository | null>(() =>
-    repoId ? getCachedRepository(repoId) : null
-  );
+  const { data: repository = null } = useQuery<Repository | null>({
+    queryKey: ['repository', repoId],
+    queryFn: () => (repoId ? api.getRepository(repoId) : Promise.resolve(null)),
+    enabled: Boolean(repoId),
+    initialData: () => (repoId ? getCachedRepository(repoId) : null),
+  });
 
-  // Active file path from URL or default
+  // Active file path from URL or empty default
   const urlPath = searchParams.get('path');
-  const [activeFilePath, setActiveFilePath] = React.useState<string>(
-    urlPath || 'fastapi/applications.py'
-  );
+  const [activeFilePath, setActiveFilePath] = React.useState<string>(urlPath || '');
 
   // Target lines from query params or URL hash #L10 or #L10-L20
   const urlStartLine = searchParams.get('start_line') || searchParams.get('line');
@@ -75,21 +77,37 @@ export function FilesPage() {
     });
   }, []);
 
-  // Fetch repository metadata
-  React.useEffect(() => {
-    if (!repoId) return;
-    api.getRepository(repoId).then((repo) => {
-      setRepository(repo);
-    }).catch(() => null);
-  }, [repoId]);
-
   // Query: Cached file tree per version
   const { data: fileTree, isLoading: loadingTree } = useQuery<FileTreeNode>({
-    queryKey: ['file-tree', repoId, repository?.active_version_short_sha],
+    queryKey: ['file-tree', repoId, repository?.active_version_short_sha ?? 'latest'],
     queryFn: () => api.getFileTree(repoId!),
     enabled: Boolean(repoId),
-    staleTime: Infinity, // File tree is immutable for a specific version
+    staleTime: 60_000,
   });
+
+  // Automatically select the first file when tree loads and no file is active
+  React.useEffect(() => {
+    if (fileTree && !activeFilePath) {
+      const findFirstFile = (node: FileTreeNode): string | null => {
+        if (node.type === 'file') return node.path;
+        if (node.children && node.children.length > 0) {
+          const readme = node.children.find((c) => c.type === 'file' && /readme/i.test(c.name));
+          if (readme) return readme.path;
+          for (const child of node.children) {
+            const found = findFirstFile(child);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const defaultFile = findFirstFile(fileTree);
+      if (defaultFile) {
+        setActiveFilePath(defaultFile);
+        expandParentDirectories(defaultFile);
+      }
+    }
+  }, [fileTree, activeFilePath, expandParentDirectories]);
 
   // Query: Cached file content for the active path
   const {
@@ -153,6 +171,11 @@ export function FilesPage() {
     setSearchParams(nextParams);
   };
 
+  const handleReindex = React.useCallback(async () => {
+    if (!repoId) return;
+    await api.reindexRepository(repoId);
+  }, [repoId]);
+
   if (!repository) {
     return (
       <div
@@ -165,12 +188,12 @@ export function FilesPage() {
     );
   }
 
-  const pathSegments = activeFilePath.split('/');
+  const pathSegments = activeFilePath ? activeFilePath.split('/') : [];
 
   return (
     <AnimatedPage className="flex flex-col min-h-screen bg-surface-base text-text-primary font-sans">
       <LiveRegion message={a11yStatus} />
-      <RepositoryHeader repository={repository} />
+      <RepositoryHeader repository={repository} onReindex={handleReindex} />
 
       {/* Mobile view toggle */}
       <div className="sm:hidden flex items-center justify-between p-2 border-b border-white/10 bg-surface-raised">
@@ -200,15 +223,20 @@ export function FilesPage() {
       {/* Main Files Workspace Split Pane */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Virtualized File Tree Browser */}
-        {!isTreeCollapsed && (
-          <aside
-            aria-label="Repository file tree"
-            className={`
-              w-full sm:w-72 lg:w-80 border-r border-white/10 bg-surface-raised flex flex-col shrink-0 overflow-hidden select-none z-10
-              ${mobileView === 'source' ? 'hidden sm:flex' : 'flex'}
-            `}
-          >
-            {/* Tree Top Bar */}
+        <AnimatePresence>
+          {!isTreeCollapsed && (
+            <motion.aside
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 320, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 32 }}
+              aria-label="Repository file tree"
+              className={`
+                w-full sm:w-72 lg:w-80 border-r border-white/10 bg-surface-raised flex flex-col shrink-0 overflow-hidden select-none z-10
+                ${mobileView === 'source' ? 'hidden sm:flex' : 'flex'}
+              `}
+            >
+              {/* Tree Top Bar */}
             <div className="p-3 border-b border-white/10 flex items-center justify-between gap-2 shrink-0 bg-surface-raised">
               <div className="flex items-center gap-2 min-w-0">
                 <MaterialIcon name="folder" size={16} className="text-accent shrink-0" aria-hidden="true" />
@@ -284,8 +312,9 @@ export function FilesPage() {
                 onToggleDir={toggleDir}
               />
             )}
-          </aside>
+          </motion.aside>
         )}
+      </AnimatePresence>
 
         {/* Right: Code Viewer Container */}
         <div
@@ -362,7 +391,12 @@ export function FilesPage() {
 
           {/* Viewer Code Body */}
           <div className="flex-1 overflow-hidden relative">
-            {loadingContent ? (
+            {!activeFilePath ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center text-xs text-text-secondary font-mono space-y-2">
+                <MaterialIcon name="folder_open" size={28} className="text-text-tertiary" />
+                <p>Select a file from the tree to view source code.</p>
+              </div>
+            ) : loadingContent ? (
               <div className="h-full flex flex-col items-center justify-center p-8 text-center text-xs text-text-secondary font-mono space-y-2">
                 <MaterialIcon name="sync" size={20} className="animate-spin text-text-tertiary" />
                 <p>Loading file content…</p>
@@ -373,14 +407,22 @@ export function FilesPage() {
                 <p className="text-xs text-status-failed">{contentError instanceof Error ? contentError.message : String(contentError)}</p>
               </div>
             ) : fileContent ? (
-              <SourceViewer
-                code={fileContent.content}
-                language={fileContent.language}
-                filePath={fileContent.path}
-                targetStartLine={targetStartLine}
-                targetEndLine={targetEndLine}
-                onClearTarget={handleClearTarget}
-              />
+              <motion.div
+                key={fileContent.path}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+                className="h-full w-full overflow-hidden"
+              >
+                <SourceViewer
+                  code={fileContent.content}
+                  language={fileContent.language}
+                  filePath={fileContent.path}
+                  targetStartLine={targetStartLine}
+                  targetEndLine={targetEndLine}
+                  onClearTarget={handleClearTarget}
+                />
+              </motion.div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center p-8 text-center text-xs text-text-secondary font-mono">
                 Select a file to inspect source code.

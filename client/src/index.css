@@ -3,8 +3,6 @@
    Dark First, High Density Developer Tool Aesthetic
    ───────────────────────────────────────────────────────────── */
 
-@import '@fontsource-variable/google-sans-flex';
-@import '@fontsource-variable/google-sans-code';
 @import 'tailwindcss';
 
 /* ── Custom Variant ──────────────────────────────────────── */
@@ -46,9 +44,10 @@
   --color-warning: #FDD663;
   --color-warning-tint: rgba(253, 214, 99, 0.12);
 
-  /* ── Typography (Fixed Registered Font Families) ────────── */
-  --font-sans: 'Google Sans Flex Variable', 'Google Sans Flex', 'Figtree', system-ui, -apple-system, sans-serif;
-  --font-mono: 'Google Sans Code Variable', 'Google Sans Code', 'JetBrains Mono', ui-monospace, monospace;
+  /* ── Typography (IBM Plex Serif + JetBrains Mono) ────────── */
+  --font-sans: 'IBM Plex Serif', Georgia, Cambria, 'Times New Roman', serif;
+  --font-serif: 'IBM Plex Serif', Georgia, Cambria, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* ── Density & Radii ────────────────────────────────────── */
   --radius-card: 8px;
@@ -157,6 +156,151 @@ table,
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Smooth Tactile Micro-Interactions ────────────────────── */
+button,
+a,
+input,
+select,
+textarea {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  transition-duration: 180ms;
+}
+
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active {
+  transform: scale(0.982);
+}
+
+/* ── Panel, Drawer & Dialog Butter-Smooth Transitions ──────── */
+@keyframes dialogEnter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes dialogExit {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(6px);
+  }
+}
+
+@keyframes overlayFadeOut {
+  from {
+    opacity: 1;
+    backdrop-filter: blur(6px);
+  }
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+}
+
+@keyframes drawerSlideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes drawerSlideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0.7;
+  }
+}
+
+@keyframes menuEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes menuExit {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+}
+
+/* Dialogs & Command Palette Center Pop */
+div[role="dialog"][data-state="open"].fixed.left-\[50\%\],
+[data-state="open"] > div[role="dialog"].fixed.left-\[50\%\] {
+  animation: dialogEnter 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+div[role="dialog"][data-state="closed"].fixed.left-\[50\%\],
+[data-state="closed"] > div[role="dialog"].fixed.left-\[50\%\] {
+  animation: dialogExit 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+/* Backdrop Overlays */
+div[data-state="open"].fixed.inset-0 {
+  animation: overlayFadeIn 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+div[data-state="closed"].fixed.inset-0 {
+  animation: overlayFadeOut 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+/* Right-side Drawers (Connect Drawer, etc.) */
+div[role="dialog"][data-state="open"].fixed.right-0,
+div[data-state="open"].fixed.inset-y-0.right-0 {
+  animation: drawerSlideInRight 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+div[role="dialog"][data-state="closed"].fixed.right-0,
+div[data-state="closed"].fixed.inset-y-0.right-0 {
+  animation: drawerSlideOutRight 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+/* Radix Dropdowns & Popovers */
+[data-radix-popper-content-wrapper] [data-state="open"] {
+  animation: menuEnter 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+[data-radix-popper-content-wrapper] [data-state="closed"] {
+  animation: menuExit 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
 /* ── Reduced Motion ───────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -166,5 +310,6 @@ table,
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+    transform: none !important;
   }
 }

@@ -12,7 +12,8 @@ app = FastAPI(
 from urllib.parse import urlparse
 from typing import Optional
 
-# Compute allowed origins from existing configured FRONTEND_URL setting
+# Compute allowed origins from CORS_ORIGINS setting and FRONTEND_URL
+_origins_set = set(getattr(settings, "CORS_ORIGINS", []) or [])
 _frontend_url = getattr(settings, "FRONTEND_URL", None)
 if _frontend_url:
     _parsed_frontend = urlparse(_frontend_url)
@@ -21,9 +22,12 @@ if _frontend_url:
         if _parsed_frontend and _parsed_frontend.netloc
         else _frontend_url
     )
-    _allow_origins = [_frontend_origin]
-else:
-    _allow_origins = ["http://localhost:3000"]
+    _origins_set.add(_frontend_origin)
+
+if not _origins_set:
+    _origins_set = {"http://localhost:3000", "http://127.0.0.1:3000"}
+
+_allow_origins = sorted(list(_origins_set))
 
 # Set up CORS middleware
 app.add_middleware(

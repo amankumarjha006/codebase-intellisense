@@ -33,7 +33,7 @@ export function RepoCardGrid({ repositories }: RepoCardGridProps) {
             <div
               key={repo.id}
               onClick={() => navigate(`/repositories/${repo.id}`)}
-              className="group p-4 rounded-lg border border-white/10 bg-surface-raised hover:border-white/20 transition-all cursor-pointer space-y-3 flex flex-col justify-between"
+              className="group p-4 rounded-lg border border-white/10 bg-surface-raised hover:border-accent/40 hover:bg-surface-overlay hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 active:scale-[0.99] cursor-pointer space-y-3 flex flex-col justify-between"
             >
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">

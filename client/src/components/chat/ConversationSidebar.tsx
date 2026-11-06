@@ -1,7 +1,8 @@
 import * as React from 'react';
+import { motion } from 'motion/react';
 import { MaterialIcon } from '../ui/MaterialIcon';
 import { Conversation } from '../../lib/types';
-import { formatRelativeTime } from '../../lib/utils';
+import { formatRelativeTime, cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import {
   DropdownMenu,
@@ -101,30 +102,47 @@ export function ConversationSidebar({
                     onSelectConv(c.id);
                   }
                 }}
-                className={`group relative flex items-center justify-between px-2.5 py-2 rounded-md text-xs cursor-pointer transition-colors ${
+                className={`group relative flex items-center justify-between px-2.5 py-2 rounded-md text-xs cursor-pointer select-none transition-colors duration-150 z-10 ${
                   isActive
-                    ? 'bg-surface-overlay text-accent font-medium border-l-2 border-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-overlay/50'
+                    ? 'text-accent font-medium'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-overlay/40'
                 }`}
               >
+                {isActive && (
+                  <motion.div
+                    layoutId="active-conversation-pill"
+                    className="absolute inset-0 rounded-md bg-surface-overlay border border-white/10 -z-10 shadow-xs"
+                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  />
+                )}
+                {isActive && (
+                  <motion.div
+                    layoutId="active-conversation-indicator"
+                    className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-accent shadow-[0_0_8px_var(--color-accent)]"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
                 <div className="flex items-center gap-2 min-w-0 pr-1">
                   <MaterialIcon
                     name="chat_bubble_outline"
                     size={14}
-                    className={isActive ? 'text-accent shrink-0' : 'text-text-tertiary group-hover:text-text-secondary shrink-0'}
+                    className={cn(
+                      'shrink-0 transition-transform duration-200 group-hover:scale-110',
+                      isActive ? 'text-accent' : 'text-text-tertiary group-hover:text-text-secondary'
+                    )}
                   />
                   <span className="truncate">{c.title || 'Untitled conversation'}</span>
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <span className="text-[10px] text-text-tertiary tabular-nums font-mono group-hover:hidden">
+                  <span className="text-[10px] text-text-tertiary tabular-nums font-mono opacity-100 group-hover:opacity-0 transition-opacity duration-150">
                     {formatRelativeTime(c.created_at)}
                   </span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className="hidden group-hover:flex items-center justify-center h-5 w-5 rounded text-text-tertiary hover:text-text-primary hover:bg-surface-raised"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center h-5 w-5 rounded text-text-tertiary hover:text-text-primary hover:bg-surface-raised active:scale-95"
                         aria-label="Conversation options"
                       >
                         <MaterialIcon name="more_vert" size={13} />

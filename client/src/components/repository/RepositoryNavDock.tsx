@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { MaterialIcon } from '../ui/MaterialIcon';
 import { cn } from '../../lib/utils';
 
@@ -67,18 +68,25 @@ export function RepositoryNavDock({
             to={item.path}
             aria-current={item.isActive ? 'page' : undefined}
             className={cn(
-              'group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors select-none',
+              'group relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors select-none z-10',
               item.isActive
-                ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] font-semibold border border-[rgba(185,228,208,0.22)]'
-                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/70'
+                ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/50'
             )}
           >
+            {item.isActive && (
+              <motion.div
+                layoutId="dock-active-pill-horiz-explicit"
+                className="absolute inset-0 rounded-lg bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+              />
+            )}
             <MaterialIcon
               name={item.iconName}
               active={item.isActive}
               size={20}
               className={cn(
-                'shrink-0 transition-colors',
+                'shrink-0 transition-transform duration-200 group-hover:scale-110',
                 !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
               )}
               aria-hidden={true}
@@ -108,18 +116,25 @@ export function RepositoryNavDock({
             to={item.path}
             aria-current={item.isActive ? 'page' : undefined}
             className={cn(
-              'group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all font-medium select-none',
+              'group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-colors font-medium select-none z-10',
               item.isActive
-                ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] font-semibold border border-[rgba(185,228,208,0.22)] shadow-xs'
-                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/70'
+                ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/50'
             )}
           >
+            {item.isActive && (
+              <motion.div
+                layoutId="dock-active-pill-vert-explicit"
+                className="absolute inset-0 rounded-xl bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+              />
+            )}
             <MaterialIcon
               name={item.iconName}
               active={item.isActive}
               size={20}
               className={cn(
-                'shrink-0 transition-all group-hover:scale-105',
+                'shrink-0 transition-transform duration-200 group-hover:scale-110',
                 !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
               )}
               aria-hidden={true}
@@ -151,18 +166,25 @@ export function RepositoryNavDock({
             to={item.path}
             aria-current={item.isActive ? 'page' : undefined}
             className={cn(
-              'group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors select-none',
+              'group relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors select-none z-10',
               item.isActive
-                ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] font-semibold border border-[rgba(185,228,208,0.22)]'
-                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/70'
+                ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/50'
             )}
           >
+            {item.isActive && (
+              <motion.div
+                layoutId="dock-active-pill-horiz-resp"
+                className="absolute inset-0 rounded-lg bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+              />
+            )}
             <MaterialIcon
               name={item.iconName}
               active={item.isActive}
               size={20}
               className={cn(
-                'shrink-0 transition-colors',
+                'shrink-0 transition-transform duration-200 group-hover:scale-110',
                 !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
               )}
               aria-hidden={true}
@@ -188,18 +210,25 @@ export function RepositoryNavDock({
             to={item.path}
             aria-current={item.isActive ? 'page' : undefined}
             className={cn(
-              'group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all font-medium select-none',
+              'group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-colors font-medium select-none z-10',
               item.isActive
-                ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] font-semibold border border-[rgba(185,228,208,0.22)] shadow-xs'
-                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/70'
+                ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/50'
             )}
           >
+            {item.isActive && (
+              <motion.div
+                layoutId="dock-active-pill-vert-resp"
+                className="absolute inset-0 rounded-xl bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+              />
+            )}
             <MaterialIcon
               name={item.iconName}
               active={item.isActive}
               size={20}
               className={cn(
-                'shrink-0 transition-all group-hover:scale-105',
+                'shrink-0 transition-transform duration-200 group-hover:scale-110',
                 !item.isActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
               )}
               aria-hidden={true}

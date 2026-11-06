@@ -5,8 +5,6 @@ import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { GithubIcon } from '../components/ui/GithubIcon';
 import { BlurText } from '../components/ui/BlurText';
 import { SpotlightCard } from '../components/ui/SpotlightCard';
-import { Dither } from '../components/ui/Dither';
-import { SpectralDrape } from '../components/ui/spectral-drape';
 import { InterferenceRibbons } from '../components/ui/interference-ribbons';
 import { Button } from '../components/ui/button';
 import { Drawer, DrawerContent } from '../components/ui/drawer';
@@ -470,9 +468,9 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* Final CTA with Dither background */}
+        {/* Final CTA with subtle ambient gradient */}
         <section className="py-24 px-4 sm:px-6 relative border-t border-[var(--color-border)] overflow-hidden" aria-labelledby="cta-heading">
-          <Dither />
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(138,180,248,0.08),transparent)]" aria-hidden="true" />
           <div className="max-w-3xl mx-auto relative z-10 space-y-6">
             <ScrollReveal>
               <div className="space-y-6">

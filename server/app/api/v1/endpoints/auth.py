@@ -24,6 +24,18 @@ def _build_frontend_redirect_url(error_code: str) -> str:
     parsed = urlparse(settings.FRONTEND_URL)
     return f"{parsed.scheme}://{parsed.netloc}/?error={error_code}"
 
+def _get_cookie_security_params() -> tuple[str, bool]:
+    """Resolve SameSite and Secure flags for authentication cookies."""
+    samesite = getattr(settings, "SESSION_COOKIE_SAMESITE", "lax").lower()
+    secure = (
+        getattr(settings, "SESSION_COOKIE_SECURE", None)
+        if getattr(settings, "SESSION_COOKIE_SECURE", None) is not None
+        else (settings.ENVIRONMENT == "production")
+    )
+    if samesite == "none":
+        secure = True
+    return samesite, secure
+
 @router.get("/github", summary="Initiate GitHub App Authorization")
 async def login_github(request: Request, redis_client: redis.Redis = Depends(get_redis)):
     """Initiates the GitHub App user authorization flow."""
@@ -50,8 +62,8 @@ async def dev_login(
     redis_client: redis.Redis = Depends(get_redis)
 ):
     """Provisions or loads a development user and sets a real session cookie."""
-    if settings.ENVIRONMENT != "development":
-        return JSONResponse(status_code=403, content={"error": "Dev login only available in development"})
+    if not getattr(settings, "ENABLE_DEV_LOGIN", False) or settings.ENVIRONMENT != "development":
+        return JSONResponse(status_code=403, content={"error": "Dev login disabled or not available in this environment"})
 
     try:
         user = (
@@ -83,15 +95,17 @@ async def dev_login(
             str(user.id),
         )
 
-        redirect_url = f"{settings.FRONTEND_URL}/dashboard"
+        base_frontend = settings.FRONTEND_URL.rstrip("/")
+        redirect_url = base_frontend if base_frontend.endswith("/dashboard") else f"{base_frontend}/dashboard"
         redirect_response = RedirectResponse(url=redirect_url, status_code=302)
+        samesite, secure = _get_cookie_security_params()
         redirect_response.set_cookie(
             key=settings.SESSION_COOKIE_NAME,
             value=session_id,
             max_age=settings.SESSION_EXPIRE_SECONDS,
             httponly=True,
-            secure=False,
-            samesite="lax",
+            secure=secure,
+            samesite=samesite,
         )
         return redirect_response
     except Exception as e:
@@ -184,13 +198,14 @@ async def github_callback(
         # 8. Redirect to frontend with HTTP-only cookie
         redirect_url = settings.FRONTEND_URL
         redirect_response = RedirectResponse(url=redirect_url, status_code=302)
+        samesite, secure = _get_cookie_security_params()
         redirect_response.set_cookie(
             key=settings.SESSION_COOKIE_NAME,
             value=session_id,
             max_age=settings.SESSION_EXPIRE_SECONDS,
             httponly=True,
-            secure=(settings.ENVIRONMENT == "production"),
-            samesite="lax",  # Adjust based on exact frontend/backend domain structure
+            secure=secure,
+            samesite=samesite,
         )
         
         logger.info("authentication_success", extra={"user_id": str(user.id), "request_id": req_id})
@@ -237,11 +252,12 @@ async def logout(
     if session_id:
         await redis_client.delete(f"session:{session_id}")
     
+    samesite, secure = _get_cookie_security_params()
     response.delete_cookie(
         key=settings.SESSION_COOKIE_NAME,
         httponly=True,
-        secure=(settings.ENVIRONMENT == "production"),
-        samesite="lax"
+        secure=secure,
+        samesite=samesite,
     )
     return None
 

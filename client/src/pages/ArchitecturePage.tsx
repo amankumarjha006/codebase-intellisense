@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
 import { AnimatedPage } from '../components/ui/AnimatedPage';
@@ -21,9 +22,18 @@ const architectureCache = new Map<string, ArchitectureOut>();
 
 export function ArchitecturePage() {
   const { id: repoId } = useParams<{ id: string }>();
-  const [repository] = React.useState<Repository | null>(() =>
-    repoId ? getCachedRepository(repoId) : null
-  );
+
+  const { data: repository = null } = useQuery<Repository | null>({
+    queryKey: ['repository', repoId],
+    queryFn: () => (repoId ? api.getRepository(repoId) : Promise.resolve(null)),
+    enabled: Boolean(repoId),
+    initialData: () => (repoId ? getCachedRepository(repoId) : null),
+  });
+
+  const handleReindex = React.useCallback(async () => {
+    if (!repoId) return;
+    await api.reindexRepository(repoId);
+  }, [repoId]);
 
   // Default to 'list' on mobile viewports (< 768px), otherwise 'modules'
   const [activeTab, setActiveTab] = React.useState<TabKey>(() => {
@@ -124,7 +134,14 @@ export function ArchitecturePage() {
 
   return (
     <AnimatedPage className="min-h-screen bg-surface-base text-text-primary flex flex-col font-sans">
-      {repository && <RepositoryHeader repository={repository} />}
+      {repository ? (
+        <RepositoryHeader repository={repository} onReindex={handleReindex} />
+      ) : repoId ? (
+        <RepositoryHeader
+          repository={{ id: repoId, owner: 'Repository', name: 'Architecture' }}
+          onReindex={handleReindex}
+        />
+      ) : null}
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-10 pb-16 space-y-6">
         {/* Page Top Header */}

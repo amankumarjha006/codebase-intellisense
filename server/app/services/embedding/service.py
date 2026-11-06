@@ -47,39 +47,23 @@ class EmbeddingService:
             return {"embeddings_created": 0}
 
         embeddings_created = 0
-        
-        # Token-aware batching
-        batches = []
         current_batch = []
         current_tokens = 0
+        batch_num = 0
 
-        for chunk in chunks:
-            text = ChunkEmbeddingTextBuilder.build(chunk)
-            tokens = self._estimate_tokens(text)
-            
-            if current_batch and (len(current_batch) >= self.max_batch_items or current_tokens + tokens > self.max_batch_tokens):
-                batches.append(current_batch)
-                current_batch = []
-                current_tokens = 0
-
-            current_batch.append((chunk, text, tokens))
-            current_tokens += tokens
-
-        if current_batch:
-            batches.append(current_batch)
-
-        total_batches = len(batches)
-
-        for i, batch in enumerate(batches):
-            batch_num = i + 1
+        def _flush_batch(batch):
+            nonlocal embeddings_created, batch_num
+            if not batch:
+                return
+            batch_num += 1
             batch_chunks = [item[0] for item in batch]
             texts = [item[1] for item in batch]
             total_tokens = sum(item[2] for item in batch)
-            
-            logger.info(f"Processing embedding batch {batch_num}/{total_batches} (items: {len(batch_chunks)}, estimated_tokens: {total_tokens})")
-            
+
+            logger.info(f"Processing embedding batch {batch_num} (items: {len(batch_chunks)}, estimated_tokens: {total_tokens})")
+
             # Call provider with retries
-            vectors = self._embed_with_retry(texts, batch_num, total_batches)
+            vectors = self._embed_with_retry(texts, batch_num, 0)
 
             # Create Embedding records
             embedding_records = []
@@ -92,13 +76,28 @@ class EmbeddingService:
                     dimension=settings.EMBEDDING_DIMENSION
                 )
                 embedding_records.append(record)
-                
+
             # Persist (without committing)
             self.knowledge_repo.bulk_create_embeddings(embedding_records)
             embeddings_created += len(embedding_records)
-            
+
             if settings.EMBEDDING_MIN_INTERVAL_SECONDS > 0:
                 time.sleep(settings.EMBEDDING_MIN_INTERVAL_SECONDS)
+
+        for chunk in chunks:
+            text = ChunkEmbeddingTextBuilder.build(chunk)
+            tokens = self._estimate_tokens(text)
+
+            if current_batch and (len(current_batch) >= self.max_batch_items or current_tokens + tokens > self.max_batch_tokens):
+                _flush_batch(current_batch)
+                current_batch = []
+                current_tokens = 0
+
+            current_batch.append((chunk, text, tokens))
+            current_tokens += tokens
+
+        if current_batch:
+            _flush_batch(current_batch)
 
         return {"embeddings_created": embeddings_created}
 

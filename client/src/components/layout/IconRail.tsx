@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { MaterialIcon } from '../ui/MaterialIcon';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '../../lib/utils';
@@ -56,14 +57,32 @@ export function IconRail({ onOpenCommand }: IconRailProps) {
                   <NavLink
                     to={item.path}
                     className={cn(
-                      'h-9 w-9 rounded-[var(--radius-control)] flex items-center justify-center transition-colors',
+                      'group relative h-9 w-9 rounded-[var(--radius-control)] flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 select-none z-10',
                       isActive
-                        ? 'bg-[var(--color-raised)] text-[var(--color-text)] border border-[var(--color-border-strong)]'
+                        ? 'text-[var(--color-accent)]'
                         : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
                     )}
                     aria-label={item.name}
                   >
-                    <MaterialIcon name={item.icon} size={19} />
+                    {isActive && (
+                      <motion.div
+                        layoutId="rail-active-pill"
+                        className="absolute inset-0 rounded-[var(--radius-control)] bg-[var(--color-raised)] border border-[var(--color-border-strong)] -z-10 shadow-xs"
+                        transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                      />
+                    )}
+                    {isActive && (
+                      <motion.div
+                        layoutId="rail-active-pip"
+                        className="absolute -left-2 top-2 bottom-2 w-0.5 rounded-r bg-[var(--color-accent)] shadow-[0_0_8px_var(--color-accent)]"
+                        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                      />
+                    )}
+                    <MaterialIcon
+                      name={item.icon}
+                      size={19}
+                      className="transition-transform duration-200 group-hover:scale-110"
+                    />
                   </NavLink>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8}>
@@ -112,19 +131,26 @@ export function IconRail({ onOpenCommand }: IconRailProps) {
                       type="button"
                       onClick={() => navigate(`/repositories/${repo.id}`)}
                       className={cn(
-                        'relative h-9 w-9 rounded-[var(--radius-control)] flex items-center justify-center font-mono text-xs font-medium transition-colors',
+                        'group relative h-9 w-9 rounded-[var(--radius-control)] flex items-center justify-center font-mono text-xs font-medium transition-all duration-200 hover:scale-105 active:scale-95 select-none',
                         isCurrent
-                          ? 'bg-[var(--color-raised)] text-[var(--color-accent)] border border-[var(--color-accent-border)]'
-                          : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]'
+                          ? 'bg-[var(--color-raised)] text-[var(--color-accent)] border border-[var(--color-accent-border)] shadow-xs'
+                          : 'bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)] hover:border-[var(--color-border-strong)]'
                       )}
                       aria-label={`${repo.owner}/${repo.name}`}
                     >
                       <span>{repo.name.slice(0, 2).toUpperCase()}</span>
+                      {isCurrent && (
+                        <motion.div
+                          layoutId="rail-active-repo-pip"
+                          className="absolute -left-2 top-2 bottom-2 w-0.5 rounded-r bg-[var(--color-accent)] shadow-[0_0_8px_var(--color-accent)]"
+                          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                        />
+                      )}
                       {/* Show status dot ONLY if not ready */}
                       {isNonReady && (
                         <span
                           className={cn(
-                            'absolute top-1 right-1 h-1.5 w-1.5 rounded-full ring-2 ring-[var(--color-surface)]',
+                            'absolute top-1 right-1 h-1.5 w-1.5 rounded-full ring-2 ring-[var(--color-surface)] animate-pulse',
                             dotColor
                           )}
                           aria-label={`Status: ${repo.latest_job_status}`}

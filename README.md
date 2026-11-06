@@ -10,7 +10,8 @@ An AI-powered GitHub repository analysis platform designed for intelligent codeb
 - **Backend (`server`):** Python, FastAPI, Pydantic, SQLAlchemy, Alembic, Uvicorn
 - **Database / Vector Store:** PostgreSQL + `pgvector`
 - **Infrastructure / Caching:** Docker, Docker Compose, Redis
-- **Future AI / Parsing:** Gemini API, Embeddings, Tree-sitter AST parsing
+- **System Prerequisites:** Git CLI (must be on system PATH for repo cloning), Node.js 20+, Python 3.11+
+- **AI & Parsing:** Gemini API, fastembed (local BAAI/bge-base-en-v1.5 embeddings), Tree-sitter AST parsing
 
 ---
 
@@ -64,6 +65,11 @@ python -m venv .venv
 # source .venv/bin/activate
 
 pip install -r requirements.txt
+
+# Run database migrations:
+alembic upgrade head
+
+# Start FastAPI backend:
 uvicorn app.main:app --reload
 ```
 

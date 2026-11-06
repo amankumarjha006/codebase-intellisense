@@ -257,11 +257,15 @@ def get_repository(
 def delete_repository(
     repository_id: UUID,
     repository: Repository = Depends(get_authorized_repository),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     _: None = Depends(general_rate_limiter),
 ):
-    """Archives a repository so it is hidden from the user interface without deleting its data."""
-    repository.is_archived = True
+    """Disconnects a repository for the current user. If no users retain access, archives it."""
+    repo_repo = RepositoryRepository(db)
+    repo_repo.revoke_user_access(user_id=current_user.id, repository_id=repository.id)
+    if repo_repo.count_users_with_access(repository.id) == 0:
+        repository.is_archived = True
     db.commit()
     return None
 

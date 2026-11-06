@@ -12,7 +12,16 @@ class LineChunker:
         self.max_chars = max_chars
 
     def chunk(self, file_id: UUID, file_path: str, language: str, source_bytes: bytes) -> List[ChunkData]:
-        source_text = source_bytes.decode('utf-8', 'replace')
+        if source_bytes.startswith(b"\xef\xbb\xbf"):
+            source_text = source_bytes[3:].decode("utf-8", errors="replace")
+        elif source_bytes.startswith(b"\xff\xfe"):
+            source_text = source_bytes[2:].decode("utf-16le", errors="replace")
+        elif source_bytes.startswith(b"\xfe\xff"):
+            source_text = source_bytes[2:].decode("utf-16be", errors="replace")
+        else:
+            source_text = source_bytes.decode("utf-8", errors="replace")
+        # Strip NUL bytes so chunk content is always valid for PostgreSQL
+        source_text = source_text.replace("\x00", "")
         lines = source_text.splitlines(keepends=True)
         
         chunks = []

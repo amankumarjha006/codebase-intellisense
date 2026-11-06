@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { Toaster } from '../ui/sonner';
 import { TooltipProvider } from '../ui/tooltip';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
@@ -64,10 +65,24 @@ export function AppLayout() {
             ref={mainRef}
             id="main-content"
             tabIndex={-1}
-            className="flex-1 overflow-y-auto focus:outline-none pb-[var(--height-bottomnav)] md:pb-0"
+            className="flex-1 overflow-y-auto focus:outline-none pb-[var(--height-bottomnav)] md:pb-0 flex flex-col"
           >
             <ErrorBoundary>
-              <Outlet />
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={location.pathname}
+                  initial={{ opacity: 0, y: 10, filter: 'blur(3px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, y: -8, filter: 'blur(2px)' }}
+                  transition={{
+                    duration: 0.26,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  className="w-full flex-1 flex flex-col min-h-0"
+                >
+                  <Outlet />
+                </motion.div>
+              </AnimatePresence>
             </ErrorBoundary>
           </main>
 

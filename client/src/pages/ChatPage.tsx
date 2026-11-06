@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { Button } from '../components/ui/button';
+import { AnimatedPage } from '../components/ui/AnimatedPage';
 import { RepositoryHeader } from '../components/repository/RepositoryHeader';
 import { ChatLayout } from '../components/chat/ChatLayout';
 import { ConversationSidebar } from '../components/chat/ConversationSidebar';
@@ -407,7 +408,7 @@ export function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--height-topbar))] overflow-hidden bg-surface-base">
+    <AnimatedPage className="flex flex-col h-[calc(100vh-var(--height-topbar))] overflow-hidden bg-surface-base">
       {/* 5-tab Sticky Header */}
       {repo && <RepositoryHeader repository={repo} onReindex={async () => {}} />}
 
@@ -551,7 +552,7 @@ export function ChatPage() {
           }
         />
       </div>
-    </div>
+    </AnimatedPage>
   );
 }
 export default ChatPage;

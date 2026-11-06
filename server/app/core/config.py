@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
+from pydantic import field_validator
+from typing import Optional, Any
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
@@ -16,8 +17,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+psycopg://postgres:postgres@localhost:5433/codebase_intellisense"
     REDIS_URL: str = "redis://localhost:6379/0"
     
-    # Application URLs
+    # Application URLs & CORS
     FRONTEND_URL: str = "http://localhost:3000/dashboard"
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     # GitHub App Configuration (Authentication Phase)
     # Note: GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY will be required in a future phase 
@@ -30,6 +32,11 @@ class Settings(BaseSettings):
     # Session Configuration
     SESSION_COOKIE_NAME: str = "session_id"
     SESSION_EXPIRE_SECONDS: int = 86400  # 24 hours
+    SESSION_COOKIE_SAMESITE: str = "lax"  # "lax", "none", or "strict"
+    SESSION_COOKIE_SECURE: Optional[bool] = None  # Auto-inferred from ENVIRONMENT == "production" if None
+
+    # Dev Authentication Backdoor Guard
+    ENABLE_DEV_LOGIN: bool = True
     
     # AI & Embedding Credentials (Future integration)
     GEMINI_API_KEY: Optional[str] = None
@@ -82,6 +89,23 @@ class Settings(BaseSettings):
     
     RATE_LIMIT_STREAM_REQUESTS: int = 10
     RATE_LIMIT_STREAM_WINDOW_SECONDS: int = 60
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Any) -> list[str]:
+        if isinstance(v, str):
+            if not v.strip():
+                return []
+            if v.startswith("[") and v.endswith("]"):
+                import json
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
+            return [i.strip() for i in v.split(",") if i.strip()]
+        elif isinstance(v, list):
+            return [str(i).strip() for i in v if str(i).strip()]
+        return ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE_PATH),

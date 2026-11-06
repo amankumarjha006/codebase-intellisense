@@ -155,3 +155,44 @@ def test_index_repository_handles_bare_file_list(mock_db, version):
         service._index_repository("/fake/repo", version)
         mock_knowledge_repo.bulk_create_files.assert_called_once()
 
+
+def test_read_file_content_handles_boms_and_strips_null_bytes(tmp_path):
+    """Verify that read_file_content correctly decodes UTF-16/UTF-8 BOMs and strips NUL bytes."""
+    from app.services.indexing import read_file_content
+
+    # 1. UTF-16 LE file with BOM
+    p_utf16le = tmp_path / "utf16le.txt"
+    p_utf16le.write_bytes(b"\xff\xfe" + "Hello from UTF-16 LE".encode("utf-16le"))
+    content, _ = read_file_content(str(p_utf16le))
+    assert content == "Hello from UTF-16 LE"
+    assert "\x00" not in content
+
+    # 2. File with raw NUL bytes (e.g. binary or mixed)
+    p_nul = tmp_path / "corrupt.txt"
+    p_nul.write_bytes(b"Clean text\x00with null\x00bytes")
+    content, _ = read_file_content(str(p_nul))
+    assert content == "Clean textwith nullbytes"
+    assert "\x00" not in content
+
+
+def test_update_job_status_sanitizes_null_bytes_and_invalid_failure_code(mock_db):
+    """Verify that _update_job_status sanitizes NUL bytes in error_message and clamps failure_code."""
+    from app.models.repository import IndexJob
+    service = IndexingService(mock_db)
+
+    job_id = uuid4()
+    mock_job = IndexJob(id=job_id, repository_id=uuid4(), repository_version_id=uuid4(), status="INDEXING")
+    service.repository_repo.get_job_by_id = MagicMock(return_value=mock_job)
+
+    # Pass an error message with NUL byte and an unconstrained failure_code
+    error_with_nul = "DataError: text field cannot contain \x00 bytes"
+    service._update_job_status(job_id, "FAILED", error_message=error_with_nul, failure_code="ANALYSIS_FAILED")
+
+    assert mock_job.status == "FAILED"
+    assert "\x00" not in mock_job.error_message
+    assert mock_job.error_message == "DataError: text field cannot contain  bytes"
+    # Clamped to allowed constraint value
+    assert mock_job.failure_code == "INTERNAL_ERROR"
+    mock_db.commit.assert_called_once()
+
+

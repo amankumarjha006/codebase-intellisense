@@ -163,7 +163,7 @@ class GithubService:
             return None
 
     async def get_repository(
-        self, access_token: str, owner: str, repo: str
+        self, access_token: Optional[str], owner: str, repo: str
     ) -> Dict[str, Any]:
         """
         Fetch repository information from GitHub using the authenticated user's token.
@@ -172,10 +172,12 @@ class GithubService:
         Raises GithubAuthError if the repository cannot be accessed.
         """
         headers = {
-            "Authorization": f"Bearer {access_token}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "Codebase-Intellisense",
         }
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
 
         async with httpx.AsyncClient() as client:
             resp = await client.get(
@@ -183,6 +185,24 @@ class GithubService:
                 headers=headers,
                 timeout=10.0,
             )
+
+            # If token was rejected with 401, fallback to unauthenticated request for public repositories
+            if resp.status_code == 401 and access_token:
+                logger.warning(
+                    "GitHub access_token returned 401 for %s/%s. Retrying unauthenticated for public repo.",
+                    owner,
+                    repo,
+                )
+                unauth_headers = {
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                    "User-Agent": "Codebase-Intellisense",
+                }
+                resp = await client.get(
+                    f"https://api.github.com/repos/{owner}/{repo}",
+                    headers=unauth_headers,
+                    timeout=10.0,
+                )
 
             if resp.status_code == 404:
                 raise GithubAuthError(
@@ -208,7 +228,7 @@ class GithubService:
             return resp.json()
 
     async def get_branch_commit(
-        self, access_token: str, owner: str, repo: str, branch: str
+        self, access_token: Optional[str], owner: str, repo: str, branch: str
     ) -> str:
         """
         Fetch the current commit SHA for a specific branch from GitHub.
@@ -216,10 +236,12 @@ class GithubService:
         Raises GithubAuthError if the branch is not found or accessible.
         """
         headers = {
-            "Authorization": f"Bearer {access_token}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "Codebase-Intellisense",
         }
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
 
         async with httpx.AsyncClient() as client:
             resp = await client.get(
@@ -227,6 +249,25 @@ class GithubService:
                 headers=headers,
                 timeout=10.0,
             )
+
+            # If token was rejected with 401, fallback to unauthenticated request for public repositories
+            if resp.status_code == 401 and access_token:
+                logger.warning(
+                    "GitHub access_token returned 401 for branch %s of %s/%s. Retrying unauthenticated for public repo.",
+                    branch,
+                    owner,
+                    repo,
+                )
+                unauth_headers = {
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                    "User-Agent": "Codebase-Intellisense",
+                }
+                resp = await client.get(
+                    f"https://api.github.com/repos/{owner}/{repo}/branches/{branch}",
+                    headers=unauth_headers,
+                    timeout=10.0,
+                )
 
             if resp.status_code == 404:
                 raise GithubAuthError(

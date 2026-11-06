@@ -78,6 +78,17 @@ async def test_rate_limiter_unauthenticated_fallback(mock_redis, mock_request, m
     assert args[2] == "rate_limit:test:ip:127.0.0.1"
 
 @pytest.mark.asyncio
+async def test_rate_limiter_ignores_spoofed_x_forwarded_for(mock_redis, mock_request, mock_response):
+    limiter = RateLimiter("test", limit=5, window=60)
+    mock_request.headers = {"x-forwarded-for": "203.0.113.195, 198.51.100.1"}
+    
+    await limiter(request=mock_request, response=mock_response, redis_client=mock_redis, user=None)
+    
+    # Must use client.host and ignore untrusted forwarded header
+    args = mock_redis.eval.call_args[0]
+    assert args[2] == "rate_limit:test:ip:127.0.0.1"
+
+@pytest.mark.asyncio
 async def test_rate_limiter_infrastructure_failure(mock_redis, mock_request, mock_response, user):
     limiter = RateLimiter("test", limit=5, window=60)
     
@@ -119,15 +130,3 @@ async def test_get_current_user_raises_auth_exception_when_none():
     with pytest.raises(AuthException) as exc_info:
         await get_current_user(user=None)
     assert exc_info.value.code == "UNAUTHENTICATED"
-
-
-@pytest.mark.asyncio
-async def test_rate_limiter_uses_x_forwarded_for(mock_redis, mock_request, mock_response):
-    limiter = RateLimiter("test", limit=5, window=60)
-    mock_request.headers = {"x-forwarded-for": "203.0.113.195, 198.51.100.1"}
-
-    await limiter(request=mock_request, response=mock_response, redis_client=mock_redis, user=None)
-
-    mock_redis.eval.assert_called_once()
-    args = mock_redis.eval.call_args[0]
-    assert args[2] == "rate_limit:test:ip:203.0.113.195"

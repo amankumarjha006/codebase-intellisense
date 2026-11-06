@@ -296,3 +296,15 @@ async def test_logout_successful(async_client, mock_redis, mock_db):
     # Verify cookie cleared (FastAPI sends Set-Cookie with max-age=0)
     assert settings.SESSION_COOKIE_NAME in response.headers["set-cookie"]
     assert "Max-Age=0" in response.headers["set-cookie"] or "max-age=0" in response.headers["set-cookie"].lower()
+
+
+@pytest.mark.asyncio
+async def test_dev_login_redirect_no_duplicate_dashboard(async_client, mock_redis, mock_db, mocker):
+    mocker.patch.object(settings, "ENVIRONMENT", "development")
+    mock_user = User(id=uuid4(), email="alex.chen@devtools.co", full_name="Alex Chen")
+    mock_db.query().filter().order_by().first.return_value = mock_user
+
+    response = await async_client.get(f"{settings.API_V1_STR}/auth/dev-login", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == "http://localhost:3000/dashboard"
+    assert "/dashboard/dashboard" not in response.headers["location"]

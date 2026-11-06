@@ -190,11 +190,11 @@ export function FileTree({
                   aria-label={`File ${item.name}`}
                   style={{ paddingLeft: `${item.depth * 14 + 10}px` }}
                   className={`
-                    w-full h-full flex items-center gap-2 pr-2 text-left transition-colors truncate
+                    group w-full h-full flex items-center gap-2 pr-2 text-left transition-all duration-150 truncate select-none
                     focus:outline-none focus-visible:ring-1 focus-visible:ring-accent
                     ${
                       isActive
-                        ? 'bg-surface-overlay text-text-primary font-medium border-l-2 border-accent'
+                        ? 'bg-accent/10 text-accent font-medium border-l-2 border-accent shadow-xs'
                         : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04] border-l-2 border-transparent'
                     }
                   `}
@@ -202,7 +202,7 @@ export function FileTree({
                   <MaterialIcon
                     name={getFileIcon(item.name)}
                     size={14}
-                    className={`shrink-0 ${isActive ? 'text-accent' : 'text-text-tertiary'}`}
+                    className={`shrink-0 transition-transform duration-150 group-hover:scale-110 ${isActive ? 'text-accent' : 'text-text-tertiary group-hover:text-text-secondary'}`}
                     aria-hidden="true"
                   />
                   <span className="truncate">{item.name}</span>
@@ -215,18 +215,18 @@ export function FileTree({
                   aria-expanded={item.isExpanded}
                   aria-label={`Folder ${item.name}`}
                   style={{ paddingLeft: `${item.depth * 14 + 6}px` }}
-                  className="w-full h-full flex items-center gap-1.5 pr-2 text-left text-text-secondary hover:text-text-primary hover:bg-white/[0.03] transition-colors truncate focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                  className="group w-full h-full flex items-center gap-1.5 pr-2 text-left text-text-secondary hover:text-text-primary hover:bg-white/[0.04] transition-all duration-150 truncate select-none focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
                 >
                   <MaterialIcon
                     name={item.isExpanded ? 'expand_more' : 'chevron_right'}
                     size={16}
-                    className="shrink-0 text-text-tertiary"
+                    className="shrink-0 text-text-tertiary group-hover:text-text-secondary transition-colors"
                     aria-hidden="true"
                   />
                   <MaterialIcon
                     name={item.isExpanded ? 'folder_open' : 'folder'}
                     size={15}
-                    className="shrink-0 text-accent/80"
+                    className="shrink-0 text-accent/80 transition-transform duration-150 group-hover:scale-105"
                     aria-hidden="true"
                   />
                   <span className="font-medium truncate text-text-primary">{item.name}</span>

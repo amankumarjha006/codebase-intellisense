@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { GithubIcon } from '../ui/GithubIcon';
 import { MaterialIcon } from '../ui/MaterialIcon';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
@@ -51,10 +52,30 @@ export function Sidebar({
 
   React.useEffect(() => {
     let isMounted = true;
-    realApi.listRepositories(1, 100).then((res) => {
-      if (isMounted) setRepositories(res.items || []);
-    }).catch(() => {});
-    return () => { isMounted = false; };
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const fetchRepos = async () => {
+      try {
+        const res = await realApi.listRepositories(1, 100);
+        if (!isMounted) return;
+        setRepositories(res.items || []);
+        const hasActive = (res.items || []).some((r) =>
+          ['QUEUED', 'FETCHING', 'INDEXING', 'ANALYZING'].includes(r.latest_job_status || '')
+        );
+        if (hasActive) {
+          timer = setTimeout(fetchRepos, 2500);
+        }
+      } catch {
+        // ignore transient error
+      }
+    };
+
+    fetchRepos();
+
+    return () => {
+      isMounted = false;
+      if (timer) clearTimeout(timer);
+    };
   }, [location.pathname]);
 
   const isDashboardActive = location.pathname === '/dashboard';
@@ -136,18 +157,25 @@ export function Sidebar({
             <NavLink
               to="/dashboard"
               className={cn(
-                'group flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
+                'group relative flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-control)] text-xs font-medium transition-colors select-none z-10',
                 isDashboardActive
-                  ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
+                  ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
                   : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
               )}
             >
+              {isDashboardActive && (
+                <motion.div
+                  layoutId="sidebar-main-active"
+                  className="absolute inset-0 rounded-[var(--radius-control)] bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                />
+              )}
               <MaterialIcon
                 name="dashboard"
                 active={isDashboardActive}
                 size={22}
                 className={cn(
-                  'shrink-0 transition-colors',
+                  'shrink-0 transition-transform duration-200 group-hover:scale-110',
                   !isDashboardActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
                 )}
                 aria-hidden={true}
@@ -187,18 +215,25 @@ export function Sidebar({
             <NavLink
               to="/repositories"
               className={cn(
-                'group flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
+                'group relative flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-control)] text-xs font-medium transition-colors select-none z-10',
                 isRepositoriesActive
-                  ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
+                  ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
                   : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60'
               )}
             >
+              {isRepositoriesActive && (
+                <motion.div
+                  layoutId="sidebar-main-active"
+                  className="absolute inset-0 rounded-[var(--radius-control)] bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                />
+              )}
               <MaterialIcon
                 name="folder_special"
                 active={isRepositoriesActive}
                 size={22}
                 className={cn(
-                  'shrink-0 transition-colors',
+                  'shrink-0 transition-transform duration-200 group-hover:scale-110',
                   !isRepositoriesActive && 'group-hover:text-[var(--color-mint-hover,#D0F1E0)]'
                 )}
                 aria-hidden={true}
@@ -277,7 +312,7 @@ export function Sidebar({
                 {pinnedRepositories.slice(0, 10).map((repo) => {
                   const isSelected = location.pathname.startsWith(`/repositories/${repo.id}`);
                   const isReady = repo.latest_job_status === 'READY' || (repo.active_version_short_sha && !repo.latest_job_status);
-                  const isIndexing = repo.latest_job_status === 'INDEXING' || repo.latest_job_status === 'FETCHING' || repo.latest_job_status === 'QUEUED';
+                  const isIndexing = repo.latest_job_status === 'INDEXING' || repo.latest_job_status === 'FETCHING' || repo.latest_job_status === 'QUEUED' || repo.latest_job_status === 'ANALYZING';
                   const isFailed = repo.latest_job_status === 'FAILED';
 
                   const linkElement = (
@@ -285,14 +320,21 @@ export function Sidebar({
                       key={repo.id}
                       to={`/repositories/${repo.id}`}
                       className={cn(
-                        'group relative flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium transition-colors',
+                        'group relative flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[var(--radius-control)] text-xs font-medium transition-colors select-none z-10',
                         isSelected
-                          ? 'bg-[var(--color-mint-selected-bg,#253A32)] text-[var(--color-mint-accent,#B9E4D0)] border border-[rgba(185,228,208,0.22)]'
+                          ? 'text-[var(--color-mint-accent,#B9E4D0)] font-semibold'
                           : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-raised)]/60',
                         collapsed && 'justify-center p-2'
                       )}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
+                      {isSelected && !collapsed && (
+                        <motion.div
+                          layoutId="sidebar-pinned-active"
+                          className="absolute inset-0 rounded-[var(--radius-control)] bg-[var(--color-mint-selected-bg,#253A32)] border border-[rgba(185,228,208,0.22)] -z-10 shadow-xs"
+                          transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                        />
+                      )}
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
                         <MaterialIcon
                           name="folder"
                           active={isSelected}
@@ -304,9 +346,28 @@ export function Sidebar({
                           aria-hidden="true"
                         />
                         {!collapsed && (
-                          <span className={cn('truncate', isSelected && 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]')}>
-                            {repo.name}
-                          </span>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className={cn('truncate', isSelected && 'font-semibold text-[var(--color-mint-accent,#B9E4D0)]')}>
+                              {repo.name}
+                            </span>
+                            {isIndexing && (
+                              <div className="w-20 h-1 mt-1 rounded-full bg-[var(--color-surface)] overflow-hidden border border-[var(--color-border)]/40">
+                                <div
+                                  className="h-full bg-[var(--color-warning)] rounded-full transition-all duration-500 animate-pulse"
+                                  style={{
+                                    width:
+                                      repo.latest_job_status === 'FETCHING'
+                                        ? '35%'
+                                        : repo.latest_job_status === 'INDEXING'
+                                        ? '70%'
+                                        : repo.latest_job_status === 'ANALYZING'
+                                        ? '90%'
+                                        : '15%',
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
 

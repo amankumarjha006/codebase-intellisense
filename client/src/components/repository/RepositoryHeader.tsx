@@ -274,24 +274,35 @@ export function RepositoryHeader({
               <Link
                 key={tab.id}
                 to={tab.path}
-                className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors select-none rounded-t focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
+                className={`group relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all duration-200 select-none rounded-t focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
                   tab.isActive
                     ? 'text-accent font-semibold'
-                    : 'text-text-secondary hover:text-text-primary'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
                 }`}
               >
-                <MaterialIcon name={tab.icon} size={15} />
+                <MaterialIcon
+                  name={tab.icon}
+                  size={15}
+                  className="transition-transform duration-200 group-hover:scale-110"
+                />
                 <span>{tab.name}</span>
-                <span className="hidden sm:inline text-[10px] text-text-tertiary font-mono">
+                <span className="hidden sm:inline text-[10px] text-text-tertiary font-mono group-hover:text-text-secondary transition-colors">
                   {tab.shortcut}
                 </span>
 
                 {tab.isActive && (
-                  <motion.div
-                    layoutId="repo-header-active-tab"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
+                  <>
+                    <motion.div
+                      layoutId="repo-header-active-pill"
+                      className="absolute inset-0 rounded-t bg-white/[0.06] -z-10"
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    />
+                    <motion.div
+                      layoutId="repo-header-active-tab"
+                      className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-accent shadow-[0_0_12px_rgba(138,180,248,0.7)]"
+                      transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+                    />
+                  </>
                 )}
               </Link>
             );

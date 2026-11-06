@@ -150,11 +150,14 @@ def enrich_architecture_payload(
                 raw_response = pool.submit(
                     asyncio.run,
                     llm_provider.generate(prompt=prompt, system_instruction=SYSTEM_PROMPT),
-                ).result(timeout=60)
+                ).result(timeout=30)
         else:
-            raw_response = asyncio.run(
-                llm_provider.generate(prompt=prompt, system_instruction=SYSTEM_PROMPT)
-            )
+            async def _generate_with_timeout() -> str:
+                return await asyncio.wait_for(
+                    llm_provider.generate(prompt=prompt, system_instruction=SYSTEM_PROMPT),
+                    timeout=30.0,
+                )
+            raw_response = asyncio.run(_generate_with_timeout())
 
         # Clean potential markdown wrapping
         text_response = raw_response.strip()

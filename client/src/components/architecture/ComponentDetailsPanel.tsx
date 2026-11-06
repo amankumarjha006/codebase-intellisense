@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 import type {
   ArchitectureOut,
   ComponentFileItem,
@@ -14,6 +15,7 @@ interface ComponentDetailsPanelProps {
   repoId: string;
   onClose: () => void;
   onSelectComponent: (comp: ComponentOut) => void;
+  isEmbedded?: boolean;
 }
 
 export function ComponentDetailsPanel({
@@ -22,6 +24,7 @@ export function ComponentDetailsPanel({
   repoId,
   onClose,
   onSelectComponent,
+  isEmbedded = false,
 }: ComponentDetailsPanelProps) {
   const navigate = useNavigate();
   const [page, setPage] = React.useState(1);
@@ -92,9 +95,18 @@ export function ComponentDetailsPanel({
   const totalPages = Math.max(1, Math.ceil(totalFiles / pageSize));
 
   return (
-    <aside
+    <motion.aside
+      key={component.id}
+      initial={{ opacity: 0, x: 16 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 16 }}
+      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
       aria-label={`Details for ${component.name}`}
-      className="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-surface-raised border-l border-white/10 z-30 flex flex-col shadow-2xl overflow-hidden"
+      className={
+        isEmbedded
+          ? "w-full h-full bg-surface-raised flex flex-col overflow-hidden"
+          : "fixed inset-y-0 right-0 w-full sm:w-[420px] bg-surface-raised border-l border-white/10 z-40 flex flex-col shadow-2xl overflow-hidden"
+      }
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/10 bg-surface-raised">
@@ -294,6 +306,6 @@ export function ComponentDetailsPanel({
           )}
         </div>
       </div>
-    </aside>
+    </motion.aside>
   );
 }

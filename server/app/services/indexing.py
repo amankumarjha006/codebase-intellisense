@@ -292,13 +292,42 @@ def clone_repository(clone_url: str, target_dir: str, branch: str = "main", gith
         raise GitError(f"Invalid branch name format: {branch}")
 
     try:
-        result = subprocess.run(
-            ["git", "clone", "--depth", "1", "--branch", branch, "--", clone_url, target_dir],
-            capture_output=True,
-            text=True,
-            timeout=300,
-            env=env
-        )
+        try:
+            result = subprocess.run(
+                ["git", "clone", "--depth", "1", "--branch", branch, "--", clone_url, target_dir],
+                capture_output=True,
+                text=True,
+                timeout=300,
+                env=env
+            )
+        except FileNotFoundError as fnf:
+            raise GitError("Git executable not found. Please install git and ensure it is available on system PATH.") from fnf
+        if result.returncode != 0 and github_token:
+            # If authenticated clone failed (e.g. token expired on a public repo), retry unauthenticated
+            # Clean target_dir before retry so git clone does not fail with "directory not empty"
+            if os.path.exists(target_dir):
+                for item in os.listdir(target_dir):
+                    item_path = os.path.join(target_dir, item)
+                    if os.path.isdir(item_path):
+                        shutil.rmtree(item_path, ignore_errors=True)
+                    else:
+                        try:
+                            os.unlink(item_path)
+                        except OSError:
+                            pass
+            env_unauth = os.environ.copy()
+            env_unauth["GIT_TERMINAL_PROMPT"] = "0"
+            retry_result = subprocess.run(
+                ["git", "clone", "--depth", "1", "--branch", branch, "--", clone_url, target_dir],
+                capture_output=True,
+                text=True,
+                timeout=300,
+                env=env_unauth
+            )
+            if retry_result.returncode == 0:
+                result = retry_result
+                env = env_unauth
+
         if result.returncode != 0:
             err = result.stderr
             if github_token:
@@ -397,15 +426,24 @@ def discover_files(root_dir: str) -> List[Tuple[str, str]]:
 
 
 def read_file_content(file_path: str) -> Tuple[str, str]:
-    """Read file content and return (content, hash)."""
+    """Read file content and return (content, hash). Handles UTF-8/UTF-16 BOMs and strips NUL bytes."""
     with open(file_path, "rb") as f:
         content_bytes = f.read()
 
-    try:
-        content = content_bytes.decode("utf-8")
-    except UnicodeDecodeError:
-        content = content_bytes.decode("utf-8", errors="replace")
+    if content_bytes.startswith(b"\xef\xbb\xbf"):
+        content = content_bytes[3:].decode("utf-8", errors="replace")
+    elif content_bytes.startswith(b"\xff\xfe"):
+        content = content_bytes[2:].decode("utf-16le", errors="replace")
+    elif content_bytes.startswith(b"\xfe\xff"):
+        content = content_bytes[2:].decode("utf-16be", errors="replace")
+    else:
+        try:
+            content = content_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            content = content_bytes.decode("utf-8", errors="replace")
 
+    # PostgreSQL text fields cannot contain NUL (0x00) bytes.
+    content = content.replace("\x00", "")
     file_hash = compute_file_hash(content_bytes)
     return content, file_hash
 
@@ -533,7 +571,7 @@ class IndexingService:
                     job.id,
                     "FAILED",
                     error_message=f"Indexing succeeded but analysis failed: {analysis_err}",
-                    failure_code="ANALYSIS_FAILED",
+                    failure_code="INTERNAL_ERROR",
                 )
                 self.db.commit()
 
@@ -603,7 +641,10 @@ class IndexingService:
             account = self.db.execute(stmt).scalar_one_or_none()
             if account and account.access_token_encrypted:
                 from app.services.github_token import get_decrypted_token
-                github_token = get_decrypted_token(account)
+                try:
+                    github_token = get_decrypted_token(account)
+                except Exception:
+                    github_token = None
                 
         try:
             clone_repository(repository.clone_url, temp_dir, version.branch, github_token=github_token)
@@ -618,15 +659,25 @@ class IndexingService:
             shutil.rmtree(repo_path, ignore_errors=True)
 
     def _update_job_status(self, job_id: UUID, status: str, error_message: Optional[str] = None, failure_code: Optional[str] = None) -> None:
-        """Update the index job status."""
+        """Update the index job status, sanitizing error message and failure code for PostgreSQL."""
         from datetime import datetime, timezone
+
+        valid_codes = {
+            "CLONE_FAILED",
+            "REPOSITORY_TOO_LARGE",
+            "EMBEDDING_PROVIDER_RATE_LIMITED",
+            "EMBEDDING_PROVIDER_UNAVAILABLE",
+            "EMBEDDING_PROVIDER_AUTH",
+            "INTERNAL_ERROR",
+        }
 
         job = self.repository_repo.get_job_by_id(job_id)
         if job:
             job.status = status
-            job.error_message = error_message
+            if error_message is not None:
+                job.error_message = str(error_message).replace("\x00", "")[:4000]
             if failure_code is not None:
-                job.failure_code = failure_code
+                job.failure_code = failure_code if failure_code in valid_codes else "INTERNAL_ERROR"
             if status in ("FETCHING", "INDEXING", "ANALYZING") and not job.started_at:
                 job.started_at = datetime.now(timezone.utc)
             if status in ("READY", "FAILED"):

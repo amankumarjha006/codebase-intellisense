@@ -24,13 +24,13 @@ export function BlurText({
   const defaultFrom = {
     filter: 'blur(10px)',
     opacity: 0,
-    transform: direction === 'top' ? 'translate3d(0,-20px,0)' : 'translate3d(0,20px,0)',
+    y: direction === 'top' ? -20 : 20,
   };
 
   const defaultTo = {
     filter: 'blur(0px)',
     opacity: 1,
-    transform: 'translate3d(0,0,0)',
+    y: 0,
   };
 
   return (

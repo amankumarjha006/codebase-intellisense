@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { MaterialIcon } from '../components/ui/MaterialIcon';
 import { Button } from '../components/ui/button';
+import { AnimatedPage } from '../components/ui/AnimatedPage';
 import { ConnectDrawer } from '../components/repository/ConnectDrawer';
 import { RepositoriesTable } from '../components/repository/RepositoriesTable';
 import { useRepositoryPolling } from '../lib/useRepositoryPolling';
@@ -48,7 +49,7 @@ export function RepositoriesPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-10 pb-16">
+    <AnimatedPage className="space-y-6 max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-10 pb-16">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-baseline gap-2.5">
@@ -118,7 +119,7 @@ export function RepositoriesPage() {
         onOpenChange={setConnectOpen}
         onConnected={() => refetch()}
       />
-    </div>
+    </AnimatedPage>
   );
 }
 export default RepositoriesPage;

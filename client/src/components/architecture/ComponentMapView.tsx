@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   ReactFlow,
   Background,
@@ -91,51 +92,69 @@ export function ComponentMapView({
   };
 
   return (
-    <div className="relative w-full h-[620px] min-h-[460px] rounded-lg border border-white/10 bg-surface-base overflow-hidden">
-      {isLayingOut && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface-base/80 backdrop-blur-xs text-xs text-text-secondary font-mono">
-          Calculating graph layout…
-        </div>
-      )}
+    <div className="flex flex-col lg:flex-row w-full h-[660px] min-h-[480px] rounded-lg border border-white/10 bg-surface-base overflow-hidden">
+      <div className="relative flex-1 h-full min-w-0">
+        {isLayingOut && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface-base/80 backdrop-blur-xs text-xs text-text-secondary font-mono">
+            Calculating graph layout…
+          </div>
+        )}
 
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={handleNodeClick}
-        onPaneClick={handlePaneClick}
-        onlyRenderVisibleElements={true}
-        nodesFocusable={true}
-        fitView={true}
-        minZoom={0.2}
-        maxZoom={2}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background color="rgba(255,255,255,0.05)" gap={20} size={1} />
-        <Controls
-          showInteractive={false}
-          className="!bg-surface-raised !border !border-white/10 !text-text-secondary !rounded-lg !shadow-sm overflow-hidden"
-        />
-        <MiniMap
-          nodeColor="#171B22"
-          maskColor="rgba(11, 13, 16, 0.75)"
-          className="!bg-surface-raised !border !border-white/10 rounded-lg overflow-hidden"
-        />
-      </ReactFlow>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={handleNodeClick}
+          onPaneClick={handlePaneClick}
+          onlyRenderVisibleElements={true}
+          nodesFocusable={true}
+          fitView={true}
+          minZoom={0.2}
+          maxZoom={2}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background color="rgba(255,255,255,0.05)" gap={20} size={1} />
+          <Controls
+            showInteractive={false}
+            className="!bg-surface-raised !border !border-white/10 !text-text-secondary !rounded-lg !shadow-sm overflow-hidden"
+          />
+          <MiniMap
+            nodeColor="#171B22"
+            maskColor="rgba(11, 13, 16, 0.75)"
+            className="!bg-surface-raised !border !border-white/10 rounded-lg overflow-hidden"
+          />
+        </ReactFlow>
+      </div>
 
-      {/* Right-hand details panel */}
-      {selectedComp && (
-        <ComponentDetailsPanel
-          component={selectedComp}
-          payload={payload}
-          repoId={repoId}
-          onClose={() => setSelectedComp(null)}
-          onSelectComponent={(nextComp) => setSelectedComp(nextComp)}
-        />
-      )}
+      {/* Docked details panel: smoothly shares space side-by-side with the graph so it NEVER overlaps! */}
+      <AnimatePresence>
+        {selectedComp && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 420, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{
+              type: 'spring',
+              stiffness: 340,
+              damping: 30,
+              mass: 0.8,
+            }}
+            className="w-full lg:w-[420px] shrink-0 h-80 lg:h-full border-t lg:border-t-0 lg:border-l border-white/10 bg-surface-raised flex flex-col z-20 shadow-xl overflow-hidden"
+          >
+            <ComponentDetailsPanel
+              component={selectedComp}
+              payload={payload}
+              repoId={repoId}
+              onClose={() => setSelectedComp(null)}
+              onSelectComponent={(nextComp) => setSelectedComp(nextComp)}
+              isEmbedded={true}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
