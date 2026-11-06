@@ -55,6 +55,8 @@ import CallSplitSvg from '@material-symbols/svg-400/rounded/call_split.svg?react
 import DnsSvg from '@material-symbols/svg-400/rounded/dns.svg?react';
 import MemorySvg from '@material-symbols/svg-400/rounded/memory.svg?react';
 import PsychologySvg from '@material-symbols/svg-400/rounded/psychology.svg?react';
+import LightModeSvg from '@material-symbols/svg-400/rounded/light_mode.svg?react';
+import DarkModeSvg from '@material-symbols/svg-400/rounded/dark_mode.svg?react';
 
 export const ICON_MAP: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
   home: HomeSvg,
@@ -127,6 +129,10 @@ export const ICON_MAP: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> =
   memory: MemorySvg,
   auto_awesome: PsychologySvg,
   sparkles: PsychologySvg,
+  light_mode: LightModeSvg,
+  dark_mode: DarkModeSvg,
+  sun: LightModeSvg,
+  moon: DarkModeSvg,
 };
 
 export type IconName = keyof typeof ICON_MAP;

@@ -11,12 +11,14 @@ import { CommandPalette } from './CommandPalette';
 import { ConnectDrawer } from '../repository/ConnectDrawer';
 import { useAuth } from '../../lib/AuthContext';
 import { useIndexingStatus } from '../../lib/useIndexingStatus';
+import { useTheme } from '../../lib/ThemeContext';
 
 export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading, error, markSessionExpired } = useAuth();
   const { resetBackoff } = useIndexingStatus();
+  const { theme } = useTheme();
 
   const [connectOpen, setConnectOpen] = React.useState(false);
   const [commandOpen, setCommandOpen] = React.useState(false);
@@ -112,7 +114,7 @@ export function AppLayout() {
 
         {/* Crisp Toasts */}
         <Toaster
-          theme="dark"
+          theme={theme}
           position="bottom-right"
           toastOptions={{
             style: {

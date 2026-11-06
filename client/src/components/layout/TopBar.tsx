@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useLocation, useNavigate, useParams, Link } from 'react-router-dom';
 import { MaterialIcon } from '../ui/MaterialIcon';
 import { Button } from '../ui/button';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -175,12 +176,15 @@ export function TopBar({ onOpenCommand, onOpenConnect: _onOpenConnect }: TopBarP
             variant="primary"
             size="sm"
             onClick={() => navigate(`/repositories/${currentRepo.id}/chat`)}
-            className="h-8 px-3 text-xs font-medium gap-1.5 bg-[var(--color-text)] text-[#0B0D10] hover:bg-white transition-colors cursor-pointer"
+            className="h-8 px-3 text-xs font-medium gap-1.5 bg-[var(--color-text)] text-[var(--color-page)] hover:opacity-90 transition-colors cursor-pointer"
           >
             <MaterialIcon name="chat" size={16} />
             <span>Ask in chat</span>
           </Button>
         )}
+
+        {/* Theme Toggle (Dark / Light) */}
+        <ThemeToggle />
 
         {/* User Menu Dropdown */}
         <DropdownMenu>

@@ -121,7 +121,7 @@ export const HeroSection: React.FC = () => {
                 signIn();
               }
             }}
-            className="inline-flex items-center justify-center px-6 py-3.5 text-base font-medium rounded-xl text-[#0B0D10] bg-white hover:bg-slate-100 active:scale-[0.98] transition-all shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-landing-accent)] focus-visible:ring-offset-2"
+            className="inline-flex items-center justify-center px-6 py-3.5 text-base font-medium rounded-xl bg-[var(--color-landing-ink)] text-[var(--color-landing-bg)] hover:opacity-90 active:scale-[0.98] transition-all shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-landing-accent)] focus-visible:ring-offset-2"
           >
             Connect GitHub
           </button>

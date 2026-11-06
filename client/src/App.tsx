@@ -23,23 +23,25 @@ import {
 } from './pages/StatusPages';
 
 import { AuthProvider } from './lib/AuthContext';
+import { ThemeProvider } from './lib/ThemeContext';
 
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <ErrorBoundary>
-            <Routes>
-              {/* Public landing page */}
-              <Route
-                path="/"
-                element={
-                  <Suspense fallback={<div className="min-h-screen bg-[#F6F4EF]" />}>
-                    <LandingPage />
-                  </Suspense>
-                }
-              />
+      <ThemeProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <ErrorBoundary>
+              <Routes>
+                {/* Public landing page */}
+                <Route
+                  path="/"
+                  element={
+                    <Suspense fallback={<div className="min-h-screen bg-[var(--color-landing-bg)]" />}>
+                      <LandingPage />
+                    </Suspense>
+                  }
+                />
 
               {/* Authenticated application routes wrapped in AppLayout */}
               <Route element={<AppLayout />}>
@@ -74,6 +76,7 @@ export function App() {
           </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

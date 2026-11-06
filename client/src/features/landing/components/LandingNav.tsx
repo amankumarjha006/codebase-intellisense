@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useAuth } from '../../../lib/AuthContext';
 import { API_URL } from '../../../lib/api';
+import { ThemeToggle } from '../../../components/ui/ThemeToggle';
 
 export const LandingNav: React.FC = () => {
   const { user, signIn } = useAuth();
@@ -69,6 +70,9 @@ export const LandingNav: React.FC = () => {
             </a>
           )}
 
+          {/* Theme Toggle & Primary CTA */}
+          <ThemeToggle variant="landing" />
+
           {/* Single primary CTA */}
           <button
             onClick={() => {
@@ -78,7 +82,7 @@ export const LandingNav: React.FC = () => {
                 signIn();
               }
             }}
-            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg text-[#0B0D10] bg-white hover:bg-slate-100 active:scale-[0.98] transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-landing-accent)] focus-visible:ring-offset-2"
+            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg bg-[var(--color-landing-ink)] text-[var(--color-landing-bg)] hover:opacity-90 active:scale-[0.98] transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-landing-accent)] focus-visible:ring-offset-2"
           >
             Connect GitHub
           </button>

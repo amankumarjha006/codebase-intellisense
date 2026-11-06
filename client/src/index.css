@@ -174,6 +174,91 @@
   --panel-text: var(--color-panel-text);
   --panel-text-secondary: var(--color-panel-text-secondary);
   --panel-border: var(--color-panel-border);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.22);
+}
+
+/* ── Light Mode Overrides (Paper & Ink Palette) ────────────── */
+:root.light,
+html.light {
+  color-scheme: light;
+
+  /* ── Light Mode Surface Elevations (Paper & Ink) ────────── */
+  --color-page: #F6F4EF;
+  --color-surface-base: #F6F4EF;
+  --color-surface: #FFFFFF;
+  --color-raised: #EDEAE3;
+  --color-surface-raised: #EDEAE3;
+  --color-overlay: #E4E0D6;
+  --color-surface-overlay: #E4E0D6;
+
+  /* ── Light Mode Hairlines ───────────────────────────────── */
+  --color-border: rgba(20, 22, 26, 0.10);
+  --color-border-subtle: rgba(20, 22, 26, 0.08);
+  --color-border-strong: rgba(20, 22, 26, 0.20);
+
+  /* ── Light Mode Text Hierarchy ──────────────────────────── */
+  --color-text-primary: #14161A;
+  --color-text-secondary: #5F6368;
+  --color-text-tertiary: #80868B;
+  --color-text-muted: #80868B;
+  --color-text: #14161A;
+  --color-muted: #80868B;
+
+  /* ── Light Mode Accent ──────────────────────────────────── */
+  --color-accent: #1A73E8;
+  --color-accent-hover: #174EA6;
+  --color-accent-tint: rgba(26, 115, 232, 0.10);
+  --color-accent-border: rgba(26, 115, 232, 0.28);
+  --color-accent-highlighter: rgba(138, 180, 248, 0.35);
+
+  /* ── Light Mode Landing Page Tokens (Paper & Ink) ───────── */
+  --color-landing-bg: #F6F4EF;
+  --color-landing-surface: #FFFFFF;
+  --color-landing-surface-dim: #EDEAE3;
+  --color-landing-ink: #14161A;
+  --color-landing-ink-secondary: #5F6368;
+  --color-landing-ink-tertiary: #80868B;
+  --color-landing-hairline: rgba(20, 22, 26, 0.12);
+  --color-landing-hairline-strong: rgba(20, 22, 26, 0.24);
+
+  --color-landing-accent: #8AB4F8;
+  --color-landing-accent-highlighter: rgba(138, 180, 248, 0.35);
+  --color-landing-accent-tint: rgba(138, 180, 248, 0.15);
+  --color-landing-accent-border: rgba(138, 180, 248, 0.35);
+
+  /* ── Light Mode Status Indicators ───────────────────────── */
+  --color-status-ready: #188038;
+  --color-status-indexing: #E37400;
+  --color-status-failed: #D93025;
+  --color-status-amber: #E37400;
+  --color-status-red: #D93025;
+  --color-status-green: #188038;
+
+  --color-error: #D93025;
+  --color-error-tint: rgba(217, 48, 37, 0.10);
+  --color-error-border: rgba(217, 48, 37, 0.25);
+  --color-success: #188038;
+  --color-success-tint: rgba(24, 128, 56, 0.10);
+  --color-warning: #E37400;
+  --color-warning-tint: rgba(227, 116, 0, 0.10);
+
+  /* ── Aliases ────────────────────────────────────────────── */
+  --landing-bg: var(--color-landing-bg);
+  --landing-surface: var(--color-landing-surface);
+  --landing-surface-dim: var(--color-landing-surface-dim);
+  --landing-ink: var(--color-landing-ink);
+  --landing-ink-secondary: var(--color-landing-ink-secondary);
+  --landing-ink-tertiary: var(--color-landing-ink-tertiary);
+  --landing-hairline: var(--color-landing-hairline);
+  --landing-hairline-strong: var(--color-landing-hairline-strong);
+  --landing-accent: var(--color-landing-accent);
+  --landing-accent-highlighter: var(--color-landing-accent-highlighter);
+  --landing-accent-tint: var(--color-landing-accent-tint);
+  --landing-accent-border: var(--color-landing-accent-border);
+
+  --scrollbar-thumb: rgba(20, 22, 26, 0.16);
+  --scrollbar-thumb-hover: rgba(20, 22, 26, 0.28);
 }
 
 /* ── Global Base Styles ───────────────────────────────────── */
@@ -187,7 +272,7 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  color-scheme: dark;
+  color-scheme: light dark;
 }
 
 body {
@@ -235,17 +320,17 @@ svg text {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--scrollbar-thumb, rgba(255, 255, 255, 0.12));
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--scrollbar-thumb-hover, rgba(255, 255, 255, 0.22));
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  scrollbar-color: var(--scrollbar-thumb, rgba(255, 255, 255, 0.12)) transparent;
 }
 
 /* ── Tabular Numerals ─────────────────────────────────────── */
