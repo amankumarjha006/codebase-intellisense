@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LandingLayout } from '../features/landing/components/LandingLayout';
 import { HeroSection } from '../features/landing/components/HeroSection';
+import { InteractiveDemo } from '../features/landing/components/InteractiveDemo';
 import { useAuth } from '../lib/AuthContext';
 import { LANDING_ERROR_COPY } from '../lib/errors';
 
@@ -65,22 +66,8 @@ export function LandingPage() {
       {/* 01 HERO SECTION */}
       <HeroSection />
 
-      {/* 02 INTERACTIVE DEMO (Scaffold for Step 3) */}
-      <section id="demo" className="py-24 border-t border-[var(--color-landing-hairline)]">
-        <div className="mb-8">
-          <p className="text-xs font-[family-name:var(--font-code)] text-[var(--color-landing-ink-tertiary)] uppercase tracking-wider">
-            02 // Interactive Demo
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-normal tracking-tight mt-2 text-[var(--color-landing-ink)]">
-            Verified Source Grounding
-          </h2>
-        </div>
-        <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel-bg)] p-8 text-[var(--panel-text)] min-h-[360px] flex items-center justify-center">
-          <p className="text-sm text-[var(--panel-text-secondary)] font-[family-name:var(--font-code)]">
-            [Interactive Cockpit Preview — Streamed tokens, question chips, Shiki pre-tokenized source viewer]
-          </p>
-        </div>
-      </section>
+      {/* 02 INTERACTIVE DEMO */}
+      <InteractiveDemo />
 
       {/* 03 HOW IT WORKS (Scaffold for Step 4) */}
       <section id="how-it-works" className="py-24 border-t border-[var(--color-landing-hairline)]">
