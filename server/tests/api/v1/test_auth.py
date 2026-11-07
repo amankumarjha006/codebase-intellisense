@@ -301,6 +301,7 @@ async def test_logout_successful(async_client, mock_redis, mock_db):
 @pytest.mark.asyncio
 async def test_dev_login_redirect_no_duplicate_dashboard(async_client, mock_redis, mock_db, mocker):
     mocker.patch.object(settings, "ENVIRONMENT", "development")
+    mocker.patch.object(settings, "ENABLE_DEV_LOGIN", True)
     mock_user = User(id=uuid4(), email="alex.chen@devtools.co", full_name="Alex Chen")
     mock_db.query().filter().order_by().first.return_value = mock_user
 

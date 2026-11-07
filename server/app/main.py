@@ -1,16 +1,27 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from typing import Optional
+
+def get_docs_urls(env: str, enable_api_docs: bool = False) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    is_dev_or_test = (env or "").strip().lower() in {"development", "test"}
+    if is_dev_or_test or enable_api_docs:
+        return f"{settings.API_V1_STR}/openapi.json", "/docs", "/redoc"
+    return None, None, None
+
+_openapi_url, _docs_url, _redoc_url = get_docs_urls(
+    settings.ENVIRONMENT,
+    getattr(settings, "ENABLE_API_DOCS", False),
+)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    openapi_url=_openapi_url,
+    docs_url=_docs_url,
+    redoc_url=_redoc_url,
 )
 
 from urllib.parse import urlparse
-from typing import Optional
 
 # Compute allowed origins from CORS_ORIGINS setting and FRONTEND_URL
 _origins_set = set(getattr(settings, "CORS_ORIGINS", []) or [])
@@ -178,6 +189,58 @@ async def global_exception_handler(request: Request, exc: Exception):
 def health_check():
     """Simple foundation health check endpoint."""
     return {"status": "ok"}
+
+import asyncio
+from sqlalchemy import text
+from app.core.db import engine
+from app.core.redis import get_redis_client
+
+@app.get("/ready", tags=["health"])
+async def readiness_check():
+    """Readiness probe checking PostgreSQL and Redis with 2s timeouts."""
+    failed: list[str] = []
+
+    # Check PostgreSQL: SELECT 1 with 2s timeout
+    try:
+        def _check_postgres():
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+
+        await asyncio.wait_for(asyncio.to_thread(_check_postgres), timeout=2.0)
+    except Exception as exc:
+        logger.warning(f"Readiness check failed for postgres: {type(exc).__name__}")
+        failed.append("postgres")
+
+    # Check Redis: PING with 2s timeout
+    try:
+        redis_client = await get_redis_client()
+        pong = await asyncio.wait_for(redis_client.ping(), timeout=2.0)
+        if not pong:
+            failed.append("redis")
+    except Exception as exc:
+        logger.warning(f"Readiness check failed for redis: {type(exc).__name__}")
+        failed.append("redis")
+
+    if failed:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unavailable",
+                "checks": {
+                    "postgres": "failed" if "postgres" in failed else "ok",
+                    "redis": "failed" if "redis" in failed else "ok",
+                },
+                "failed": failed,
+            },
+        )
+
+    return {
+        "status": "ready",
+        "checks": {
+            "postgres": "ok",
+            "redis": "ok",
+        },
+    }
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 

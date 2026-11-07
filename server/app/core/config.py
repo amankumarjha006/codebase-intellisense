@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from typing import Optional, Any
 from pathlib import Path
 
@@ -36,7 +36,10 @@ class Settings(BaseSettings):
     SESSION_COOKIE_SECURE: Optional[bool] = None  # Auto-inferred from ENVIRONMENT == "production" if None
 
     # Dev Authentication Backdoor Guard
-    ENABLE_DEV_LOGIN: bool = True
+    ENABLE_DEV_LOGIN: bool = False
+
+    # API Documentation in Production
+    ENABLE_API_DOCS: bool = False
     
     # AI & Embedding Credentials (Future integration)
     GEMINI_API_KEY: Optional[str] = None
@@ -106,6 +109,28 @@ class Settings(BaseSettings):
         elif isinstance(v, list):
             return [str(i).strip() for i in v if str(i).strip()]
         return ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+    @model_validator(mode="after")
+    def validate_production_environment(self) -> "Settings":
+        env = (self.ENVIRONMENT or "").strip().lower()
+        if env not in {"development", "test"}:
+            if self.ENABLE_DEV_LOGIN:
+                raise ValueError("ENABLE_DEV_LOGIN must be False in non-development environments.")
+            if not self.GITHUB_CLIENT_ID or not self.GITHUB_CLIENT_ID.strip():
+                raise ValueError("GITHUB_CLIENT_ID must be set in non-development environments.")
+            if not self.GITHUB_CLIENT_SECRET or not self.GITHUB_CLIENT_SECRET.strip():
+                raise ValueError("GITHUB_CLIENT_SECRET must be set in non-development environments.")
+            if not self.GITHUB_TOKEN_ENCRYPTION_KEY or not self.GITHUB_TOKEN_ENCRYPTION_KEY.strip():
+                raise ValueError("GITHUB_TOKEN_ENCRYPTION_KEY must be set in non-development environments.")
+            if not self.FRONTEND_URL.startswith("https://"):
+                raise ValueError("FRONTEND_URL must use https:// in non-development environments.")
+            if not self.GITHUB_CALLBACK_URL.startswith("https://"):
+                raise ValueError("GITHUB_CALLBACK_URL must use https:// in non-development environments.")
+            if any("localhost" in origin.lower() or "127.0.0.1" in origin for origin in self.CORS_ORIGINS):
+                raise ValueError("CORS_ORIGINS must not contain localhost or 127.0.0.1 in non-development environments.")
+            if self.SESSION_COOKIE_SECURE is False:
+                raise ValueError("SESSION_COOKIE_SECURE must be None or True in non-development environments.")
+        return self
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE_PATH),

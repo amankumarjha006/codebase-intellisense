@@ -25,6 +25,13 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy backend source code and migrations
 COPY . /app/
 
+# Create non-root user and set permissions
+RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser -s /sbin/nologin appuser \
+    && mkdir -p /app/.cache \
+    && chown -R appuser:appuser /app /home/appuser
+
+USER appuser
+
 EXPOSE 8000
 
 # Default command runs the FastAPI web API
