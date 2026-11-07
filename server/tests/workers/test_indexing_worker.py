@@ -39,6 +39,32 @@ class TestIndexingWorkerReliability:
         )
 
     @patch("app.workers.indexing_worker.redis.from_url")
+    def test_pop_to_processing_with_timeout_uses_blmove(self, mock_from_url, mock_redis):
+        mock_from_url.return_value = mock_redis
+        worker = IndexingWorker()
+
+        mock_redis.blmove.return_value = "job-blocking-456"
+        result = worker._pop_to_processing(timeout=5)
+
+        assert result == "job-blocking-456"
+        mock_redis.blmove.assert_called_once_with(
+            QUEUE_NAME, PROCESSING_QUEUE_NAME, timeout=5, src="LEFT", dest="RIGHT"
+        )
+
+    @patch("app.workers.indexing_worker.redis.from_url")
+    def test_pop_to_processing_falls_back_to_lua_if_blmove_unsupported(self, mock_from_url, mock_redis):
+        import redis
+        mock_from_url.return_value = mock_redis
+        mock_redis.blmove.side_effect = redis.ResponseError("unknown command 'BLMOVE'")
+        mock_redis.eval.return_value = "job-lua-blocking"
+
+        worker = IndexingWorker()
+        result = worker._pop_to_processing(timeout=5)
+
+        assert result == "job-lua-blocking"
+        mock_redis.eval.assert_called_once()
+
+    @patch("app.workers.indexing_worker.redis.from_url")
     def test_pop_to_processing_falls_back_to_lua_if_lmove_unsupported(self, mock_from_url, mock_redis):
         import redis
         mock_from_url.return_value = mock_redis

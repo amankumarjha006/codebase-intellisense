@@ -111,16 +111,15 @@ class IndexingWorker:
                     self.recover_orphaned_jobs()
                     last_recovery_time = time.time()
 
-                had_job = self._process_next_job()
+                had_job = self._process_next_job(timeout=POLL_INTERVAL)
             except Exception as e:
                 logger.error(f"Error in worker loop: {e}", exc_info=True)
+                if self.running:
+                    time.sleep(1)
             finally:
                 if self.db:
                     self.db.close()
                     self.db = None
-
-            if self.running and not had_job:
-                time.sleep(POLL_INTERVAL)
 
     def _signal_handler(self, signum, frame) -> None:
         """Handle shutdown signals."""
@@ -133,14 +132,21 @@ class IndexingWorker:
             self.db = SessionLocal()
         return self.db
 
-    def _pop_to_processing(self) -> Optional[str]:
-        """Atomically pop the next job ID from QUEUE_NAME and push to PROCESSING_QUEUE_NAME."""
+    def _pop_to_processing(self, timeout: int = 0) -> Optional[str]:
+        """Atomically pop the next job ID from QUEUE_NAME and push to PROCESSING_QUEUE_NAME.
+        
+        If timeout > 0, performs a blocking pop (BLMOVE with timeout) to eliminate busy-poll delays.
+        """
         try:
+            if timeout > 0:
+                return self.redis_client.blmove(
+                    QUEUE_NAME, PROCESSING_QUEUE_NAME, timeout=timeout, src="LEFT", dest="RIGHT"
+                )
             return self.redis_client.lmove(
                 QUEUE_NAME, PROCESSING_QUEUE_NAME, src="LEFT", dest="RIGHT"
             )
         except (redis.ResponseError, AttributeError, TypeError):
-            # Fallback for Redis versions that do not support LMOVE
+            # Fallback for Redis versions that do not support BLMOVE / LMOVE
             lua_script = """
             local job = redis.call('LPOP', KEYS[1])
             if job then
@@ -240,9 +246,9 @@ class IndexingWorker:
             logger.error(f"Error reconciling stuck database jobs: {e}")
             db.rollback()
 
-    def _process_next_job(self) -> bool:
+    def _process_next_job(self, timeout: int = 0) -> bool:
         """Process the next job from the queue with crash protection. Returns True if a job was popped."""
-        job_id_str = self._pop_to_processing()
+        job_id_str = self._pop_to_processing(timeout=timeout)
         if not job_id_str:
             return False
 
