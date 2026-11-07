@@ -26,20 +26,36 @@ export function ChatLayout({
       {/* Desktop Resizable Multi-Panel Layout */}
       <div className="hidden md:flex h-full w-full overflow-hidden">
         <Group orientation="horizontal" className="h-full w-full">
-          <Panel id="chat-sidebar" defaultSize={22} minSize={16} maxSize={32}>
+          <Panel
+            id="chat-sidebar"
+            defaultSize="22%"
+            minSize="200px"
+            maxSize="35%"
+            className="flex flex-col min-w-0 h-full overflow-hidden"
+          >
             {sidebar}
           </Panel>
 
           <Separator className="w-px bg-white/10 hover:bg-accent/50 cursor-col-resize transition-colors" />
 
-          <Panel id="chat-main" minSize={40}>
+          <Panel
+            id="chat-main"
+            minSize="40%"
+            className="flex flex-col min-w-0 h-full overflow-hidden"
+          >
             {main}
           </Panel>
 
           {sourcePanel && (
             <>
               <Separator className="w-px bg-white/10 hover:bg-accent/50 cursor-col-resize transition-colors" />
-              <Panel id="chat-source" defaultSize={36} minSize={25} maxSize={50}>
+              <Panel
+                id="chat-source"
+                defaultSize="35%"
+                minSize="25%"
+                maxSize="50%"
+                className="flex flex-col min-w-0 h-full overflow-hidden"
+              >
                 {sourcePanel}
               </Panel>
             </>

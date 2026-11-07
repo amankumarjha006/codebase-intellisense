@@ -408,7 +408,7 @@ export function ChatPage() {
   };
 
   return (
-    <AnimatedPage className="flex flex-col h-[calc(100vh-var(--height-topbar))] overflow-hidden bg-surface-base">
+    <AnimatedPage className="flex flex-col flex-1 h-full min-h-0 overflow-hidden bg-surface-base">
       {/* 5-tab Sticky Header */}
       {repo && <RepositoryHeader repository={repo} onReindex={async () => {}} />}
 

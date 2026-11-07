@@ -39,7 +39,7 @@ export function ConversationSidebar({
   return (
     <aside
       aria-label="Conversation history"
-      className={`bg-surface-raised flex flex-col h-full select-none ${className}`}
+      className={`bg-surface-raised flex flex-col h-full w-full min-w-0 select-none overflow-hidden ${className}`}
     >
       {/* Sidebar Header & New Question Action */}
       <div className="p-3 border-b border-white/10 space-y-2">
@@ -122,7 +122,7 @@ export function ConversationSidebar({
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-                <div className="flex items-center gap-2 min-w-0 pr-1">
+                <div className="flex items-center gap-2 min-w-0 pr-1 flex-1">
                   <MaterialIcon
                     name="chat_bubble_outline"
                     size={14}
@@ -134,30 +134,32 @@ export function ConversationSidebar({
                   <span className="truncate">{c.title || 'Untitled conversation'}</span>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="relative flex items-center justify-end shrink-0 ml-1.5 min-w-[44px]" onClick={(e) => e.stopPropagation()}>
                   <span className="text-[10px] text-text-tertiary tabular-nums font-mono opacity-100 group-hover:opacity-0 transition-opacity duration-150">
                     {formatRelativeTime(c.created_at)}
                   </span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center h-5 w-5 rounded text-text-tertiary hover:text-text-primary hover:bg-surface-raised active:scale-95"
-                        aria-label="Conversation options"
-                      >
-                        <MaterialIcon name="more_vert" size={13} />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-surface-raised border border-white/10 text-xs">
-                      <DropdownMenuItem
-                        onClick={() => onDeleteConv(c.id)}
-                        className="text-status-red gap-2 text-xs cursor-pointer"
-                      >
-                        <MaterialIcon name="delete" size={13} className="text-status-red" />
-                        Delete conversation
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="absolute right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex items-center justify-center h-5 w-5 rounded text-text-tertiary hover:text-text-primary hover:bg-surface-overlay active:scale-95 transition-colors"
+                          aria-label="Conversation options"
+                        >
+                          <MaterialIcon name="more_vert" size={13} />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-surface-raised border border-white/10 text-xs">
+                        <DropdownMenuItem
+                          onClick={() => onDeleteConv(c.id)}
+                          className="text-status-red gap-2 text-xs cursor-pointer"
+                        >
+                          <MaterialIcon name="delete" size={13} className="text-status-red" />
+                          Delete conversation
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </div>
             );
