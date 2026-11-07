@@ -1,6 +1,6 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { ArchitectureNodeData, ArchitectureEdgeData } from './types';
-import ELK from 'elkjs/lib/elk-api.js';
+import ELK from 'elkjs/lib/elk.bundled.js';
 
 export interface ElkLayoutInput {
   id: string;
@@ -62,26 +62,38 @@ let elkInstance: InstanceType<typeof ELK> | null = null;
 
 function getElkInstance(): InstanceType<typeof ELK> {
   if (!elkInstance) {
-    if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
-      try {
-        elkInstance = new ELK({
-          workerFactory: () =>
-            new Worker(new URL('elkjs/lib/elk-worker.min.js', import.meta.url)),
-        });
-      } catch {
-        elkInstance = null;
-      }
-    }
-    if (!elkInstance) {
-      elkInstance = new ELK();
-    }
+    elkInstance = new ELK();
   }
   return elkInstance;
 }
 
 /**
+ * Deterministic layered grid fallback when ELK is unavailable or times out.
+ * Ensures nodes are pleasantly distributed across columns instead of collapsing onto (0, 0).
+ */
+export function fallbackGridLayout(
+  nodes: Node<ArchitectureNodeData>[],
+  edges: Edge<ArchitectureEdgeData>[]
+): { nodes: Node<ArchitectureNodeData>[]; edges: Edge<ArchitectureEdgeData>[] } {
+  const layerCounters = new Map<number, number>();
+  const laidOutNodes = nodes.map((node) => {
+    const layer = node.data?.component?.layer ?? 0;
+    const count = layerCounters.get(layer) ?? 0;
+    layerCounters.set(layer, count + 1);
+    return {
+      ...node,
+      position: {
+        x: layer * (NODE_WIDTH + 80) + 40,
+        y: count * (NODE_HEIGHT + 36) + 40,
+      },
+    };
+  });
+  return { nodes: laidOutNodes, edges };
+}
+
+/**
  * Runs ELK layout on nodes and edges, returning updated nodes with positioned coordinates.
- * Web Worker is leveraged via ELK workerFactory in browser.
+ * Includes a timeout safeguard and layered grid fallback.
  */
 export async function layoutArchitectureGraph(
   nodes: Node<ArchitectureNodeData>[],
@@ -98,10 +110,15 @@ export async function layoutArchitectureGraph(
   try {
     const elk = getElkInstance();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    layoutResult = await elk.layout(elkGraph as any);
+    layoutResult = await Promise.race([
+      elk.layout(elkGraph as any),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('ELK layout timeout after 4000ms')), 4000)
+      ),
+    ]);
   } catch (err) {
     console.warn('ELK layout failed, falling back to grid positions:', err);
-    return { nodes, edges };
+    return fallbackGridLayout(nodes, edges);
   }
 
   const positionMap = new Map<string, { x: number; y: number }>();
@@ -124,3 +141,4 @@ export async function layoutArchitectureGraph(
 
   return { nodes: laidOutNodes, edges };
 }
+

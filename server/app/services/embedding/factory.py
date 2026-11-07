@@ -16,6 +16,7 @@ def get_embedding_provider(settings: Settings) -> EmbeddingProvider:
     cache_key = (
         provider_name,
         getattr(settings, "EMBEDDING_MODEL", None),
+        getattr(settings, "EMBEDDING_FALLBACK_MODEL", None),
         getattr(settings, "EMBEDDING_DIMENSION", None),
         getattr(settings, "GEMINI_API_KEY", None) if provider_name == "google" else None,
     )
@@ -27,6 +28,7 @@ def get_embedding_provider(settings: Settings) -> EmbeddingProvider:
             api_key=settings.GEMINI_API_KEY,
             model=settings.EMBEDDING_MODEL,
             dimension=settings.EMBEDDING_DIMENSION,
+            fallback_model=getattr(settings, "EMBEDDING_FALLBACK_MODEL", None),
         )
     elif provider_name in ("fastembed", "local"):
         provider = FastEmbedProvider(

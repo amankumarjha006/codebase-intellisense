@@ -54,16 +54,18 @@ class Settings(BaseSettings):
     CONTEXT_MAX_CHARS: int = 32000
 
     # Embedding Configuration
-    EMBEDDING_PROVIDER: str = "fastembed"
-    EMBEDDING_MODEL: str = "BAAI/bge-base-en-v1.5"
+    EMBEDDING_PROVIDER: str = "google"
+    EMBEDDING_MODEL: str = "gemini-embedding-2"
+    EMBEDDING_FALLBACK_MODEL: Optional[str] = "gemini-embedding-001"
     EMBEDDING_DIMENSION: int = 768
-    EMBEDDING_MAX_RETRIES: int = 4
+    EMBEDDING_MAX_RETRIES: int = 5
     EMBEDDING_CHARS_PER_TOKEN: int = 3
 
-    # Batch limits (0 delay, 32 items, 32000 tokens for fast local embedding)
+    # Batch limits calibrated for Google AI Studio Free Tier (100 RPM, 30k TPM, 1k RPD)
     EMBEDDING_MAX_BATCH_ITEMS: int = 32
-    EMBEDDING_MAX_BATCH_TOKENS: int = 32000
-    EMBEDDING_MIN_INTERVAL_SECONDS: float = 0.0
+    EMBEDDING_MAX_BATCH_TOKENS: int = 8500
+    EMBEDDING_MIN_INTERVAL_SECONDS: float = 2.0
+    EMBEDDING_TARGET_TPM: int = 24000
 
     # LLM Configuration
     LLM_PRIMARY_PROVIDER: str = "gemini"

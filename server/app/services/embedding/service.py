@@ -67,12 +67,13 @@ class EmbeddingService:
 
             # Create Embedding records
             embedding_records = []
+            active_model = getattr(self.provider, "active_model", settings.EMBEDDING_MODEL)
             for chunk, vector in zip(batch_chunks, vectors):
                 record = Embedding(
                     code_chunk_id=chunk.id,
                     vector=vector,
                     provider=settings.EMBEDDING_PROVIDER,
-                    model_name=settings.EMBEDDING_MODEL,
+                    model_name=active_model,
                     dimension=settings.EMBEDDING_DIMENSION
                 )
                 embedding_records.append(record)
@@ -81,7 +82,15 @@ class EmbeddingService:
             self.knowledge_repo.bulk_create_embeddings(embedding_records)
             embeddings_created += len(embedding_records)
 
-            if settings.EMBEDDING_MIN_INTERVAL_SECONDS > 0:
+            # Rate pacing: for remote providers (like Google), pace dynamically based on tokens
+            # to strictly respect TPM quotas (e.g. 24k target TPM against a 30k TPM ceiling)
+            if settings.EMBEDDING_PROVIDER == "google":
+                target_tpm = getattr(settings, "EMBEDDING_TARGET_TPM", 24000)
+                tokens_per_sec = max(1.0, target_tpm / 60.0)
+                token_delay = total_tokens / tokens_per_sec
+                sleep_duration = max(settings.EMBEDDING_MIN_INTERVAL_SECONDS, token_delay)
+                time.sleep(sleep_duration)
+            elif settings.EMBEDDING_MIN_INTERVAL_SECONDS > 0:
                 time.sleep(settings.EMBEDDING_MIN_INTERVAL_SECONDS)
 
         for chunk in chunks:

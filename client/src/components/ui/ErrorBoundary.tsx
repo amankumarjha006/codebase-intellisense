@@ -29,6 +29,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   handleReset = () => {
+    const isDynamicImportError =
+      this.state.error?.message?.includes('Failed to fetch dynamically imported module') ||
+      this.state.error?.name === 'ChunkLoadError';
+
+    if (isDynamicImportError) {
+      window.location.reload();
+      return;
+    }
+
     this.setState({ hasError: false, error: null });
     this.props.onReset?.();
   };

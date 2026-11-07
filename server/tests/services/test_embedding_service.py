@@ -52,7 +52,8 @@ def test_text_builder_deterministic():
     
     assert text1 == text2
 
-def test_embedding_service_batching():
+@patch("time.sleep")
+def test_embedding_service_batching(mock_sleep):
     provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
     repo = FakeKnowledgeRepository()
     service = EmbeddingService(repo, provider)
@@ -76,6 +77,27 @@ def test_embedding_service_batching():
     assert len(provider.calls[0]) == 2
     assert len(provider.calls[1]) == 2
     assert len(provider.calls[2]) == 1
+    assert mock_sleep.call_count == 3
+
+@patch("time.sleep")
+def test_embedding_service_token_pacing_for_google(mock_sleep, monkeypatch):
+    monkeypatch.setattr("app.core.config.settings.EMBEDDING_PROVIDER", "google")
+    monkeypatch.setattr("app.core.config.settings.EMBEDDING_TARGET_TPM", 24000)
+    monkeypatch.setattr("app.core.config.settings.EMBEDDING_MIN_INTERVAL_SECONDS", 1.0)
+
+    provider = FakeEmbeddingProvider(dimension=settings.EMBEDDING_DIMENSION)
+    repo = FakeKnowledgeRepository()
+    service = EmbeddingService(repo, provider)
+
+    from uuid import uuid4
+    # 3000 chars -> ~1000 tokens (chars_per_token=3)
+    # At 24000 TPM -> 400 tokens/sec. 1000 tokens / 400 tokens/sec = 2.5 seconds delay.
+    c = CodeChunk(id=uuid4(), content="x" * 3000)
+    service.generate_and_store_embeddings([c])
+
+    assert mock_sleep.call_count == 1
+    slept = mock_sleep.call_args[0][0]
+    assert 2.0 <= slept <= 3.0
     
 @patch("time.sleep")
 def test_embedding_service_retry(mock_sleep):
@@ -177,3 +199,35 @@ def test_index_job_out_sanitization():
 
     assert job2.failure_code == "EMBEDDING_PROVIDER_RATE_LIMITED"
     assert "rate limit" in job2.failure_message.lower()
+
+def test_gemini_fallback_on_rate_limit():
+    provider = GeminiEmbeddingProvider(
+        api_key="test",
+        model="gemini-embedding-2",
+        fallback_model="gemini-embedding-001",
+        dimension=768
+    )
+
+    mock_resp_429 = MagicMock(spec=requests.Response)
+    mock_resp_429.status_code = 429
+    mock_resp_429.headers = {"Retry-After": "30"}
+
+    mock_success_response = MagicMock()
+    mock_emb = MagicMock()
+    mock_emb.values = [0.1] * 768
+    mock_success_response.embeddings = [mock_emb]
+
+    def fake_embed_content(model, contents, config):
+        if model == "gemini-embedding-2":
+            raise APIError(429, mock_resp_429)
+        elif model == "gemini-embedding-001":
+            return mock_success_response
+        raise ValueError(f"Unexpected model: {model}")
+
+    with patch.object(provider, 'client', create=True) as mock_client:
+        mock_client.models.embed_content.side_effect = fake_embed_content
+        vectors = provider.embed(["test fallback"])
+
+    assert len(vectors) == 1
+    assert len(vectors[0]) == 768
+    assert provider.active_model == "gemini-embedding-001"

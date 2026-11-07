@@ -1,4 +1,6 @@
-from typing import List
+import logging
+import time
+from typing import List, Optional
 import requests
 from google import genai
 from app.services.embedding.provider import EmbeddingProvider
@@ -13,50 +15,88 @@ from app.services.embedding.exceptions import (
     EmbeddingProviderClientError,
 )
 
+logger = logging.getLogger(__name__)
+
 class GeminiEmbeddingProvider(EmbeddingProvider):
     """
-    Implements the EmbeddingProvider protocol using the official google-genai SDK.
+    Implements the EmbeddingProvider protocol using the official google-genai SDK
+    with automatic quota fallback support (e.g. gemini-embedding-2 -> gemini-embedding-001).
     """
-    def __init__(self, api_key: str, model: str, dimension: int):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "gemini-embedding-2",
+        dimension: int = 768,
+        fallback_model: Optional[str] = "gemini-embedding-001",
+    ):
         self.api_key = api_key
         self.model = model
+        self.fallback_model = fallback_model
         self.dimension = dimension
         self.client = None
+        self._current_model = model
+        self._fallback_until = 0.0
+
+    @property
+    def active_model(self) -> str:
+        return self._current_model
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-            
+
+        target_model = self.model
+        if self.fallback_model and time.time() < self._fallback_until:
+            target_model = self.fallback_model
+
+        try:
+            self._current_model = target_model
+            return self._call_embed(target_model, texts)
+        except EmbeddingProviderRateLimitError as e:
+            if self.fallback_model and target_model != self.fallback_model:
+                cooldown = e.retry_after if e.retry_after and e.retry_after > 0 else 60.0
+                self._fallback_until = time.time() + cooldown
+                logger.warning(
+                    f"Embedding model '{target_model}' rate limited. "
+                    f"Falling back to '{self.fallback_model}' for {cooldown:.1f}s..."
+                )
+                self._current_model = self.fallback_model
+                return self._call_embed(self.fallback_model, texts)
+            raise
+
+    def _call_embed(self, model: str, texts: list[str]) -> list[list[float]]:
         try:
             if not self.api_key:
                 raise EmbeddingError("GEMINI_API_KEY must be provided")
-                
+
             if self.client is None:
                 self.client = genai.Client(api_key=self.api_key)
-                
+
             # We use embed_content with multiple contents for batching.
             # Using output_dimensionality parameter.
             response = self.client.models.embed_content(
-                model=self.model,
+                model=model,
                 contents=texts,
                 config=genai.types.EmbedContentConfig(
                     output_dimensionality=self.dimension
                 )
             )
-            
+
             # The response.embeddings should be a list in the exact order of the inputs.
-            # We extract the float arrays.
             if not response.embeddings or len(response.embeddings) != len(texts):
-                raise EmbeddingError(f"Provider returned {len(response.embeddings) if response.embeddings else 0} embeddings, expected {len(texts)}")
-                
+                raise EmbeddingError(
+                    f"Provider returned {len(response.embeddings) if response.embeddings else 0} embeddings, expected {len(texts)}"
+                )
+
             vectors = []
             for emb in response.embeddings:
-                # Assuming emb.values contains the float list
                 vec = list(emb.values)
                 if len(vec) != self.dimension:
-                    raise EmbeddingError(f"Provider returned vector of dimension {len(vec)}, expected {self.dimension}")
+                    raise EmbeddingError(
+                        f"Provider returned vector of dimension {len(vec)}, expected {self.dimension}"
+                    )
                 vectors.append(vec)
-                
+
             return vectors
         except EmbeddingError:
             raise

@@ -1,13 +1,14 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
-const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
+import { lazyWithRetry } from './lib/lazyWithRetry';
+const LandingPage = lazyWithRetry(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
 import { DashboardPage } from './pages/DashboardPage';
 import { RepositoriesPage } from './pages/RepositoriesPage';
 import { RepositoryOverviewPage } from './pages/RepositoryOverviewPage';
 import { ChatPage } from './pages/ChatPage';
-const ArchitecturePage = lazy(() => import('./pages/ArchitecturePage').then((m) => ({ default: m.ArchitecturePage })));
+const ArchitecturePage = lazyWithRetry(() => import('./pages/ArchitecturePage').then((m) => ({ default: m.ArchitecturePage })));
 import { SearchPage } from './pages/SearchPage';
 import { FilesPage } from './pages/FilesPage';
 import { AppLayout } from './components/layout/AppLayout';
