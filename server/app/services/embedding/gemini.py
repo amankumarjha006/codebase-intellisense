@@ -103,31 +103,55 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         except genai.errors.APIError as e:
             status_code = getattr(e, 'code', None)
             if status_code is None and getattr(e, 'response', None):
-                status_code = e.response.status_code
+                status_code = getattr(e.response, 'status_code', None)
 
             if status_code == 429:
                 retry_after = None
-                if getattr(e, 'response', None) and hasattr(e.response, 'headers'):
-                    retry_hdr = e.response.headers.get("Retry-After")
-                    if retry_hdr:
+                # 1. Check response headers
+                response = getattr(e, 'response', None)
+                if response is not None and hasattr(response, 'headers') and response.headers:
+                    retry_hdr = response.headers.get("Retry-After") or response.headers.get("retry-after")
+                    if retry_hdr is not None:
                         try:
                             retry_after = float(retry_hdr)
-                        except ValueError:
+                        except (ValueError, TypeError):
                             pass
 
-                # Check for retryDelay in details
-                if getattr(e, 'details', None) and isinstance(e.details, dict):
-                    details_list = e.details.get("error", {}).get("details", [])
-                    if not details_list and "details" in e.details:
-                        details_list = e.details["details"]
-                    for detail in details_list:
-                        if detail.get("@type") == "type.googleapis.com/google.rpc.RetryInfo":
-                            delay_str = detail.get("retryDelay", "")
-                            if delay_str.endswith("s"):
-                                try:
-                                    retry_after = float(delay_str[:-1])
-                                except ValueError:
-                                    pass
+                # 2. Check for retryDelay in details if header was not present
+                if retry_after is None and getattr(e, 'details', None):
+                    details = e.details
+                    details_list = []
+                    if isinstance(details, dict):
+                        error_obj = details.get("error", {})
+                        if isinstance(error_obj, dict) and "details" in error_obj:
+                            details_list = error_obj.get("details", [])
+                        elif "details" in details:
+                            details_list = details.get("details", [])
+                    elif isinstance(details, list):
+                        details_list = details
+
+                    if isinstance(details_list, list):
+                        for detail in details_list:
+                            if isinstance(detail, dict) and detail.get("@type") == "type.googleapis.com/google.rpc.RetryInfo":
+                                delay = detail.get("retryDelay")
+                                if isinstance(delay, str) and delay.endswith("s"):
+                                    try:
+                                        retry_after = float(delay[:-1])
+                                        break
+                                    except (ValueError, TypeError):
+                                        pass
+                                elif isinstance(delay, dict):
+                                    try:
+                                        secs = float(delay.get("seconds", 0))
+                                        nanos = float(delay.get("nanos", 0)) / 1e9
+                                        retry_after = secs + nanos
+                                        break
+                                    except (ValueError, TypeError):
+                                        pass
+                                elif isinstance(delay, (int, float)):
+                                    retry_after = float(delay)
+                                    break
+
                 raise EmbeddingProviderRateLimitError(str(e), retry_after) from e
             elif status_code == 408:
                 raise EmbeddingProviderTimeoutError(str(e)) from e

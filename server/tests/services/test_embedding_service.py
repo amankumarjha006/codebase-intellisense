@@ -149,23 +149,60 @@ def test_gemini_error_classification():
             mock_client.models.embed_content.side_effect = requests.exceptions.ConnectionError("conn error")
             provider.embed(["test"])
 
-    # Test 429 APIError with header
-    mock_resp = MagicMock(spec=requests.Response)
-    mock_resp.status_code = 429
-    mock_resp.headers = {"Retry-After": "15"}
+    # Test 429 APIError with Retry-After header on real requests.Response
+    resp_hdr = requests.Response()
+    resp_hdr.status_code = 429
+    resp_hdr.headers["Retry-After"] = "15"
+    resp_hdr._content = b'{"error": {"code": 429, "message": "Rate limit exceeded", "status": "RESOURCE_EXHAUSTED"}}'
     
     with pytest.raises(EmbeddingProviderRateLimitError) as exc_info:
         with patch.object(provider, 'client') as mock_client:
-            mock_client.models.embed_content.side_effect = APIError(429, mock_resp)
+            mock_client.models.embed_content.side_effect = APIError(429, resp_hdr)
             provider.embed(["test"])
     assert exc_info.value.retry_after == 15.0
 
+    # Test 429 APIError with RetryInfo retryDelay in details
+    import json
+    resp_details = requests.Response()
+    resp_details.status_code = 429
+    resp_details._content = json.dumps({
+        "error": {
+            "code": 429,
+            "message": "Resource exhausted",
+            "status": "RESOURCE_EXHAUSTED",
+            "details": [
+                {
+                    "@type": "type.googleapis.com/google.rpc.RetryInfo",
+                    "retryDelay": "20s"
+                }
+            ]
+        }
+    }).encode("utf-8")
+    
+    with pytest.raises(EmbeddingProviderRateLimitError) as exc_info:
+        with patch.object(provider, 'client') as mock_client:
+            mock_client.models.embed_content.side_effect = APIError(429, resp_details)
+            provider.embed(["test"])
+    assert exc_info.value.retry_after == 20.0
+
+    # Test 429 APIError with neither header nor details
+    resp_no_delay = requests.Response()
+    resp_no_delay.status_code = 429
+    resp_no_delay._content = b'{"error": {"code": 429, "message": "Rate limit exceeded", "status": "RESOURCE_EXHAUSTED"}}'
+    
+    with pytest.raises(EmbeddingProviderRateLimitError) as exc_info:
+        with patch.object(provider, 'client') as mock_client:
+            mock_client.models.embed_content.side_effect = APIError(429, resp_no_delay)
+            provider.embed(["test"])
+    assert exc_info.value.retry_after is None
+
     # Test 503 APIError
-    mock_resp_503 = MagicMock(spec=requests.Response)
-    mock_resp_503.status_code = 503
+    resp_503 = requests.Response()
+    resp_503.status_code = 503
+    resp_503._content = b'{"error": {"code": 503, "message": "Service unavailable", "status": "UNAVAILABLE"}}'
     with pytest.raises(EmbeddingProviderServerError):
         with patch.object(provider, 'client') as mock_client:
-            mock_client.models.embed_content.side_effect = APIError(503, mock_resp_503)
+            mock_client.models.embed_content.side_effect = APIError(503, resp_503)
             provider.embed(["test"])
 
 def test_index_job_out_sanitization():
