@@ -129,3 +129,28 @@ def test_dev_environment_permits_local_defaults():
     assert settings.ENVIRONMENT == "development"
     assert settings.ENABLE_DEV_LOGIN is True
     assert settings.SESSION_COOKIE_SECURE is False
+
+
+def test_docker_compose_prod_forces_production_and_isolates_db():
+    import yaml
+    from pathlib import Path
+
+    compose_path = Path(__file__).resolve().parent.parent.parent.parent / "infrastructure" / "docker-compose.prod.yml"
+    assert compose_path.exists(), f"Compose file not found at {compose_path}"
+
+    compose_data = yaml.safe_load(compose_path.read_text(encoding="utf-8"))
+    services = compose_data.get("services", {})
+
+    # 1. Server must force ENVIRONMENT=production and ENABLE_DEV_LOGIN="false"
+    server_env = services.get("server", {}).get("environment", {})
+    assert server_env.get("ENVIRONMENT") == "production", "server service must force ENVIRONMENT: production"
+    assert server_env.get("ENABLE_DEV_LOGIN") in (False, "false"), "server service must force ENABLE_DEV_LOGIN: 'false'"
+
+    # 2. Worker must force ENVIRONMENT=production and ENABLE_DEV_LOGIN="false"
+    worker_env = services.get("worker", {}).get("environment", {})
+    assert worker_env.get("ENVIRONMENT") == "production", "worker service must force ENVIRONMENT: production"
+    assert worker_env.get("ENABLE_DEV_LOGIN") in (False, "false"), "worker service must force ENABLE_DEV_LOGIN: 'false'"
+
+    # 3. Postgres and Redis must not publish ports to the host
+    assert "ports" not in services.get("postgres", {}), "postgres service must not publish ports in production"
+    assert "ports" not in services.get("redis", {}), "redis service must not publish ports in production"

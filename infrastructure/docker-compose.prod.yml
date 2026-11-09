@@ -39,6 +39,8 @@ services:
     env_file:
       - ../.env
     environment:
+      ENVIRONMENT: production
+      ENABLE_DEV_LOGIN: "false"
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set it}@postgres:5432/${POSTGRES_DB:-codebase_intellisense}
       REDIS_URL: redis://:${REDIS_PASSWORD:?set it}@redis:6379/0
     depends_on:
@@ -64,6 +66,8 @@ services:
     env_file:
       - ../.env
     environment:
+      ENVIRONMENT: production
+      ENABLE_DEV_LOGIN: "false"
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set it}@postgres:5432/${POSTGRES_DB:-codebase_intellisense}
       REDIS_URL: redis://:${REDIS_PASSWORD:?set it}@redis:6379/0
     depends_on:
