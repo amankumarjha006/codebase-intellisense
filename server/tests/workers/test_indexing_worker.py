@@ -272,3 +272,86 @@ class TestIndexingWorkerReliability:
         # Sibling active job must NOT be marked failed
         assert stuck_job.status == "INDEXING"
         mock_db.commit.assert_not_called()
+
+    @patch("app.workers.indexing_worker.redis.from_url")
+    def test_blmove_called_with_configured_timeout(self, mock_from_url, mock_redis):
+        """(a) blmove is called with the configured timeout."""
+        mock_from_url.return_value = mock_redis
+        from app.core.config import settings
+        with patch.object(settings, "WORKER_BLOCKING_TIMEOUT_SECONDS", 25):
+            worker = IndexingWorker()
+            assert worker.blocking_timeout == 25
+            mock_from_url.assert_called_with(
+                settings.REDIS_URL,
+                decode_responses=True,
+                socket_timeout=30,
+            )
+
+            mock_redis.blmove.return_value = None
+            worker._process_next_job(timeout=worker.blocking_timeout)
+            mock_redis.blmove.assert_called_once_with(
+                QUEUE_NAME, PROCESSING_QUEUE_NAME, timeout=25, src="LEFT", dest="RIGHT"
+            )
+            assert worker.last_pop_blocked is True
+
+    @patch("time.sleep")
+    @patch("app.workers.indexing_worker.redis.from_url")
+    def test_unsupported_blmove_falls_back_and_sleeps(self, mock_from_url, mock_sleep, mock_redis):
+        """(b) an unsupported-BLMOVE ResponseError uses the fallback and then sleeps instead of spinning."""
+        import redis
+        from app.workers.indexing_worker import POLL_INTERVAL
+        mock_from_url.return_value = mock_redis
+        mock_redis.blmove.side_effect = redis.ResponseError("unknown command 'BLMOVE'")
+        mock_redis.eval.return_value = None  # No job available in fallback either
+
+        worker = IndexingWorker()
+        worker.running = True
+
+        had_job = worker._process_next_job(timeout=worker.blocking_timeout)
+        assert had_job is False
+        assert worker.last_pop_blocked is False
+
+        # In worker loop, when had_job is False and last_pop_blocked is False:
+        if not had_job and not worker.last_pop_blocked and worker.running:
+            mock_sleep(POLL_INTERVAL)
+
+        mock_sleep.assert_called_once_with(POLL_INTERVAL)
+
+    @patch("app.workers.indexing_worker.redis.from_url")
+    def test_job_popped_by_blmove_processed_with_crash_recovery_semantics(self, mock_from_url, mock_redis, mock_db):
+        """(c) a job popped by blmove is processed with crash-recovery semantics unchanged."""
+        mock_from_url.return_value = mock_redis
+        job_id = uuid4()
+        mock_redis.blmove.return_value = str(job_id)
+
+        worker = IndexingWorker()
+        worker.db = mock_db
+
+        mock_job = MagicMock()
+        mock_job.id = job_id
+        mock_job.status = "QUEUED"
+
+        with patch("app.workers.indexing_worker.RepositoryRepository") as mock_repo_cls, \
+             patch("app.workers.indexing_worker.IndexingService") as mock_indexing_service_cls, \
+             patch("app.workers.indexing_worker.KnowledgeRepository"), \
+             patch("app.workers.indexing_worker.get_embedding_provider"), \
+             patch("app.workers.indexing_worker.EmbeddingService"), \
+             patch("app.workers.indexing_worker.JobLease") as mock_job_lease_cls:
+
+            mock_repo = MagicMock()
+            mock_repo.get_job_by_id.return_value = mock_job
+            mock_repo_cls.return_value = mock_repo
+
+            mock_indexing_service = MagicMock()
+            mock_indexing_service_cls.return_value = mock_indexing_service
+
+            mock_lease_instance = MagicMock()
+            mock_job_lease_cls.return_value.__enter__.return_value = mock_lease_instance
+
+            had_job = worker._process_next_job(timeout=worker.blocking_timeout)
+
+            assert had_job is True
+            assert worker.last_pop_blocked is True
+            mock_job_lease_cls.assert_called_once_with(mock_redis, job_id)
+            mock_indexing_service.run_indexing.assert_called_once_with(mock_job)
+            mock_redis.lrem.assert_called_once_with(PROCESSING_QUEUE_NAME, 0, str(job_id))

@@ -95,6 +95,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_STREAM_REQUESTS: int = 10
     RATE_LIMIT_STREAM_WINDOW_SECONDS: int = 60
 
+    # Worker Configuration
+    WORKER_BLOCKING_TIMEOUT_SECONDS: int = 20
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Any) -> list[str]:

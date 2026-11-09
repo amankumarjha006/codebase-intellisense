@@ -28,6 +28,7 @@ LEASE_PREFIX = "indexing_job_lease:"
 DEFAULT_LEASE_TTL = 30
 DEFAULT_HEARTBEAT_INTERVAL = 10
 POLL_INTERVAL = 5
+DEFAULT_BLOCKING_TIMEOUT = 20
 
 
 class JobLease:
@@ -74,9 +75,21 @@ class JobLease:
 class IndexingWorker:
     """Background worker that processes indexing jobs from Redis queue with crash resilience."""
 
-    def __init__(self):
-        self.redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+    def __init__(self, blocking_timeout: Optional[int] = None):
+        self.blocking_timeout = (
+            blocking_timeout
+            if blocking_timeout is not None
+            else getattr(settings, "WORKER_BLOCKING_TIMEOUT_SECONDS", DEFAULT_BLOCKING_TIMEOUT)
+        )
+        # Ensure socket_timeout is greater than the blocking timeout so Redis doesn't drop the connection during BLMOVE
+        socket_timeout = self.blocking_timeout + 5
+        self.redis_client = redis.from_url(
+            settings.REDIS_URL,
+            decode_responses=True,
+            socket_timeout=socket_timeout,
+        )
         self.running = False
+        self.last_pop_blocked = False
         self.current_job_id: Optional[UUID] = None
         self.db: Optional[Session] = None
 
@@ -102,6 +115,14 @@ class IndexingWorker:
         except Exception as e:
             logger.error(f"Error during startup job recovery: {e}", exc_info=True)
 
+        # Worst-Case Shutdown Delay & Orphan Recovery Timing:
+        # 1. Shutdown Delay: When idle, the worker blocks on Redis BLMOVE for up to self.blocking_timeout seconds
+        #    (default: 20s). On Linux/POSIX, receiving SIGTERM immediately interrupts blocking I/O syscalls.
+        #    In environments where socket reads complete the wait, the worst-case shutdown delay is bounded
+        #    by self.blocking_timeout (20s), safely under standard container orchestrator grace periods (30s).
+        # 2. Orphan Recovery Delay: Recovery runs periodically every 60s. With a 20s blocking wait, the worst-case
+        #    interval between orphan recovery sweeps when idle is 60s + 20s = 80s, guaranteeing stalled jobs from
+        #    crashed sibling workers are reconciled promptly without polling Redis excessively.
         last_recovery_time = time.time()
         while self.running:
             had_job = False
@@ -111,7 +132,12 @@ class IndexingWorker:
                     self.recover_orphaned_jobs()
                     last_recovery_time = time.time()
 
-                had_job = self._process_next_job(timeout=POLL_INTERVAL)
+                had_job = self._process_next_job(timeout=self.blocking_timeout)
+
+                # If no job was returned and the pop did not block (fallback path, e.g. Lua fallback),
+                # sleep POLL_INTERVAL so the loop can never spin / busy-loop.
+                if not had_job and not self.last_pop_blocked and self.running:
+                    time.sleep(POLL_INTERVAL)
             except Exception as e:
                 logger.error(f"Error in worker loop: {e}", exc_info=True)
                 if self.running:
@@ -136,16 +162,21 @@ class IndexingWorker:
         """Atomically pop the next job ID from QUEUE_NAME and push to PROCESSING_QUEUE_NAME.
         
         If timeout > 0, performs a blocking pop (BLMOVE with timeout) to eliminate busy-poll delays.
+        Tracks whether the pop actually blocked via self.last_pop_blocked.
         """
+        self.last_pop_blocked = False
         try:
             if timeout > 0:
-                return self.redis_client.blmove(
+                res = self.redis_client.blmove(
                     QUEUE_NAME, PROCESSING_QUEUE_NAME, timeout=timeout, src="LEFT", dest="RIGHT"
                 )
+                self.last_pop_blocked = True
+                return res
             return self.redis_client.lmove(
                 QUEUE_NAME, PROCESSING_QUEUE_NAME, src="LEFT", dest="RIGHT"
             )
         except (redis.ResponseError, AttributeError, TypeError):
+            self.last_pop_blocked = False
             # Fallback for Redis versions that do not support BLMOVE / LMOVE
             lua_script = """
             local job = redis.call('LPOP', KEYS[1])
