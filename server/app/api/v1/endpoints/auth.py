@@ -26,11 +26,20 @@ def _build_frontend_redirect_url(error_code: str) -> str:
 
 def _get_cookie_security_params() -> tuple[str, bool]:
     """Resolve SameSite and Secure flags for authentication cookies."""
-    samesite = getattr(settings, "SESSION_COOKIE_SAMESITE", "lax").lower()
+    raw_samesite = getattr(settings, "SESSION_COOKIE_SAMESITE", None)
+    if raw_samesite:
+        samesite = raw_samesite.strip().lower()
+    else:
+        samesite = "none" if settings.ENVIRONMENT == "production" else "lax"
+
+    # In production, default to "none" for cross-domain deployments (e.g. Vercel <-> Render)
+    if settings.ENVIRONMENT == "production" and samesite == "lax":
+        samesite = "none"
+
     secure = (
         getattr(settings, "SESSION_COOKIE_SECURE", None)
         if getattr(settings, "SESSION_COOKIE_SECURE", None) is not None
-        else (settings.ENVIRONMENT == "production")
+        else (settings.ENVIRONMENT == "production" or samesite == "none")
     )
     if samesite == "none":
         secure = True
@@ -106,6 +115,7 @@ async def dev_login(
             httponly=True,
             secure=secure,
             samesite=samesite,
+            partitioned=True if samesite == "none" else False,
         )
         return redirect_response
     except Exception as e:
@@ -206,6 +216,7 @@ async def github_callback(
             httponly=True,
             secure=secure,
             samesite=samesite,
+            partitioned=True if samesite == "none" else False,
         )
         
         logger.info("authentication_success", extra={"user_id": str(user.id), "request_id": req_id})
