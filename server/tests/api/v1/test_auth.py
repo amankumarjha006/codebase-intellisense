@@ -309,3 +309,23 @@ async def test_dev_login_redirect_no_duplicate_dashboard(async_client, mock_redi
     assert response.status_code == 302
     assert response.headers["location"] == "http://localhost:3000/dashboard"
     assert "/dashboard/dashboard" not in response.headers["location"]
+
+
+def test_set_session_cookie_production_adds_partitioned_safely(mocker):
+    from fastapi.responses import Response
+    from app.api.v1.endpoints.auth import _set_session_cookie
+
+    mocker.patch.object(settings, "ENVIRONMENT", "production")
+    mocker.patch.object(settings, "SESSION_COOKIE_SAMESITE", "none")
+    mocker.patch.object(settings, "SESSION_COOKIE_SECURE", True)
+
+    response = Response()
+    _set_session_cookie(response, "prod_session_123")
+
+    cookie_header = response.headers.get("set-cookie", "")
+    assert "session_id=prod_session_123" in cookie_header
+    assert "SameSite=none" in cookie_header
+    assert "Secure" in cookie_header
+    assert "Partitioned" in cookie_header
+    assert "HttpOnly" in cookie_header
+

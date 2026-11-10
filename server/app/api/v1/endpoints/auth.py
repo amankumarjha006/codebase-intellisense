@@ -45,6 +45,51 @@ def _get_cookie_security_params() -> tuple[str, bool]:
         secure = True
     return samesite, secure
 
+def _set_session_cookie(response: Response, session_id: str) -> None:
+    """Set the authenticated session cookie with appropriate SameSite and Secure flags.
+
+    If SameSite is None (e.g. cross-domain production between Vercel and Render),
+    we safely append the Partitioned attribute to the Set-Cookie header for CHIPS
+    without passing partitioned=True to Starlette (which raises ValueError on Python < 3.14).
+    """
+    samesite, secure = _get_cookie_security_params()
+    response.set_cookie(
+        key=settings.SESSION_COOKIE_NAME,
+        value=session_id,
+        max_age=settings.SESSION_EXPIRE_SECONDS,
+        httponly=True,
+        secure=secure,
+        samesite=samesite,
+    )
+    if samesite == "none" and secure:
+        new_headers = []
+        cookie_prefix = f"{settings.SESSION_COOKIE_NAME}=".encode("utf-8")
+        for k, v in response.raw_headers:
+            if k.lower() == b"set-cookie" and cookie_prefix in v:
+                if b"partitioned" not in v.lower():
+                    v = v + b"; Partitioned"
+            new_headers.append((k, v))
+        response.raw_headers = new_headers
+
+def _clear_session_cookie(response: Response) -> None:
+    """Clear the session cookie with matching security flags."""
+    samesite, secure = _get_cookie_security_params()
+    response.delete_cookie(
+        key=settings.SESSION_COOKIE_NAME,
+        httponly=True,
+        secure=secure,
+        samesite=samesite,
+    )
+    if samesite == "none" and secure:
+        new_headers = []
+        cookie_prefix = f"{settings.SESSION_COOKIE_NAME}=".encode("utf-8")
+        for k, v in response.raw_headers:
+            if k.lower() == b"set-cookie" and cookie_prefix in v:
+                if b"partitioned" not in v.lower():
+                    v = v + b"; Partitioned"
+            new_headers.append((k, v))
+        response.raw_headers = new_headers
+
 @router.get("/github", summary="Initiate GitHub App Authorization")
 async def login_github(request: Request, redis_client: redis.Redis = Depends(get_redis)):
     """Initiates the GitHub App user authorization flow."""
@@ -107,16 +152,7 @@ async def dev_login(
         base_frontend = settings.FRONTEND_URL.rstrip("/")
         redirect_url = base_frontend if base_frontend.endswith("/dashboard") else f"{base_frontend}/dashboard"
         redirect_response = RedirectResponse(url=redirect_url, status_code=302)
-        samesite, secure = _get_cookie_security_params()
-        redirect_response.set_cookie(
-            key=settings.SESSION_COOKIE_NAME,
-            value=session_id,
-            max_age=settings.SESSION_EXPIRE_SECONDS,
-            httponly=True,
-            secure=secure,
-            samesite=samesite,
-            partitioned=True if samesite == "none" else False,
-        )
+        _set_session_cookie(redirect_response, session_id)
         return redirect_response
     except Exception as e:
         logger.exception("dev_login_failed", extra={"error_detail": str(e)})
@@ -208,16 +244,7 @@ async def github_callback(
         # 8. Redirect to frontend with HTTP-only cookie
         redirect_url = settings.FRONTEND_URL
         redirect_response = RedirectResponse(url=redirect_url, status_code=302)
-        samesite, secure = _get_cookie_security_params()
-        redirect_response.set_cookie(
-            key=settings.SESSION_COOKIE_NAME,
-            value=session_id,
-            max_age=settings.SESSION_EXPIRE_SECONDS,
-            httponly=True,
-            secure=secure,
-            samesite=samesite,
-            partitioned=True if samesite == "none" else False,
-        )
+        _set_session_cookie(redirect_response, session_id)
         
         logger.info("authentication_success", extra={"user_id": str(user.id), "request_id": req_id})
         return redirect_response
@@ -263,12 +290,6 @@ async def logout(
     if session_id:
         await redis_client.delete(f"session:{session_id}")
     
-    samesite, secure = _get_cookie_security_params()
-    response.delete_cookie(
-        key=settings.SESSION_COOKIE_NAME,
-        httponly=True,
-        secure=secure,
-        samesite=samesite,
-    )
+    _clear_session_cookie(response)
     return None
 
