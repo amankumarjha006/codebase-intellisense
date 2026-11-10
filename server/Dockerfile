@@ -34,6 +34,6 @@ USER appuser
 
 EXPOSE 8000
 
-# Default command runs the FastAPI web API
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command runs database migrations then starts the FastAPI web API
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
 

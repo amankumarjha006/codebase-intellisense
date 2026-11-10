@@ -14,6 +14,20 @@ def test_dev_login_defaults_to_false():
     assert settings.ENABLE_DEV_LOGIN is False
 
 
+def test_database_url_normalization():
+    # Neon postgres:// prefix
+    s1 = Settings(_env_file=None, ENVIRONMENT="development", DATABASE_URL="postgres://user:pass@ep-xyz.neon.tech/neondb")
+    assert s1.DATABASE_URL == "postgresql+psycopg://user:pass@ep-xyz.neon.tech/neondb"
+
+    # Standard postgresql:// prefix
+    s2 = Settings(_env_file=None, ENVIRONMENT="development", DATABASE_URL="postgresql://user:pass@ep-xyz.neon.tech/neondb")
+    assert s2.DATABASE_URL == "postgresql+psycopg://user:pass@ep-xyz.neon.tech/neondb"
+
+    # Already formatted postgresql+psycopg://
+    s3 = Settings(_env_file=None, ENVIRONMENT="development", DATABASE_URL="postgresql+psycopg://user:pass@localhost:5432/db")
+    assert s3.DATABASE_URL == "postgresql+psycopg://user:pass@localhost:5432/db"
+
+
 def _valid_prod_kwargs() -> dict:
     return {
         "ENVIRONMENT": "production",
