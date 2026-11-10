@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator, model_validator
-from typing import Optional, Any
+from typing import Optional, Any, Union
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     
     # Application URLs & CORS
     FRONTEND_URL: str = "http://localhost:3000/dashboard"
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    CORS_ORIGINS: Union[list[str], str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     # GitHub App Configuration (Authentication Phase)
     # Note: GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY will be required in a future phase 
@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     LLM_FALLBACK_PROVIDER: str = "openrouter"
     GEMINI_LLM_MODEL_PRIMARY: str = "gemini-2.5-flash"
     GEMINI_LLM_MODEL_FALLBACK_1: Optional[str] = "gemini-3.8-flash"
-    GEMINI_LLM_MODEL_FALLBACK_2: Optional[str] = None
+    GEMINI_LLM_MODEL_FALLBACK_2: Optional[str] = "gemini-3.7-flash"
     ARCHITECTURE_LLM_ENRICHMENT_ENABLED: bool = True
     OPENROUTER_API_KEY: Optional[str] = None
     OPENROUTER_FALLBACK_MODEL: str = "openrouter/free"
