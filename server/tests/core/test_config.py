@@ -154,3 +154,9 @@ def test_docker_compose_prod_forces_production_and_isolates_db():
     # 3. Postgres and Redis must not publish ports to the host
     assert "ports" not in services.get("postgres", {}), "postgres service must not publish ports in production"
     assert "ports" not in services.get("redis", {}), "redis service must not publish ports in production"
+
+    # 4. Public services (server and client) must bind to 127.0.0.1 (not 0.0.0.0)
+    for svc in ("server", "client"):
+        ports = services.get(svc, {}).get("ports", [])
+        for port in ports:
+            assert port.startswith("127.0.0.1:"), f"{svc} port {port} must bind to 127.0.0.1"
