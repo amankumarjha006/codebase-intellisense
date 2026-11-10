@@ -46,12 +46,7 @@ def _get_cookie_security_params() -> tuple[str, bool]:
     return samesite, secure
 
 def _set_session_cookie(response: Response, session_id: str) -> None:
-    """Set the authenticated session cookie with appropriate SameSite and Secure flags.
-
-    If SameSite is None (e.g. cross-domain production between Vercel and Render),
-    we safely append the Partitioned attribute to the Set-Cookie header for CHIPS
-    without passing partitioned=True to Starlette (which raises ValueError on Python < 3.14).
-    """
+    """Set the authenticated session cookie with appropriate SameSite and Secure flags."""
     samesite, secure = _get_cookie_security_params()
     response.set_cookie(
         key=settings.SESSION_COOKIE_NAME,
@@ -61,15 +56,6 @@ def _set_session_cookie(response: Response, session_id: str) -> None:
         secure=secure,
         samesite=samesite,
     )
-    if samesite == "none" and secure:
-        new_headers = []
-        cookie_prefix = f"{settings.SESSION_COOKIE_NAME}=".encode("utf-8")
-        for k, v in response.raw_headers:
-            if k.lower() == b"set-cookie" and cookie_prefix in v:
-                if b"partitioned" not in v.lower():
-                    v = v + b"; Partitioned"
-            new_headers.append((k, v))
-        response.raw_headers = new_headers
 
 def _clear_session_cookie(response: Response) -> None:
     """Clear the session cookie with matching security flags."""
@@ -80,15 +66,6 @@ def _clear_session_cookie(response: Response) -> None:
         secure=secure,
         samesite=samesite,
     )
-    if samesite == "none" and secure:
-        new_headers = []
-        cookie_prefix = f"{settings.SESSION_COOKIE_NAME}=".encode("utf-8")
-        for k, v in response.raw_headers:
-            if k.lower() == b"set-cookie" and cookie_prefix in v:
-                if b"partitioned" not in v.lower():
-                    v = v + b"; Partitioned"
-            new_headers.append((k, v))
-        response.raw_headers = new_headers
 
 @router.get("/github", summary="Initiate GitHub App Authorization")
 async def login_github(request: Request, redis_client: redis.Redis = Depends(get_redis)):
@@ -242,7 +219,8 @@ async def github_callback(
         )
         
         # 8. Redirect to frontend with HTTP-only cookie
-        redirect_url = settings.FRONTEND_URL
+        base_frontend = settings.FRONTEND_URL.rstrip("/")
+        redirect_url = base_frontend if base_frontend.endswith("/dashboard") else f"{base_frontend}/dashboard"
         redirect_response = RedirectResponse(url=redirect_url, status_code=302)
         _set_session_cookie(redirect_response, session_id)
         

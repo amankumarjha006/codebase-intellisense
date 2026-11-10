@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from uuid import UUID
 import redis.asyncio as redis
+import logging
 from typing import AsyncGenerator, Generator, Optional
 from app.core.config import settings
 from app.core.db import SessionLocal
@@ -10,6 +11,8 @@ from app.core.redis import get_redis_client
 from app.models.user import User
 from app.models.repository import Repository
 from app.repositories.repository import RepositoryRepository
+
+logger = logging.getLogger(__name__)
 # Exception handling for auth to match ERROR_CONTRACT.md
 class AuthException(Exception):
     def __init__(self, code: str, message: str, status_code: int = 401):
@@ -47,17 +50,33 @@ async def get_optional_current_user(
     """
     session_id = request.cookies.get(settings.SESSION_COOKIE_NAME)
     if not session_id:
+        logger.debug(
+            "auth_cookie_missing",
+            extra={
+                "cookies_received": list(request.cookies.keys()),
+                "has_cookie_header": "cookie" in request.headers,
+                "origin": request.headers.get("origin"),
+            }
+        )
         return None
 
     try:
         user_id_str = await redis_client.get(f"session:{session_id}")
         if not user_id_str:
+            logger.warning(
+                "auth_session_not_in_redis",
+                extra={"session_prefix": session_id[:8] if len(session_id) >= 8 else session_id}
+            )
             return None
         user_uuid = UUID(user_id_str)
         from app.repositories.user import UserAccountRepository
         user_repo = UserAccountRepository(db)
-        return user_repo.get_user_by_id(user_uuid)
-    except Exception:
+        user = user_repo.get_user_by_id(user_uuid)
+        if not user:
+            logger.warning("auth_user_not_found_in_db", extra={"user_id": str(user_uuid)})
+        return user
+    except Exception as exc:
+        logger.exception("auth_lookup_failed", extra={"error_detail": str(exc)})
         return None
 
 async def get_current_user(
