@@ -46,14 +46,14 @@ Vite bakes client-side environment variables prefixed with `VITE_` into static a
 ### Building Manually
 
 ```bash
-VITE_API_URL="https://api.yourdomain.com" npm run build
+VITE_API_URL="https://api.yourdomain.com/api/v1" npm run build
 ```
 
 ### Docker Build
 
 ```bash
 docker build \
-  --build-arg VITE_API_URL="https://api.yourdomain.com" \
+  --build-arg VITE_API_URL="https://api.yourdomain.com/api/v1" \
   -t codebase-intellisense-client .
 ```
 
