@@ -155,7 +155,7 @@ def test_python_resolver_timeout_budget():
 
 def test_python_resolver_on_fixtures_disk():
     """Verify resolver on real disk fixture server/tests/fixtures/architecture/python_pkg."""
-    fixture_dir = Path("server/tests/fixtures/architecture/python_pkg").resolve()
+    fixture_dir = (Path(__file__).resolve().parent.parent.parent / "fixtures" / "architecture" / "python_pkg").resolve()
     assert fixture_dir.is_dir()
 
     reader = create_repo_reader(fixture_dir)

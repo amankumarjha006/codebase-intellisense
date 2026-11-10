@@ -143,7 +143,7 @@ def test_javascript_resolver_monorepo_workspaces():
 
 def test_javascript_resolver_on_fixtures_disk():
     """Verify JS resolver on real disk fixture ts_app."""
-    fixture_dir = Path("server/tests/fixtures/architecture/ts_app").resolve()
+    fixture_dir = (Path(__file__).resolve().parent.parent.parent / "fixtures" / "architecture" / "ts_app").resolve()
     assert fixture_dir.is_dir()
 
     reader = create_repo_reader(fixture_dir)

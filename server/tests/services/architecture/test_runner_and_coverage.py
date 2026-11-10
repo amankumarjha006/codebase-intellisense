@@ -48,7 +48,7 @@ def test_analyze_repository_imports_pure():
 
 
 def test_analyze_repository_imports_monorepo_fixture():
-    fixture_dir = Path("server/tests/fixtures/architecture/monorepo").resolve()
+    fixture_dir = (Path(__file__).resolve().parent.parent.parent / "fixtures" / "architecture" / "monorepo").resolve()
     assert fixture_dir.is_dir()
 
     coverage, evidences = analyze_repository_imports(repo_path=fixture_dir)
