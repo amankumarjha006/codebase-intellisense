@@ -22,5 +22,6 @@ def isolate_test_redis(monkeypatch):
     parsed = urllib.parse.urlparse(old_redis)
     test_redis = urllib.parse.urlunparse(parsed._replace(path="/15"))
     monkeypatch.setattr(settings, "REDIS_URL", test_redis)
+    monkeypatch.setattr(settings, "ENABLE_EMBEDDED_WORKER", False)
     yield
 

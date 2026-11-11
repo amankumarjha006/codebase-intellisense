@@ -97,6 +97,7 @@ class Settings(BaseSettings):
 
     # Worker Configuration
     WORKER_BLOCKING_TIMEOUT_SECONDS: int = 20
+    ENABLE_EMBEDDED_WORKER: bool = True
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
